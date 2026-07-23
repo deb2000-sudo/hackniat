@@ -2,7 +2,7 @@ import { api } from './client'
 
 function normalizeSubmission(submission) {
   if (!submission) return submission
-  const evaluation = submission.evaluation ?? submission.result ?? null
+  const evaluation = submission.analysis ?? null
   return {
     ...submission,
     evaluation,
@@ -28,6 +28,8 @@ export const evaluationApi = {
     formData.append('video', file)
     formData.append('problem_statement', details.problem_statement)
     formData.append('solution_description', details.solution_description)
+    formData.append('github_repo_link', details.github_repo_link)
+    if (details.project_link) formData.append('project_link', details.project_link)
     const submission = await api.upload('/submissions', formData, options)
     return normalizeSubmission(submission)
   },
