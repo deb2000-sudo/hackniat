@@ -4,6 +4,17 @@ export function isEmail(value) {
   return EMAIL_RE.test(String(value || '').trim())
 }
 
+export function isUrl(value) {
+  const trimmed = String(value || '').trim()
+  if (!trimmed) return false
+  try {
+    const url = new URL(trimmed)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function required(value) {
   return String(value ?? '').trim().length > 0
 }

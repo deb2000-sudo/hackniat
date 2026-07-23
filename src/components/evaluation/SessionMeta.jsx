@@ -1,14 +1,18 @@
 import Card, { CardBody, CardHeader } from '../ui/Card'
 import { StatusBadge } from '../ui/Badge'
+import Icon from '../ui/Icon'
 import { formatDateTime } from '../../utils/format'
 
-/** Read-only metadata panel for an evaluation session. */
+/** Read-only "Submission Info" panel for an evaluation session. */
 export default function SessionMeta({ session }) {
   if (!session) return null
+  const githubLink = session.github_repo_link || session.github_link
+  const projectLink = session.project_link
+
   return (
-    <Card>
+    <Card className="submission-info">
       <CardHeader>
-        <h3>Submission details</h3>
+        <h3>Submission Info</h3>
         <StatusBadge status={session.status} />
       </CardHeader>
       <CardBody>
@@ -58,6 +62,33 @@ export default function SessionMeta({ session }) {
             </>
           )}
         </dl>
+
+        {(githubLink || projectLink) && (
+          <div className="submission-info__links">
+            {githubLink && (
+              <a
+                className="submission-info__link"
+                href={githubLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="file" size={16} />
+                GitHub repository
+              </a>
+            )}
+            {projectLink && (
+              <a
+                className="submission-info__link"
+                href={projectLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="arrowRight" size={16} />
+                Project link
+              </a>
+            )}
+          </div>
+        )}
       </CardBody>
     </Card>
   )

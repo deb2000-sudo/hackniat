@@ -5,9 +5,11 @@ import CriteriaBar from './CriteriaBar'
 import { CRITERIA_LABELS } from '../../utils/constants'
 
 /**
- * Renders a completed AI EvaluationResult: overall score, per-criterion
+ * Renders a completed AI EvaluationResult: overall score, criteria
  * breakdown, summary, strengths, improvements, recommendation and any
- * checklist / report text.
+ * checklist / report text. The backend doesn't provide scoring fields yet,
+ * so every one of these renders an explicit "not available" state instead
+ * of a fabricated zero/empty result when the data is missing.
  */
 export default function EvaluationResultView({ result }) {
   if (!result) return null
@@ -23,38 +25,31 @@ export default function EvaluationResultView({ result }) {
 
   return (
     <div className="stack-lg">
-      <div className="result-top">
-        <Card>
-          <CardBody className="text-center stack-md">
-            <div className="eyebrow" style={{ color: 'var(--brand-600)' }}>
-              Overall Score
-            </div>
-            <div style={{ display: 'grid', placeItems: 'center' }}>
-              <ScoreRing value={overall_score} max={10} size={150} />
-            </div>
-            {recommendation && (
-              <div className="stack-sm">
-                <span className="text-subtle text-xs" style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
-                  Recommendation
-                </span>
-                <p style={{ fontWeight: 600, color: 'var(--heading)' }}>{recommendation}</p>
-              </div>
-            )}
-          </CardBody>
-        </Card>
+      <Card className="score-hero">
+        <CardBody className="text-center stack-md">
+          <div className="eyebrow" style={{ color: 'var(--brand-600)' }}>
+            Overall Score
+          </div>
+          <div style={{ display: 'grid', placeItems: 'center' }}>
+            <ScoreRing value={overall_score} max={10} size={150} />
+          </div>
+          {recommendation && (
+            <div className="score-hero__recommendation">{recommendation}</div>
+          )}
+        </CardBody>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <h3>Criteria Breakdown</h3>
-            <Icon name="chart" size={20} className="text-muted" />
-          </CardHeader>
-          <CardBody className="stack-md">
-            {Object.entries(CRITERIA_LABELS).map(([key, label]) => (
-              <CriteriaBar key={key} label={label} value={criteria[key] ?? 0} max={10} />
-            ))}
-          </CardBody>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <h3>Criteria Breakdown</h3>
+          <Icon name="chart" size={20} className="text-muted" />
+        </CardHeader>
+        <CardBody className="stack-md">
+          {Object.entries(CRITERIA_LABELS).map(([key, label]) => (
+            <CriteriaBar key={key} label={label} value={criteria[key]} max={10} />
+          ))}
+        </CardBody>
+      </Card>
 
       {summary && (
         <Card>
@@ -84,7 +79,7 @@ export default function EvaluationResultView({ result }) {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted text-sm">No strengths listed.</p>
+              <p className="text-muted text-sm">Scoring not yet available.</p>
             )}
           </CardBody>
         </Card>
@@ -105,7 +100,7 @@ export default function EvaluationResultView({ result }) {
                 ))}
               </ul>
             ) : (
-              <p className="text-muted text-sm">No improvements listed.</p>
+              <p className="text-muted text-sm">Scoring not yet available.</p>
             )}
           </CardBody>
         </Card>

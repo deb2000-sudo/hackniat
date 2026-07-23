@@ -6,8 +6,9 @@ import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import Alert from '../../components/ui/Alert'
-import { Textarea } from '../../components/ui/Input'
+import Input, { Textarea } from '../../components/ui/Input'
 import ScreenRecorder from '../../components/evaluation/ScreenRecorder'
+import { isUrl } from '../../utils/validators'
 
 const STEPS = ['Record video', 'Upload your video', 'Analyze']
 
@@ -36,6 +37,8 @@ export default function NewEvaluationPage() {
   const [context, setContext] = useState({
     problem_statement: '',
     solution_description: '',
+    github_repo_link: '',
+    project_link: '',
     criteria: '',
   })
   const [phase, setPhase] = useState('idle') // idle | uploading | analyzing
@@ -49,7 +52,9 @@ export default function NewEvaluationPage() {
   const canUpload =
     !!file &&
     !!context.problem_statement.trim() &&
-    !!context.solution_description.trim()
+    !!context.solution_description.trim() &&
+    isUrl(context.github_repo_link) &&
+    (!context.project_link.trim() || isUrl(context.project_link))
 
   const handleRecordingChange = (recordedFile) => {
     setFile(recordedFile)
@@ -66,6 +71,14 @@ export default function NewEvaluationPage() {
       setError('Problem statement and solution description are required.')
       return
     }
+    if (!isUrl(context.github_repo_link)) {
+      setError('Enter a valid GitHub repository link.')
+      return
+    }
+    if (context.project_link.trim() && !isUrl(context.project_link)) {
+      setError('Enter a valid project link, or leave it blank.')
+      return
+    }
     setError('')
 
     try {
@@ -73,6 +86,8 @@ export default function NewEvaluationPage() {
       const uploaded = await evaluationApi.createSubmission(file, {
         problem_statement: context.problem_statement.trim(),
         solution_description: context.solution_description.trim(),
+        github_repo_link: context.github_repo_link.trim(),
+        project_link: context.project_link.trim(),
       })
       setUploadedSession(uploaded)
       setPhase('idle')
@@ -160,9 +175,34 @@ export default function NewEvaluationPage() {
               maxLength={5000}
               required
             />
+            <Input
+              type="url"
+              label="GitHub repository link"
+              placeholder="https://github.com/your-team/your-project"
+              value={context.github_repo_link}
+              onChange={update('github_repo_link')}
+              disabled={busy || !!uploadedSession}
+              error={
+                context.github_repo_link && !isUrl(context.github_repo_link)
+                  ? 'Enter a valid URL'
+                  : ''
+              }
+              required
+            />
+            <Input
+              type="url"
+              label="Project Link (optional)"
+              placeholder="https://your-project-demo.example.com"
+              value={context.project_link}
+              onChange={update('project_link')}
+              disabled={busy || !!uploadedSession}
+              error={
+                context.project_link && !isUrl(context.project_link) ? 'Enter a valid URL' : ''
+              }
+            />
             <Textarea
-              label="Additional analysis focus (optional)"
-              placeholder="Anything specific the AI should focus on during analysis?"
+              label="Additional comments (optional)"
+              placeholder="Any additional comments related to your project"
               value={context.criteria}
               onChange={update('criteria')}
               disabled={busy}

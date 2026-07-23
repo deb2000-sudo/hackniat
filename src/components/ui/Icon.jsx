@@ -189,6 +189,17 @@ const paths = {
       <path d="M5 21h14" />
     </>
   ),
+  chat: (
+    <path d="M21 12a8 8 0 0 1-8 8H7l-4 3 1-5.2A8 8 0 1 1 21 12z" />
+  ),
+  send: (
+    <>
+      <path d="m22 2-20 8.5 8.5 3.5 3.5 8.5L22 2z" />
+      <path d="M10.5 13.5 22 2" />
+    </>
+  ),
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  star: <path d="m12 3 2.7 5.9 6.3.7-4.7 4.4 1.2 6.3L12 17.2 6.5 20.3l1.2-6.3-4.7-4.4 6.3-.7L12 3z" />,
 }
 
 export default function Icon({ name, size = 20, strokeWidth = 1.8, className = '', ...rest }) {
