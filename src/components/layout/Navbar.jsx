@@ -11,13 +11,16 @@ const NAV_BY_ROLE = {
     { to: '/student', label: 'Dashboard', end: true },
     { to: '/student/submission', label: 'Submission' },
     { to: '/student/evaluations', label: 'Evaluations' },
+    { to: '/hackathons', label: 'Hackathons' },
   ],
   [ROLES.EVALUATOR]: [
     { to: '/evaluator', label: 'Dashboard', end: true },
     { to: '/evaluator/review', label: 'Review Submission' },
+    { to: '/hackathons', label: 'Hackathons' },
   ],
   [ROLES.ADMIN]: [
     { to: '/admin', label: 'Overview', end: true },
+    { to: '/hackathons', label: 'Hackathons' },
     { to: '/admin/users', label: 'Users' },
     { to: '/admin/evaluators', label: 'Evaluators' },
   ],
@@ -62,23 +65,28 @@ export default function Navbar() {
 
         {user ? (
           <div className="nav-user">
-            <div className="row" style={{ gap: 8 }}>
-              <Avatar name={user.name} size="sm" />
-              <div style={{ lineHeight: 1.2 }} className="text-sm">
-                <div style={{ fontWeight: 600 }} className="truncate">
-                  {user.name}
+            <details className="user-menu">
+              <summary className="user-menu__trigger" aria-label="Open profile and settings menu">
+                <Avatar name={user.name} size="sm" />
+                <div style={{ lineHeight: 1.2 }} className="text-sm user-menu__identity">
+                  <div style={{ fontWeight: 600 }} className="truncate">
+                    {user.name}
+                  </div>
+                  <RoleBadge role={user.role} />
                 </div>
-                <RoleBadge role={user.role} />
+                <Icon name="chevronDown" size={16} className="user-menu__chevron" />
+              </summary>
+              <div className="user-menu__popover">
+                <Link className="user-menu__item" to="/settings/change-password">
+                  <Icon name="settings" size={18} />
+                  Change password
+                </Link>
+                <button type="button" className="user-menu__item" onClick={handleLogout}>
+                  <Icon name="logout" size={18} />
+                  Logout
+                </button>
               </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              leftIcon={<Icon name="logout" size={18} />}
-            >
-              Logout
-            </Button>
+            </details>
           </div>
         ) : (
           <div className="row">

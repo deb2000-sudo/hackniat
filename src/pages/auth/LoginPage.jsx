@@ -52,6 +52,9 @@ export default function LoginPage() {
         </div>
 
         {submitError && <Alert variant="danger">{submitError}</Alert>}
+        {location.state?.passwordChanged && (
+          <Alert variant="success">Password changed successfully. Sign in with your new password.</Alert>
+        )}
 
         <form className="stack-md" onSubmit={handleSubmit} noValidate>
           <Input

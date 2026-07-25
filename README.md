@@ -76,3 +76,8 @@ src/
 > `POST /submissions` sends only the video, problem statement, and solution
 > description. Team name and theme are populated by the backend from the
 > authenticated student's Firestore profile.
+
+Admins manage hackathons through multipart `POST /hackathons` and partial
+`PATCH /hackathons/{id}` requests. Prizes and timeline rounds are serialized as
+JSON strings, while an optional banner is sent as a file part. All authenticated
+roles can browse `/hackathons` and view hackathon details.

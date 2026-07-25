@@ -15,7 +15,10 @@ export function formatDateTime(value) {
 /** Format an ISO date string into a readable local date. */
 export function formatDate(value) {
   if (!value) return '—'
-  const date = new Date(value)
+  const dateOnly = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const date = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   return date.toLocaleDateString(undefined, {
     year: 'numeric',

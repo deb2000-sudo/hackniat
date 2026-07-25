@@ -23,6 +23,10 @@ import ReviewSubmissionPage from './pages/evaluator/ReviewSubmissionPage'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import UsersPage from './pages/admin/UsersPage'
 import EvaluatorsPage from './pages/admin/EvaluatorsPage'
+import HackathonsPage from './pages/admin/HackathonsPage'
+import HackathonFormPage from './pages/admin/HackathonFormPage'
+import HackathonDetailPage from './pages/admin/HackathonDetailPage'
+import ChangePasswordPage from './pages/settings/ChangePasswordPage'
 
 export default function App() {
   return (
@@ -39,6 +43,12 @@ export default function App() {
 
           {/* Authenticated app chrome */}
           <Route element={<Layout />}>
+            <Route element={<ProtectedRoute />}>
+              <Route path="/settings/change-password" element={<ChangePasswordPage />} />
+              <Route path="/hackathons" element={<HackathonsPage />} />
+              <Route path="/hackathons/:hackathonId" element={<HackathonDetailPage />} />
+            </Route>
+
             {/* Student */}
             <Route element={<ProtectedRoute roles={[ROLES.STUDENT]} />}>
               <Route path="/student" element={<StudentDashboard />} />
@@ -59,6 +69,9 @@ export default function App() {
             {/* Admin */}
             <Route element={<ProtectedRoute roles={[ROLES.ADMIN]} />}>
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/hackathons" element={<Navigate to="/hackathons" replace />} />
+              <Route path="/admin/hackathons/new" element={<HackathonFormPage />} />
+              <Route path="/admin/hackathons/:hackathonId/edit" element={<HackathonFormPage />} />
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/evaluators" element={<EvaluatorsPage />} />
             </Route>

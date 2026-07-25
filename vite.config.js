@@ -11,6 +11,7 @@ const proxyPrefixes = [
   '/health',
   '/auth',
   '/admin',
+  '/hackathons',
   '/submissions',
 ]
 

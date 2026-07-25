@@ -20,6 +20,9 @@ export const authApi = {
   /** Clear the session cookie. */
   logout: () => api.post('/auth/logout'),
 
+  /** Change the authenticated user's password; the backend clears the session cookie. */
+  changePassword: (payload) => api.post('/auth/change-password', payload),
+
   /** Fetch the currently authenticated user's profile. */
   me: (options) => api.get('/auth/me', options),
 }
