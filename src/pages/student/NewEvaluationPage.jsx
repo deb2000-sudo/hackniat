@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
@@ -15,10 +15,30 @@ import ScreenRecorder from '../../components/evaluation/ScreenRecorder'
 
 const STEPS = [
   { label: 'Requirements', short: 'Details' },
-  { label: 'Record demo', short: 'Record' },
-  { label: 'Upload video', short: 'Upload' },
+  { label: 'Working demo', short: 'Demo' },
+  { label: 'Review video', short: 'Review' },
   { label: 'Submit', short: 'Submit' },
 ]
+
+const DEFAULT_VIDEO_ACCEPT = 'video/webm,video/mp4,video/quicktime,.webm,.mp4,.mov'
+const DEFAULT_MAX_VIDEO_BYTES = 500 * 1024 * 1024
+const DEFAULT_VIDEO_MIME_TYPES = ['video/webm', 'video/mp4', 'video/quicktime']
+const DEFAULT_VIDEO_EXTENSIONS = ['.webm', '.mp4', '.mov']
+
+const UPLOAD_PHASE = {
+  preparing: {
+    label: 'Preparing secure upload…',
+    detail: 'Creating a temporary upload link for your recording.',
+  },
+  uploading: {
+    label: 'Uploading video…',
+    detail: 'Your recording is uploading directly to secure cloud storage. Keep this page open.',
+  },
+  finalizing: {
+    label: 'Recording submission…',
+    detail: 'The video is uploaded. We are saving your project details now.',
+  },
+}
 
 function Stepper({ current }) {
   return (
@@ -191,6 +211,10 @@ export default function NewEvaluationPage() {
     error: hackathonsError,
     reload: reloadHackathons,
   } = useAsync(() => hackathonsApi.list())
+  const {
+    data: videoMeta,
+    error: videoMetaError,
+  } = useAsync(() => evaluationApi.getAcceptedVideoTypes())
 
   const [selectedHackathonId, setSelectedHackathonId] = useState('')
   const [selectedThemeId, setSelectedThemeId] = useState('')
@@ -198,10 +222,20 @@ export default function NewEvaluationPage() {
   const [answers, setAnswers] = useState({})
   const [answerErrors, setAnswerErrors] = useState({})
   const [file, setFile] = useState(null)
+  const [videoSource, setVideoSource] = useState(null)
+  const [demoPreviewUrl, setDemoPreviewUrl] = useState('')
   const [step, setStep] = useState(0)
   const [phase, setPhase] = useState('idle')
   const [submittedSession, setSubmittedSession] = useState(null)
   const [error, setError] = useState('')
+  const previewUrlRef = useRef('')
+
+  useEffect(
+    () => () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    },
+    [],
+  )
 
   const activeRequirement = useMemo(
     () =>
@@ -226,6 +260,44 @@ export default function NewEvaluationPage() {
   )
 
   const busy = phase !== 'idle'
+  const videoAccept =
+    videoMeta?.file_input_accept ||
+    videoMeta?.accept ||
+    DEFAULT_VIDEO_ACCEPT
+  const maxVideoBytes =
+    Number(videoMeta?.max_upload_bytes) || DEFAULT_MAX_VIDEO_BYTES
+  const rawMimeTypes =
+    videoMeta?.mime_types ||
+    videoMeta?.accepted_mime_types ||
+    videoMeta?.accepted_content_types ||
+    DEFAULT_VIDEO_MIME_TYPES
+  const rawExtensions =
+    videoMeta?.extensions ||
+    videoMeta?.accepted_extensions ||
+    videoMeta?.file_extensions ||
+    DEFAULT_VIDEO_EXTENSIONS
+  const acceptedMimeTypes = Array.isArray(rawMimeTypes)
+    ? rawMimeTypes
+    : String(rawMimeTypes).split(',').map((value) => value.trim()).filter(Boolean)
+  const acceptedExtensions = Array.isArray(rawExtensions)
+    ? rawExtensions
+    : String(rawExtensions).split(',').map((value) => value.trim()).filter(Boolean)
+
+  const setDemoFile = (nextFile, source) => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    const nextUrl = nextFile ? URL.createObjectURL(nextFile) : ''
+    previewUrlRef.current = nextUrl
+    setDemoPreviewUrl(nextUrl)
+    setFile(nextFile)
+    setVideoSource(source)
+    setSubmittedSession(null)
+    setError('')
+  }
+
+  const chooseVideoSource = (source) => {
+    if (videoSource !== source) setDemoFile(null, source)
+    else setVideoSource(source)
+  }
 
   const updateAnswer = (key, value) => {
     setAnswers((current) => ({ ...current, [key]: value }))
@@ -257,9 +329,65 @@ export default function NewEvaluationPage() {
   }
 
   const handleRecordingChange = (recordedFile) => {
-    setFile(recordedFile)
-    setSubmittedSession(null)
-    setError('')
+    if (recordedFile) {
+      if (recordedFile.size > maxVideoBytes) {
+        setDemoFile(null, 'recorded')
+        setError(
+          `The recording is larger than ${formatFileSize(maxVideoBytes)}. Please record a shorter demo or upload a smaller video.`,
+        )
+        return
+      }
+      setDemoFile(recordedFile, 'recorded')
+    } else if (videoSource === 'recorded') {
+      setDemoFile(null, 'recorded')
+    }
+  }
+
+  const handleVideoFilePicked = (event) => {
+    const pickedFile = event.target.files?.[0]
+    event.target.value = ''
+    if (!pickedFile) return
+
+    const extension = pickedFile.name.includes('.')
+      ? `.${pickedFile.name.split('.').pop().toLowerCase()}`
+      : ''
+    const normalizedMimeTypes = acceptedMimeTypes.map((value) =>
+      String(value).toLowerCase().split(';')[0],
+    )
+    const normalizedExtensions = acceptedExtensions.map((value) =>
+      String(value).toLowerCase().startsWith('.')
+        ? String(value).toLowerCase()
+        : `.${String(value).toLowerCase()}`,
+    )
+
+    if (!pickedFile.size) {
+      setError('The selected video is empty. Choose another recording.')
+      return
+    }
+    if (pickedFile.size > maxVideoBytes) {
+      setError(
+        `Choose a video smaller than ${formatFileSize(maxVideoBytes)}. The selected file is ${formatFileSize(pickedFile.size)}.`,
+      )
+      return
+    }
+    if (
+      pickedFile.type &&
+      normalizedMimeTypes.length &&
+      !normalizedMimeTypes.includes(pickedFile.type.toLowerCase().split(';')[0])
+    ) {
+      setError('This video format is not supported. Choose one of the accepted video types.')
+      return
+    }
+    if (
+      !pickedFile.type &&
+      normalizedExtensions.length &&
+      !normalizedExtensions.includes(extension)
+    ) {
+      setError('This video file extension is not supported.')
+      return
+    }
+
+    setDemoFile(pickedFile, 'uploaded')
   }
 
   const continueToUpload = () => {
@@ -281,16 +409,19 @@ export default function NewEvaluationPage() {
   }
 
   const handleSubmit = async () => {
-    if (!file || !activeRequirement) return
+    if (!file || !videoSource || !activeRequirement) return
     setError('')
     try {
-      setPhase('submitting')
+      setPhase('preparing')
       const submitted = await evaluationApi.createSubmission(file, {
         ...buildLegacyDetails(activeRequirement, answers),
         hackathon_id: activeHackathon.id,
         theme_id: activeTheme.id,
+        video_source: videoSource,
         evaluation_requirement_id: activeRequirement.id,
         requirement_responses: serializeAnswers(activeRequirement, answers),
+      }, {
+        onStageChange: setPhase,
       })
       setSubmittedSession(submitted)
     } catch (submitError) {
@@ -490,7 +621,7 @@ export default function NewEvaluationPage() {
             onClick={completeRequirements}
             rightIcon={<Icon name="arrowRight" size={18} />}
           >
-            Continue to recording
+            Continue to demo
           </Button>
         </div>
       </section>
@@ -500,13 +631,110 @@ export default function NewEvaluationPage() {
           <CardHeader className="submission-panel__header">
             <div>
               <span className="submission-panel__eyebrow">Step 2 of 4</span>
-              <h2>Record your working demo</h2>
-              <p>Share your screen and demonstrate the core project experience.</p>
+              <h2>Add your working demo</h2>
+              <p>Record your screen or choose an existing video from your device.</p>
             </div>
-            <span className="submission-panel__icon"><Icon name="monitor" size={22} /></span>
+            <span className="submission-panel__icon"><Icon name="video" size={22} /></span>
           </CardHeader>
-          <CardBody>
-            <ScreenRecorder onChange={handleRecordingChange} disabled={busy || !!submittedSession} />
+          <CardBody className="stack-lg">
+            <div className="demo-source-options" role="group" aria-label="Choose demo video source">
+              <button
+                type="button"
+                className={videoSource === 'recorded' ? 'is-active' : ''}
+                onClick={() => chooseVideoSource('recorded')}
+                disabled={busy}
+              >
+                <span><Icon name="monitor" size={22} /></span>
+                <div>
+                  <strong>Record demo</strong>
+                  <small>Share your screen and record in the browser.</small>
+                </div>
+                {videoSource === 'recorded' && <Icon name="checkCircle" size={19} />}
+              </button>
+              <button
+                type="button"
+                className={videoSource === 'uploaded' ? 'is-active' : ''}
+                onClick={() => chooseVideoSource('uploaded')}
+                disabled={busy}
+              >
+                <span><Icon name="upload" size={22} /></span>
+                <div>
+                  <strong>Upload video</strong>
+                  <small>Choose a previously recorded demo from your device.</small>
+                </div>
+                {videoSource === 'uploaded' && <Icon name="checkCircle" size={19} />}
+              </button>
+            </div>
+
+            {!videoSource && (
+              <div className="demo-source-empty">
+                <Icon name="video" size={28} />
+                <strong>How would you like to add your demo?</strong>
+                <p>Both options use the same secure upload and evaluation process.</p>
+              </div>
+            )}
+
+            {videoSource === 'recorded' && (
+              <ScreenRecorder
+                onChange={handleRecordingChange}
+                disabled={busy || !!submittedSession}
+              />
+            )}
+
+            {videoSource === 'uploaded' && (
+              <div className="stack-md">
+                {videoMetaError && (
+                  <Alert variant="warning">
+                    Video limits could not be refreshed. Standard video formats up to 500 MiB
+                    are still available.
+                  </Alert>
+                )}
+
+                {file && demoPreviewUrl ? (
+                  <div className="uploaded-demo-preview">
+                    <video
+                      src={demoPreviewUrl}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label="Uploaded demo preview"
+                    />
+                    <div>
+                      <span>
+                        <Icon name="checkCircle" size={17} />
+                        <span>
+                          <strong>{file.name}</strong>
+                          <small>{formatFileSize(file.size)} · Uploaded from device</small>
+                        </span>
+                      </span>
+                      <label className="btn btn--secondary btn--sm">
+                        <Icon name="refresh" size={16} />
+                        Replace video
+                        <input
+                          type="file"
+                          accept={videoAccept}
+                          onChange={handleVideoFilePicked}
+                          disabled={busy}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="demo-file-picker">
+                    <span><Icon name="upload" size={26} /></span>
+                    <strong>Choose your demo video</strong>
+                    <p>Accepted video formats · Maximum {formatFileSize(maxVideoBytes)}</p>
+                    <span className="btn btn--accent">Browse videos</span>
+                    <input
+                      type="file"
+                      accept={videoAccept}
+                      onChange={handleVideoFilePicked}
+                      disabled={busy}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
           </CardBody>
         </Card>
 
@@ -521,7 +749,7 @@ export default function NewEvaluationPage() {
             onClick={continueToUpload}
             rightIcon={<Icon name="arrowRight" size={18} />}
           >
-            Continue to upload
+            Continue to review
           </Button>
         </div>
       </section>
@@ -531,22 +759,38 @@ export default function NewEvaluationPage() {
           <CardHeader className="submission-panel__header">
             <div>
               <span className="submission-panel__eyebrow">Step 3 of 4</span>
-              <h2>Upload your demo video</h2>
-              <p>Confirm the recording and upload it securely to your submission.</p>
+              <h2>Review your demo video</h2>
+              <p>Confirm the preview and details before continuing to submission.</p>
             </div>
-            <span className="submission-panel__icon"><Icon name="upload" size={22} /></span>
+            <span className="submission-panel__icon"><Icon name="video" size={22} /></span>
           </CardHeader>
           <CardBody className="stack-lg">
             <div className="submission-video-ready">
               <span><Icon name="video" size={24} /></span>
               <div>
-                <strong>{file?.name || 'Recorded working demo'}</strong>
-                <p>{file ? `${formatFileSize(file.size)} · Ready to upload` : 'No recording selected'}</p>
+                <strong>{file?.name || 'Working demo'}</strong>
+                <p>{file ? `${formatFileSize(file.size)} · Ready to upload` : 'No video selected'}</p>
               </div>
               <span className="submission-video-ready__status">
                 <Icon name="checkCircle" size={15} /> Ready
               </span>
             </div>
+
+            {demoPreviewUrl && (
+              <div className="submission-demo-review">
+                <video
+                  src={demoPreviewUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  aria-label="Working demo preview"
+                />
+                <span>
+                  <Icon name={videoSource === 'recorded' ? 'monitor' : 'upload'} size={16} />
+                  {videoSource === 'recorded' ? 'Recorded in browser' : 'Uploaded from device'}
+                </span>
+              </div>
+            )}
 
             <div className="submission-upload-summary">
               <div>
@@ -572,7 +816,7 @@ export default function NewEvaluationPage() {
             </div>
 
             <Alert variant="info">
-              Review the recording details, then continue. Nothing is submitted until the final step.
+              Review the video details, then continue. Nothing is submitted until the final step.
             </Alert>
           </CardBody>
         </Card>
@@ -584,7 +828,7 @@ export default function NewEvaluationPage() {
             onClick={() => setStep(1)}
             leftIcon={<Icon name="arrowLeft" size={17} />}
           >
-            Back to recording
+            Replace video
           </Button>
           <Button
             variant="accent"
@@ -630,7 +874,10 @@ export default function NewEvaluationPage() {
               </div>
               <div>
                 <Icon name="video" size={19} />
-                <span><small>Working demo</small><strong>{file?.name}</strong></span>
+                <span>
+                  <small>{videoSource === 'recorded' ? 'Recorded demo' : 'Uploaded demo'}</small>
+                  <strong>{file?.name}</strong>
+                </span>
                 <Icon name="checkCircle" size={18} />
               </div>
             </div>
@@ -639,6 +886,12 @@ export default function NewEvaluationPage() {
               AI evaluation is run by the administrator after submissions close. Results remain
               private until the report is published.
             </Alert>
+
+            {busy && (
+              <Alert variant="info" title={UPLOAD_PHASE[phase]?.label}>
+                {UPLOAD_PHASE[phase]?.detail}
+              </Alert>
+            )}
           </CardBody>
         </Card>
 
@@ -650,11 +903,12 @@ export default function NewEvaluationPage() {
           <Button
             variant="accent"
             size="lg"
-            loading={phase === 'submitting'}
+            loading={busy}
+            disabled={busy}
             onClick={handleSubmit}
-            rightIcon={phase !== 'submitting' && <Icon name="check" size={18} />}
+            rightIcon={!busy && <Icon name="check" size={18} />}
           >
-            {phase === 'submitting' ? 'Submitting…' : 'Submit your project'}
+            {busy ? UPLOAD_PHASE[phase]?.label || 'Submitting…' : 'Submit your project'}
           </Button>
         </div>
       </section>

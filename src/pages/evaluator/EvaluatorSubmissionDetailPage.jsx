@@ -294,7 +294,14 @@ export default function EvaluatorSubmissionDetailPage() {
               <div className="evaluation-demo-block">
                 <div>
                   <span>Demo video</span>
-                  <small>{submission?.source_filename || 'Working demo recording'}</small>
+                  <small>
+                    {submission?.video_source === 'uploaded'
+                      ? 'Uploaded video · '
+                      : submission?.video_source === 'recorded'
+                        ? 'Screen recording · '
+                        : ''}
+                    {submission?.source_filename || 'Working demo'}
+                  </small>
                 </div>
               <video
                 className="admin-submission-video"

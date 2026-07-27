@@ -133,7 +133,17 @@ export default function AdminSubmissionDetailPage() {
         <div className="stack-lg">
           <Card>
             <CardHeader>
-              <div><h3>Working demo</h3><p className="text-sm text-muted">{submission?.source_filename}</p></div>
+              <div>
+                <h3>Working demo</h3>
+                <p className="text-sm text-muted">
+                  {submission?.video_source === 'uploaded'
+                    ? 'Uploaded video · '
+                    : submission?.video_source === 'recorded'
+                      ? 'Screen recording · '
+                      : ''}
+                  {submission?.source_filename}
+                </p>
+              </div>
               <StatusBadge status={submission?.status} />
             </CardHeader>
             <CardBody>

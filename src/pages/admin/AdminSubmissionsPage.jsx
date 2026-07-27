@@ -13,9 +13,24 @@ import Input from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
 
 export default function AdminSubmissionsPage() {
-  const { data, loading, error, reload } = useAsync(() =>
-    evaluationApi.listSubmissionHackathons(),
-  )
+  const { data, loading, error, reload } = useAsync(async () => {
+    const [hackathons, submissions] = await Promise.all([
+      evaluationApi.listSubmissionHackathons(),
+      evaluationApi.listAllSubmissions(),
+    ])
+    const evaluatedByHackathon = submissions.reduce((counts, submission) => {
+      if (submission.status !== 'completed' || !submission.hackathon_id) return counts
+      counts.set(
+        submission.hackathon_id,
+        (counts.get(submission.hackathon_id) || 0) + 1,
+      )
+      return counts
+    }, new Map())
+    return hackathons.map((hackathon) => ({
+      ...hackathon,
+      evaluated_count: evaluatedByHackathon.get(hackathon.hackathon_id) || 0,
+    }))
+  })
   const [query, setQuery] = useState('')
 
   const hackathons = useMemo(() => {
@@ -24,11 +39,6 @@ export default function AdminSubmissionsPage() {
       .filter((hackathon) => !needle || hackathon.name.toLowerCase().includes(needle))
       .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
   }, [data, query])
-
-  const totalSubmissions = (data || []).reduce(
-    (sum, hackathon) => sum + Number(hackathon.submission_count || 0),
-    0,
-  )
 
   return (
     <div className="container page admin-submissions-page">
@@ -52,10 +62,6 @@ export default function AdminSubmissionsPage() {
         <div>
           <span><Icon name="trophy" size={20} /></span>
           <div><strong>{data?.length || 0}</strong><small>Hackathons</small></div>
-        </div>
-        <div>
-          <span><Icon name="video" size={20} /></span>
-          <div><strong>{totalSubmissions}</strong><small>Total submissions</small></div>
         </div>
         <div className="admin-submission-overview__search">
           <Icon name="search" size={17} />
@@ -92,12 +98,28 @@ export default function AdminSubmissionsPage() {
                 </span>
               </div>
               <CardBody>
-                <div>
+                <div className="admin-submission-hackathon-card__title">
                   <h2>{hackathon.name}</h2>
                   <p>
                     <Icon name="calendar" size={15} />
                     {formatDate(hackathon.start_date)} – {formatDate(hackathon.end_date)}
                   </p>
+                </div>
+                <div className="admin-submission-hackathon-card__metrics">
+                  <span>
+                    <strong>{hackathon.evaluated_count || 0}</strong>
+                    Evaluated
+                  </span>
+                  <span>
+                    <strong>
+                      {Math.max(
+                        0,
+                        Number(hackathon.submission_count || 0) -
+                          Number(hackathon.evaluated_count || 0),
+                      )}
+                    </strong>
+                    Awaiting evaluation
+                  </span>
                 </div>
                 <Button
                   as={Link}

@@ -81,6 +81,10 @@ export const evaluationApi = {
     return submissions.map(normalizeSubmission)
   },
 
+  /** Video formats and maximum size accepted by the signed-upload flow. */
+  getAcceptedVideoTypes: (options) =>
+    api.get('/submissions/accepted-video-types', options),
+
   /** Admin only: assign or unassign a submission from an approved evaluator. */
   assignSubmission: async (submissionId, evaluatorId, options) => {
     const submission = await api.post(
@@ -137,22 +141,72 @@ export const evaluationApi = {
     return normalizeSubmission(submission)
   },
 
-  /** Upload a video and requirement responses; legacy fields keep the current backend compatible. */
+  /** Upload a video directly to GCS, then finalize the small JSON submission. */
   createSubmission: async (file, details, options) => {
-    const formData = new FormData()
-    formData.append('hackathon_id', details.hackathon_id)
-    formData.append('theme_id', details.theme_id)
-    formData.append('video', file)
-    formData.append('problem_statement', details.problem_statement)
-    formData.append('solution_description', details.solution_description)
-    if (details.evaluation_requirement_id) {
-      formData.append('evaluation_requirement_id', details.evaluation_requirement_id)
+    const { onStageChange, ...requestOptions } = options || {}
+    const contentType = file.type || undefined
+    const tooLargeMessage = 'Video is too large for direct upload — please retry.'
+
+    try {
+      onStageChange?.('preparing')
+      const prep = await api.post(
+        '/submissions/upload-url',
+        {
+          filename: file.name,
+          content_type: contentType,
+          video_source: details.video_source,
+        },
+        requestOptions,
+      )
+
+      if (!prep?.upload_url || !prep?.video_path) {
+        throw new Error('The server did not return a valid secure video upload URL.')
+      }
+
+      onStageChange?.('uploading')
+      let uploadResponse
+      try {
+        uploadResponse = await fetch(prep.upload_url, {
+          method: 'PUT',
+          headers: { 'Content-Type': prep.content_type },
+          body: file,
+          signal: requestOptions.signal,
+        })
+      } catch (uploadError) {
+        if (uploadError.name === 'AbortError') throw uploadError
+        throw new Error(
+          'Direct video upload failed. Please retry. If it continues, verify the storage CORS configuration.',
+          { cause: uploadError },
+        )
+      }
+
+      if (!uploadResponse.ok) {
+        if (uploadResponse.status === 413) throw new Error(tooLargeMessage)
+        throw new Error(
+          `The video upload was rejected by storage (${uploadResponse.status}). Please retry.`,
+        )
+      }
+
+      onStageChange?.('finalizing')
+      const submission = await api.post(
+        '/submissions/from-upload',
+        {
+          video_path: prep.video_path,
+          content_type: prep.content_type,
+          source_filename: prep.source_filename,
+          video_source: details.video_source,
+          hackathon_id: details.hackathon_id,
+          theme_id: details.theme_id,
+          problem_statement: details.problem_statement,
+          solution_description: details.solution_description,
+        },
+        requestOptions,
+      )
+      return normalizeSubmission(submission)
+    } catch (error) {
+      if (error.status === 413) throw new Error(tooLargeMessage, { cause: error })
+      throw error
     }
-    if (details.requirement_responses) {
-      formData.append('requirement_responses', JSON.stringify(details.requirement_responses))
-    }
-    const submission = await api.upload('/submissions', formData, options)
-    return normalizeSubmission(submission)
   },
 
   /** Start AI evaluation for an existing submission. */
