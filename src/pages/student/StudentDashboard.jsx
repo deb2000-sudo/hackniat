@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAsync } from '../../hooks/useAsync'
 import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
-import { formatScore } from '../../utils/format'
+import { formatDate, formatScore } from '../../utils/format'
 import PageHeader from '../../components/layout/PageHeader'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
@@ -78,10 +78,35 @@ export default function StudentDashboard() {
           </div>
           <div className="student-theme-hackathons">
             {hackathons.map((hackathon) => (
-              <Card key={hackathon.id}>
+              <Card className="student-hackathon-theme-card" key={hackathon.id}>
+                <div className="student-hackathon-theme-card__media">
+                  {hackathon.banner_url ? (
+                    <img src={hackathon.banner_url} alt={`${hackathon.name} banner`} />
+                  ) : (
+                    <span><Icon name="trophy" size={28} /></span>
+                  )}
+                </div>
                 <CardBody>
-                  <strong>{hackathon.name}</strong>
-                  <div>
+                  <div className="student-hackathon-theme-card__title">
+                    <div>
+                      <strong>{hackathon.name}</strong>
+                      <small>
+                        <Icon name="calendar" size={13} />
+                        {formatDate(hackathon.start_date)} – {formatDate(hackathon.end_date)}
+                      </small>
+                    </div>
+                    {hackathon.hackathon_url && (
+                      <a
+                        href={hackathon.hackathon_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Official site
+                        <Icon name="arrowRight" size={13} />
+                      </a>
+                    )}
+                  </div>
+                  <div className="student-hackathon-theme-card__themes">
                     {hackathon.themes?.length ? hackathon.themes.map((theme) => (
                       <span key={theme.id}>{theme.name}</span>
                     )) : <small>No themes released</small>}

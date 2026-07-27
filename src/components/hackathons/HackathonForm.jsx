@@ -19,6 +19,7 @@ const EMPTY_FORM = {
   description: '',
   start_date: '',
   end_date: '',
+  hackathon_url: '',
   guidelines: '',
   prizes: EMPTY_PRIZES,
   theme_ids: [],
@@ -42,6 +43,7 @@ function createInitialForm(initialValue) {
     description: initialValue.description || '',
     start_date: initialValue.start_date || '',
     end_date: initialValue.end_date || '',
+    hackathon_url: initialValue.hackathon_url || '',
     guidelines: initialValue.guidelines || '',
     prizes: { ...EMPTY_PRIZES, ...(initialValue.prizes || {}) },
     theme_ids: initialValue.theme_ids || initialValue.themes?.map((theme) => theme.id) || [],
@@ -62,6 +64,14 @@ function validate(form, banner) {
   })
   if (form.start_date && form.end_date && form.end_date < form.start_date) {
     errors.end_date = 'End date must be on or after the start date'
+  }
+  if (form.hackathon_url.trim()) {
+    try {
+      const url = new URL(form.hackathon_url.trim())
+      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported URL')
+    } catch {
+      errors.hackathon_url = 'Enter a complete URL beginning with http:// or https://'
+    }
   }
 
   Object.entries(form.prizes).forEach(([key, value]) => {
@@ -90,7 +100,7 @@ function validateStep(form, banner, step) {
       if (step === 1) return key.startsWith('prizes.')
       if (step === 2) return key === 'theme_ids'
       if (step === 3) return key.startsWith('timeline.')
-      return key === 'banner'
+      return key === 'banner' || key === 'hackathon_url'
     }),
   )
 }
@@ -200,6 +210,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
       ...form,
       name: form.name.trim(),
       description: form.description.trim(),
+      hackathon_url: form.hackathon_url.trim(),
       guidelines: form.guidelines.trim(),
       prizes: Object.fromEntries(
         Object.entries(form.prizes).map(([key, value]) => [key, value.trim()]),
@@ -216,6 +227,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     if (!editing) {
       onSubmit({
         ...cleaned,
+        hackathon_url: cleaned.hackathon_url || undefined,
         timeline: cleaned.timeline.length ? cleaned.timeline : undefined,
         banner: banner || undefined,
       })
@@ -231,6 +243,9 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     }
     if (JSON.stringify(cleaned.theme_ids) !== JSON.stringify(initialForm.theme_ids)) {
       changes.theme_ids = cleaned.theme_ids
+    }
+    if (cleaned.hackathon_url !== initialForm.hackathon_url.trim()) {
+      changes.hackathon_url = cleaned.hackathon_url
     }
     const normalizedInitialTimeline = initialForm.timeline.map((round) => ({
       title: round.title.trim(),
@@ -525,26 +540,38 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
               alt={`${initialValue.name} banner`}
             />
           )}
-          <div className="field">
-            <label className="label" htmlFor="hackathon-banner">Banner image</label>
-            <input
-              id="hackathon-banner"
-              className={`input ${errors.banner ? 'input--error' : ''}`}
-              type="file"
-              accept={IMAGE_TYPES.join(',')}
-              onChange={(event) => {
-                const file = event.target.files?.[0] || null
-                setBanner(file)
-                setErrors((current) => ({ ...current, banner: undefined, form: undefined }))
-              }}
+          <div className="grid grid-2 hackathon-banner-fields">
+            <div className="field">
+              <label className="label" htmlFor="hackathon-banner">Banner image</label>
+              <input
+                id="hackathon-banner"
+                className={`input ${errors.banner ? 'input--error' : ''}`}
+                type="file"
+                accept={IMAGE_TYPES.join(',')}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null
+                  setBanner(file)
+                  setErrors((current) => ({ ...current, banner: undefined, form: undefined }))
+                }}
+              />
+              {errors.banner ? (
+                <span className="field__error">{errors.banner}</span>
+              ) : (
+                <span className="field__hint">
+                  {editing ? 'Choose a new image only to replace the current banner.' : 'Optional · JPEG, PNG, WebP, or GIF.'}
+                </span>
+              )}
+            </div>
+            <Input
+              label="Hackathon URL"
+              type="url"
+              maxLength={2000}
+              placeholder="https://hackniat.example.com"
+              hint="Optional · Official website"
+              value={form.hackathon_url}
+              onChange={update('hackathon_url')}
+              error={errors.hackathon_url}
             />
-            {errors.banner ? (
-              <span className="field__error">{errors.banner}</span>
-            ) : (
-              <span className="field__hint">
-                {editing ? 'Choose a new image only to replace the current banner.' : 'JPEG, PNG, WebP, or GIF.'}
-              </span>
-            )}
           </div>
           {banner && (
             <div className="selected-file-row">

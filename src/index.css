@@ -3027,14 +3027,14 @@ code {
 }
 
 .hackathon-card__themes,
-.student-theme-hackathons .card__body > div {
+.student-hackathon-theme-card__themes {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
 }
 
 .hackathon-card__themes span,
-.student-theme-hackathons .card__body > div span {
+.student-hackathon-theme-card__themes span {
   padding: 4px 7px;
   color: var(--accent-600);
   border: 1px solid #e9d5ff;
@@ -3072,7 +3072,70 @@ code {
   padding: 15px;
 }
 
-.student-theme-hackathons .card__body > div {
+.student-hackathon-theme-card {
+  overflow: hidden;
+}
+
+.student-hackathon-theme-card__media {
+  display: grid;
+  height: 118px;
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 75% 20%, rgba(255,255,255,.18), transparent 28%),
+    linear-gradient(135deg, #312e81, var(--brand-600), var(--accent-600));
+}
+
+.student-hackathon-theme-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.student-hackathon-theme-card__title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-hackathon-theme-card__title > div {
+  min-width: 0;
+}
+
+.student-hackathon-theme-card__title strong,
+.student-hackathon-theme-card__title small {
+  display: block;
+}
+
+.student-hackathon-theme-card__title small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: .68rem;
+}
+
+.student-hackathon-theme-card__title > a {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+  color: var(--brand-700);
+  border-radius: 7px;
+  background: var(--brand-50);
+  font-size: .68rem;
+  font-weight: 700;
+}
+
+.student-hackathon-theme-card__title > a:hover {
+  text-decoration: none;
+  background: var(--brand-100);
+}
+
+.student-hackathon-theme-card__themes {
   margin-top: 9px;
 }
 
