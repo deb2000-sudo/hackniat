@@ -10,6 +10,10 @@ export const adminApi = {
   /** All evaluator accounts. */
   getEvaluators: () => api.get('/admin/evaluators'),
 
+  /** Approved evaluators available for submission assignment. */
+  getApprovedEvaluators: () =>
+    api.get('/admin/evaluators?approval_status=approved'),
+
   /** Approve a pending evaluator. */
   approveEvaluator: (userId) => api.post(`/admin/evaluators/${userId}/approve`),
 

@@ -52,6 +52,32 @@ export const evaluationApi = {
     return submissions.map(normalizeSubmission)
   },
 
+  /** Admin only: assign or unassign a submission from an approved evaluator. */
+  assignSubmission: async (submissionId, evaluatorId, options) => {
+    const submission = await api.post(
+      `/submissions/${encodeURIComponent(submissionId)}/assign`,
+      { evaluator_id: evaluatorId || null },
+      options,
+    )
+    return normalizeSubmission(submission)
+  },
+
+  /** Admin only: distribute selected submissions among approved evaluators. */
+  assignHackathonSubmissionsEqually: async (
+    hackathonId,
+    submissionIds,
+    evaluatorIds,
+    options,
+  ) => {
+    const body = { submission_ids: submissionIds }
+    if (evaluatorIds?.length) body.evaluator_ids = evaluatorIds
+    return api.post(
+      `/submissions/admin/hackathons/${encodeURIComponent(hackathonId)}/assign-equally`,
+      body,
+      options,
+    )
+  },
+
   /** Upload a video and requirement responses; legacy fields keep the current backend compatible. */
   createSubmission: async (file, details, options) => {
     const formData = new FormData()
