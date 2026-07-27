@@ -6,12 +6,14 @@ import { usePolling } from '../../hooks/usePolling'
 import { formatDateTime } from '../../utils/format'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
+import Accordion from '../../components/ui/Accordion'
 import { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
 import Input, { Textarea } from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import AnimatedScoreGauge from '../../components/evaluation/AnimatedScoreGauge'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
 
 function EvaluatorReviewForm({
@@ -63,6 +65,79 @@ function EvaluatorReviewForm({
         {reviewStatus === 'changes_requested' ? 'Resubmit for review' : 'Submit to admin'}
       </Button>
     </form>
+  )
+}
+
+function WorkflowTracking({ analysisCompleted, reviewStatus }) {
+  const wasSubmitted = ['pending_review', 'changes_requested', 'approved'].includes(reviewStatus)
+  const approved = reviewStatus === 'approved'
+
+  const steps = [
+    {
+      label: 'AI evaluation completed',
+      description: analysisCompleted
+        ? 'The submission has been evaluated.'
+        : 'Run the AI analysis to begin.',
+      state: analysisCompleted ? 'done' : 'current',
+    },
+    {
+      label: 'Submitted to admin',
+      description: wasSubmitted
+        ? 'Your score and notes were sent for review.'
+        : 'Submit your evaluation when it is ready.',
+      state: wasSubmitted ? 'done' : analysisCompleted ? 'current' : 'pending',
+    },
+    {
+      label: 'Admin approval',
+      description: approved
+        ? 'Approved and published to the student.'
+        : reviewStatus === 'changes_requested'
+          ? 'The admin requested changes.'
+          : 'Waiting for the admin’s final decision.',
+      state: approved
+        ? 'done'
+        : reviewStatus === 'changes_requested'
+          ? 'changes'
+          : reviewStatus === 'pending_review'
+            ? 'current'
+            : 'pending',
+    },
+  ]
+
+  return (
+    <Card className="workflow-tracking-card">
+      <CardHeader>
+        <div>
+          <h3>Workflow tracking</h3>
+          <p className="text-sm text-muted">Follow this evaluation through approval.</p>
+        </div>
+        <ReviewStatusBadge status={reviewStatus} />
+      </CardHeader>
+      <CardBody>
+        <ol className="workflow-tracking">
+          {steps.map((step) => (
+            <li className={`workflow-tracking__step is-${step.state}`} key={step.label}>
+              <span className="workflow-tracking__marker">
+                <Icon
+                  name={
+                    step.state === 'done'
+                      ? 'check'
+                      : step.state === 'changes'
+                        ? 'alert'
+                        : 'clock'
+                  }
+                  size={16}
+                />
+              </span>
+              <div>
+                <strong>{step.label}</strong>
+                <small>{step.description}</small>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </CardBody>
+    </Card>
   )
 }
 
@@ -157,6 +232,12 @@ export default function EvaluatorSubmissionDetailPage() {
       ? 'processing'
       : submission?.status
   const canSubmit = completed && ['none', 'changes_requested'].includes(reviewStatus)
+  const rawAnalysisScore = submission?.result?.overall_score
+  const dashboardScore = currentScore ?? (
+    rawAnalysisScore != null && rawAnalysisScore <= 10
+      ? rawAnalysisScore * 10
+      : rawAnalysisScore
+  ) ?? 0
 
   return (
     <div className="container page admin-submission-detail">
@@ -195,25 +276,13 @@ export default function EvaluatorSubmissionDetailPage() {
 
       <div className="admin-submission-layout">
         <div className="stack-lg">
-          <Card>
-            <CardHeader>
-              <div><h3>Working demo</h3><p className="text-sm text-muted">{submission?.source_filename}</p></div>
-              <StatusBadge status={submission?.status} />
-            </CardHeader>
-            <CardBody>
-              <video
-                className="admin-submission-video"
-                src={videoUrl}
-                controls
-                playsInline
-                preload="metadata"
-              />
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader><h3>Project details</h3><Icon name="clipboard" size={19} className="text-muted" /></CardHeader>
-            <CardBody className="stack-lg">
+          <Accordion
+            title="Project details"
+            description="Problem statement, solution description, and working demo."
+            icon="clipboard"
+            badge={<StatusBadge status={submission?.status} />}
+          >
+            <div className="stack-lg">
               <div className="admin-response-block">
                 <span>Problem statement</span>
                 <p>{submission?.problem_statement || 'Not provided.'}</p>
@@ -222,11 +291,55 @@ export default function EvaluatorSubmissionDetailPage() {
                 <span>Solution description</span>
                 <p>{submission?.solution_description || 'Not provided.'}</p>
               </div>
-            </CardBody>
-          </Card>
+              <div className="evaluation-demo-block">
+                <div>
+                  <span>Demo video</span>
+                  <small>{submission?.source_filename || 'Working demo recording'}</small>
+                </div>
+              <video
+                className="admin-submission-video"
+                src={videoUrl}
+                controls
+                playsInline
+                preload="metadata"
+              />
+              </div>
+            </div>
+          </Accordion>
+
+          {completed && (
+            <SubmissionReport
+              submissionId={submission.id}
+              collapsible
+              recommendation={submission?.result?.recommendation}
+            />
+          )}
+
+          {completed && (
+            <Card className="evaluator-score-card evaluator-score-card--wide">
+              <CardBody>
+                <AnimatedScoreGauge
+                  value={dashboardScore}
+                  label={currentScore != null ? 'Evaluator score' : 'AI score'}
+                />
+                <div className="evaluator-score-card__status">
+                  <span className="eyebrow">Score summary</span>
+                  <h3>{Math.round(dashboardScore)} out of 100</h3>
+                  <ReviewStatusBadge status={reviewStatus} />
+                  <p>
+                    {reviewStatus === 'approved'
+                      ? 'Approved and visible to the student.'
+                      : reviewStatus === 'pending_review'
+                        ? 'Submitted and waiting for admin approval.'
+                        : 'Review the AI result and submit your score.'}
+                  </p>
+                </div>
+              </CardBody>
+            </Card>
+          )}
         </div>
 
-        <aside className="stack-lg">
+        <aside className="stack-lg evaluator-review-sidebar">
           <Card className="admin-analysis-control">
             <CardHeader><h3>AI analysis</h3><Icon name="sparkles" size={19} className="text-muted" /></CardHeader>
             <CardBody className="stack-md">
@@ -274,48 +387,29 @@ export default function EvaluatorSubmissionDetailPage() {
             </CardBody>
           </Card>
 
-          {completed && (
+          {completed && canSubmit && (
             <Card>
               <CardHeader><h3>Submit to admin</h3></CardHeader>
               <CardBody>
-                {canSubmit ? (
-                  <EvaluatorReviewForm
-                    initialScore={currentScore}
-                    initialNotes={currentNotes}
-                    reviewStatus={reviewStatus}
-                    submitting={action === 'submitting'}
-                    onSubmit={submitForReview}
-                  />
-                ) : (
-                  <div className="stack-sm">
-                    <div className="row-between text-sm">
-                      <span className="text-muted">Score</span>
-                      <strong>{currentScore ?? '—'}{currentScore != null ? '/100' : ''}</strong>
-                    </div>
-                    {currentNotes && (
-                      <div className="evaluator-submitted-notes">
-                        <span>Evaluator notes</span>
-                        <p>{currentNotes}</p>
-                      </div>
-                    )}
-                    <ReviewStatusBadge status={reviewStatus} />
-                  </div>
-                )}
+                <EvaluatorReviewForm
+                  initialScore={currentScore}
+                  initialNotes={currentNotes}
+                  reviewStatus={reviewStatus}
+                  submitting={action === 'submitting'}
+                  onSubmit={submitForReview}
+                />
               </CardBody>
             </Card>
           )}
+
+          {completed && (
+            <WorkflowTracking
+              analysisCompleted={completed}
+              reviewStatus={reviewStatus}
+            />
+          )}
         </aside>
       </div>
-
-      {completed && (
-        <div className="admin-submission-report">
-          <div className="row-between wrap">
-            <div><div className="eyebrow">Generated result</div><h2>Evaluation report</h2></div>
-            <ReviewStatusBadge status={reviewStatus} />
-          </div>
-          <SubmissionReport submissionId={submission.id} />
-        </div>
-      )}
     </div>
   )
 }

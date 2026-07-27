@@ -4,6 +4,7 @@ import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
 import { formatDateTime } from '../../utils/format'
 import Alert from '../ui/Alert'
+import Accordion from '../ui/Accordion'
 import Card, { CardBody, CardHeader } from '../ui/Card'
 import Icon from '../ui/Icon'
 import { LoadingBlock } from '../ui/Spinner'
@@ -16,7 +17,11 @@ function Markdown({ children }) {
   )
 }
 
-export default function SubmissionReport({ submissionId }) {
+export default function SubmissionReport({
+  submissionId,
+  collapsible = false,
+  recommendation,
+}) {
   const { data, loading, error, reload } = useAsync(() =>
     evaluationApi.getSubmissionReport(submissionId),
   )
@@ -48,6 +53,33 @@ export default function SubmissionReport({ submissionId }) {
           </button>
         </div>
       </Alert>
+    )
+  }
+
+  if (collapsible) {
+    return (
+      <div className="stack-md">
+        <Accordion
+          title="Validity checklist"
+          description="Open to inspect the AI validation checks."
+          icon="checkCircle"
+        >
+          <Markdown>{data?.checklist || 'No checklist was returned.'}</Markdown>
+        </Accordion>
+        <Accordion
+          title="Recommendations"
+          description="Open to review the AI findings and suggested improvements."
+          icon="sparkles"
+        >
+          {recommendation && (
+            <div className="evaluation-recommendation-callout">
+              <span>Recommendation</span>
+              <p>{recommendation}</p>
+            </div>
+          )}
+          <Markdown>{data?.report || 'No recommendations were returned.'}</Markdown>
+        </Accordion>
+      </div>
     )
   }
 

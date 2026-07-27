@@ -114,7 +114,6 @@ export default function EvaluatorHackathonSubmissionsPage() {
                 <tr key={submission.id}>
                   <td>
                     <strong>{submission.team_name || 'Unnamed team'}</strong>
-                    <small className="mono">{submission.id.slice(0, 12)}…</small>
                   </td>
                   <td>{submission.theme_name || submission.theme_chosen || '—'}</td>
                   <td><StatusBadge status={submission.status} /></td>
