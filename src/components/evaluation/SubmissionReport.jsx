@@ -32,6 +32,13 @@ export default function SubmissionReport({ submissionId }) {
   }
 
   if (error) {
+    if (error.status === 403) {
+      return (
+        <Alert variant="info" title="Report not available yet">
+          The evaluation report will appear after an administrator publishes it.
+        </Alert>
+      )
+    }
     return (
       <Alert variant="danger" title="Unable to load analysis report">
         <div className="stack-sm">

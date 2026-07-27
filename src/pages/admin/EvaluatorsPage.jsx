@@ -45,7 +45,7 @@ export default function EvaluatorsPage() {
     <div className="container page">
       <PageHeader
         eyebrow="Administration"
-        title="Evaluators"
+        title="Evaluator Management"
         description="Approve new evaluators and view all evaluator accounts."
         actions={
           <Button variant="secondary" onClick={reload} leftIcon={<Icon name="refresh" size={18} />}>

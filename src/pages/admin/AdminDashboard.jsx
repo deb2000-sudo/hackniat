@@ -187,11 +187,14 @@ export default function AdminDashboard() {
             <Button as={Link} to="/hackathons" variant="secondary" block leftIcon={<Icon name="calendar" size={18} />}>
               Manage hackathons
             </Button>
+            <Button as={Link} to="/admin/themes" variant="secondary" block leftIcon={<Icon name="sparkles" size={18} />}>
+              Manage themes
+            </Button>
             <Button as={Link} to="/admin/users" variant="secondary" block leftIcon={<Icon name="users" size={18} />}>
-              Manage all users
+              Student management
             </Button>
             <Button as={Link} to="/admin/evaluators" variant="secondary" block leftIcon={<Icon name="shield" size={18} />}>
-              Manage evaluators
+              Evaluator management
             </Button>
           </CardBody>
         </Card>

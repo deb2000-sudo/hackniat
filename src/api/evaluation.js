@@ -22,12 +22,50 @@ export const evaluationApi = {
     return submissions.map(normalizeSubmission)
   },
 
-  /** Upload a video and its problem/solution; team details come from the user profile. */
+  /** Admin review queue containing every student submission. */
+  listAllSubmissions: async (options) => {
+    const submissions = await api.get('/submissions/admin/all', options)
+    if (!Array.isArray(submissions)) {
+      throw new Error('The admin submissions API returned an unsupported response format.')
+    }
+    return submissions.map(normalizeSubmission)
+  },
+
+  /** Admin Submissions landing screen: hackathons with submission counts. */
+  listSubmissionHackathons: async (options) => {
+    const hackathons = await api.get('/submissions/admin/hackathons', options)
+    if (!Array.isArray(hackathons)) {
+      throw new Error('The submission hackathons API returned an unsupported response format.')
+    }
+    return hackathons
+  },
+
+  /** Admin queue for one hackathon. */
+  listHackathonSubmissions: async (hackathonId, options) => {
+    const submissions = await api.get(
+      `/submissions/admin/hackathons/${encodeURIComponent(hackathonId)}`,
+      options,
+    )
+    if (!Array.isArray(submissions)) {
+      throw new Error('The hackathon submissions API returned an unsupported response format.')
+    }
+    return submissions.map(normalizeSubmission)
+  },
+
+  /** Upload a video and requirement responses; legacy fields keep the current backend compatible. */
   createSubmission: async (file, details, options) => {
     const formData = new FormData()
+    formData.append('hackathon_id', details.hackathon_id)
+    formData.append('theme_id', details.theme_id)
     formData.append('video', file)
     formData.append('problem_statement', details.problem_statement)
     formData.append('solution_description', details.solution_description)
+    if (details.evaluation_requirement_id) {
+      formData.append('evaluation_requirement_id', details.evaluation_requirement_id)
+    }
+    if (details.requirement_responses) {
+      formData.append('requirement_responses', JSON.stringify(details.requirement_responses))
+    }
     const submission = await api.upload('/submissions', formData, options)
     return normalizeSubmission(submission)
   },
@@ -37,6 +75,16 @@ export const evaluationApi = {
     const submission = await api.post(
       `/submissions/${encodeURIComponent(submissionId)}/evaluate`,
       { evaluation_criteria: evaluationCriteria || null },
+      options,
+    )
+    return normalizeSubmission(submission)
+  },
+
+  /** Admin only: publish or hide a completed report for the student. */
+  publishSubmissionReport: async (submissionId, publish, options) => {
+    const submission = await api.post(
+      `/submissions/${encodeURIComponent(submissionId)}/publish`,
+      { publish },
       options,
     )
     return normalizeSubmission(submission)

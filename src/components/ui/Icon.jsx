@@ -96,6 +96,8 @@ const paths = {
   ),
   arrowLeft: <path d="M19 12H5m6-7-7 7 7 7" />,
   arrowRight: <path d="M5 12h14m-7-7 7 7-7 7" />,
+  arrowUp: <path d="M12 19V5m-7 6 7-7 7 7" />,
+  arrowDown: <path d="M12 5v14m7-6-7 7-7-7" />,
   search: (
     <>
       <circle cx="11" cy="11" r="7" />

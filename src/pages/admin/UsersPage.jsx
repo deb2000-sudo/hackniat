@@ -23,7 +23,7 @@ export default function UsersPage() {
   const [saveError, setSaveError] = useState('')
 
   const filtered = useMemo(() => {
-    const users = data || []
+    const users = (data || []).filter((user) => user.role === 'student')
     const q = query.trim().toLowerCase()
     if (!q) return users
     return users.filter(
@@ -63,8 +63,8 @@ export default function UsersPage() {
     <div className="container page">
       <PageHeader
         eyebrow="Administration"
-        title="Users"
-        description="All registered students and evaluators."
+        title="Student Management"
+        description="View and manage all registered student teams."
         actions={
           <Button variant="secondary" onClick={reload} leftIcon={<Icon name="refresh" size={18} />}>
             Refresh
@@ -149,7 +149,7 @@ export default function UsersPage() {
       ) : (
         <Card>
           <CardBody>
-            <EmptyState icon="users" title="No users found" description="Try a different search." />
+            <EmptyState icon="users" title="No students found" description="Try a different search." />
           </CardBody>
         </Card>
       )}

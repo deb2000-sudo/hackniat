@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
-import { EVALUATION_STATUS } from '../../utils/constants'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
@@ -15,16 +14,12 @@ import SessionTable from '../../components/evaluation/SessionTable'
 
 export default function EvaluationsPage() {
   const { data, loading, error, reload } = useAsync(() => evaluationApi.listSubmissions())
-  const evaluations = useMemo(
-    () => (data || []).filter((submission) => submission.status !== EVALUATION_STATUS.UPLOADED),
-    [data],
-  )
+  const evaluations = useMemo(() => data || [], [data])
 
   const stats = useMemo(
     () => ({
-      processing: evaluations.filter((item) => item.status === EVALUATION_STATUS.PROCESSING).length,
-      completed: evaluations.filter((item) => item.status === EVALUATION_STATUS.COMPLETED).length,
-      failed: evaluations.filter((item) => item.status === EVALUATION_STATUS.FAILED).length,
+      pending: evaluations.filter((item) => !item.report_published).length,
+      published: evaluations.filter((item) => item.report_published).length,
     }),
     [evaluations],
   )
@@ -34,7 +29,7 @@ export default function EvaluationsPage() {
       <PageHeader
         eyebrow="Evaluations"
         title="Your evaluations"
-        description="Track analyses in progress and review completed AI evaluation reports."
+        description="Track your submissions and open reports after an administrator publishes them."
         actions={
           <Button
             variant="secondary"
@@ -56,9 +51,9 @@ export default function EvaluationsPage() {
       )}
 
       <div className="grid grid-3" style={{ marginBottom: 28 }}>
-        <StatCard icon="clock" value={stats.processing} label="In progress" />
-        <StatCard icon="checkCircle" value={stats.completed} label="Completed" />
-        <StatCard icon="alert" value={stats.failed} label="Failed" />
+        <StatCard icon="video" value={evaluations.length} label="Submitted" />
+        <StatCard icon="clock" value={stats.pending} label="Results pending" />
+        <StatCard icon="checkCircle" value={stats.published} label="Reports published" />
       </div>
 
       <div className="row-between" style={{ marginBottom: 14 }}>
@@ -71,7 +66,8 @@ export default function EvaluationsPage() {
         <SessionTable
           sessions={evaluations}
           detailPath={(submission) => `/student/evaluations/${submission.id}`}
-          actionLabel="View evaluation"
+          actionLabel="View status"
+          publicationGated
         />
       ) : (
         <Card>
@@ -79,7 +75,7 @@ export default function EvaluationsPage() {
             <EmptyState
               icon="chart"
               title="No evaluations yet"
-              description="Create a submission and select Analyze to start your first evaluation."
+              description="Submit your working demo to join the evaluation queue."
               action={
                 <Button
                   as={Link}

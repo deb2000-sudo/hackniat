@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { hackathonsApi } from '../../api/hackathons'
+import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { ROLES } from '../../utils/constants'
@@ -28,6 +29,7 @@ export default function HackathonDetailPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === ROLES.ADMIN
   const { data: hackathon, loading, error } = useAsync(() => hackathonsApi.get(hackathonId))
+  const { data: requirements } = useAsync(() => evaluationRequirementsApi.list())
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
@@ -139,6 +141,32 @@ export default function HackathonDetailPage() {
                         )}
                       </div>
                       {round.description && <p>{round.description}</p>}
+                      {round.evaluation_requirement_id && (() => {
+                        const requirement = requirements?.find(
+                          (item) => item.id === round.evaluation_requirement_id,
+                        )
+                        return (
+                          <div className="round-requirement">
+                            <div className="round-requirement__title">
+                              <Icon name="clipboard" size={15} />
+                              <span>
+                                {requirement?.name || 'Linked evaluation requirement'}
+                              </span>
+                              <small>{requirement?.fields?.length || 0} fields</small>
+                            </div>
+                            {!!requirement?.fields?.length && (
+                              <div className="round-requirement__fields">
+                                {requirement.fields.map((field) => (
+                                  <span key={field.key || field.label}>
+                                    {field.label}
+                                    {field.is_required && <strong aria-label="required">*</strong>}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   </li>
                 ))}

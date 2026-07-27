@@ -13,6 +13,9 @@ const proxyPrefixes = [
   '/admin',
   '/hackathons',
   '/submissions',
+  '/evaluation-requirements',
+  '/ai-evaluation-metric-scoring',
+  '/themes',
 ]
 
 // https://vite.dev/config/

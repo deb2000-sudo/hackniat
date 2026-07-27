@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useAsync } from '../../hooks/useAsync'
 import { evaluationApi } from '../../api/evaluation'
-import { EVALUATION_STATUS } from '../../utils/constants'
+import { hackathonsApi } from '../../api/hackathons'
 import { formatScore } from '../../utils/format'
 import PageHeader from '../../components/layout/PageHeader'
 import Button from '../../components/ui/Button'
@@ -18,19 +18,18 @@ import { LoadingBlock } from '../../components/ui/Spinner'
 export default function StudentDashboard() {
   const { user } = useAuth()
   const { data, loading, error, reload } = useAsync(() => evaluationApi.listSubmissions())
+  const { data: hackathons } = useAsync(() => hackathonsApi.list())
   const sessions = useMemo(() => data || [], [data])
 
   const stats = useMemo(() => {
     const total = sessions.length
-    const completed = sessions.filter((s) => s.status === EVALUATION_STATUS.COMPLETED)
-    const inProgress = sessions.filter(
-      (s) => s.status === EVALUATION_STATUS.PROCESSING || s.status === EVALUATION_STATUS.UPLOADED,
-    ).length
-    const scored = completed.filter((s) => s.overall_score != null)
+    const published = sessions.filter((s) => s.report_published)
+    const pending = sessions.filter((s) => !s.report_published).length
+    const scored = published.filter((s) => s.overall_score != null)
     const avg = scored.length
       ? scored.reduce((sum, s) => sum + Number(s.overall_score), 0) / scored.length
       : null
-    return { total, completed: completed.length, inProgress, avg }
+    return { total, published: published.length, pending, avg }
   }, [sessions])
 
   return (
@@ -38,7 +37,7 @@ export default function StudentDashboard() {
       <PageHeader
         eyebrow={`Welcome, ${user?.name?.split(' ')[0] || 'there'}`}
         title="Your submissions"
-        description="Upload demo videos and track their AI evaluations."
+        description="Submit demo videos and view reports after they are published."
         actions={
           <>
             <Button
@@ -66,10 +65,33 @@ export default function StudentDashboard() {
 
       <div className="grid grid-4" style={{ marginBottom: 28 }}>
         <StatCard icon="video" value={stats.total} label="Total submissions" />
-        <StatCard icon="checkCircle" value={stats.completed} label="Completed" />
-        <StatCard icon="clock" value={stats.inProgress} label="In progress" />
-        <StatCard icon="trophy" value={stats.avg != null ? formatScore(stats.avg) : '—'} label="Average score" />
+        <StatCard icon="clock" value={stats.pending} label="Results pending" />
+        <StatCard icon="checkCircle" value={stats.published} label="Reports published" />
+        <StatCard icon="trophy" value={stats.avg != null ? formatScore(stats.avg) : '—'} label="Published average" />
       </div>
+
+      {!!hackathons?.length && (
+        <section className="student-released-themes">
+          <div className="row-between wrap">
+            <div><h2>Released themes</h2><p>Choose one of these themes when creating your submission.</p></div>
+            <Button as={Link} to="/hackathons" variant="ghost" size="sm" rightIcon={<Icon name="arrowRight" size={15} />}>View hackathons</Button>
+          </div>
+          <div className="student-theme-hackathons">
+            {hackathons.map((hackathon) => (
+              <Card key={hackathon.id}>
+                <CardBody>
+                  <strong>{hackathon.name}</strong>
+                  <div>
+                    {hackathon.themes?.length ? hackathon.themes.map((theme) => (
+                      <span key={theme.id}>{theme.name}</span>
+                    )) : <small>No themes released</small>}
+                  </div>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="row-between" style={{ marginBottom: 14 }}>
         <h3>Recent submissions</h3>
@@ -81,6 +103,7 @@ export default function StudentDashboard() {
           sessions={sessions}
           detailPath={(s) => `/student/submissions/${s.id}`}
           actionLabel="View video"
+          publicationGated
         />
       ) : (
         <Card>

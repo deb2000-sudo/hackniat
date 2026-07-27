@@ -26,7 +26,14 @@ import EvaluatorsPage from './pages/admin/EvaluatorsPage'
 import HackathonsPage from './pages/admin/HackathonsPage'
 import HackathonFormPage from './pages/admin/HackathonFormPage'
 import HackathonDetailPage from './pages/admin/HackathonDetailPage'
+import EvaluationRequirementsPage from './pages/admin/EvaluationRequirementsPage'
+import EvaluationRequirementFormPage from './pages/admin/EvaluationRequirementFormPage'
+import AdminSubmissionsPage from './pages/admin/AdminSubmissionsPage'
+import AdminSubmissionDetailPage from './pages/admin/AdminSubmissionDetailPage'
+import AdminHackathonSubmissionsPage from './pages/admin/AdminHackathonSubmissionsPage'
+import ThemesPage from './pages/admin/ThemesPage'
 import ChangePasswordPage from './pages/settings/ChangePasswordPage'
+import MetricScoringPage from './pages/MetricScoringPage'
 
 export default function App() {
   return (
@@ -47,6 +54,7 @@ export default function App() {
               <Route path="/settings/change-password" element={<ChangePasswordPage />} />
               <Route path="/hackathons" element={<HackathonsPage />} />
               <Route path="/hackathons/:hackathonId" element={<HackathonDetailPage />} />
+              <Route path="/ai-scoring" element={<MetricScoringPage />} />
             </Route>
 
             {/* Student */}
@@ -72,6 +80,26 @@ export default function App() {
               <Route path="/admin/hackathons" element={<Navigate to="/hackathons" replace />} />
               <Route path="/admin/hackathons/new" element={<HackathonFormPage />} />
               <Route path="/admin/hackathons/:hackathonId/edit" element={<HackathonFormPage />} />
+              <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
+              <Route
+                path="/admin/submissions/hackathons/:hackathonId"
+                element={<AdminHackathonSubmissionsPage />}
+              />
+              <Route path="/admin/submissions/:submissionId" element={<AdminSubmissionDetailPage />} />
+              <Route path="/admin/themes" element={<ThemesPage />} />
+              <Route path="/admin/evaluation-requirements" element={<EvaluationRequirementsPage />} />
+              <Route
+                path="/admin/evaluation-requirements/new"
+                element={<EvaluationRequirementFormPage />}
+              />
+              <Route
+                path="/admin/evaluation-requirements/:requirementId/edit"
+                element={<EvaluationRequirementFormPage />}
+              />
+              <Route
+                path="/admin/evaluation-requirements/:evaluationRequirementId/ai-scoring"
+                element={<MetricScoringPage />}
+              />
               <Route path="/admin/users" element={<UsersPage />} />
               <Route path="/admin/evaluators" element={<EvaluatorsPage />} />
             </Route>

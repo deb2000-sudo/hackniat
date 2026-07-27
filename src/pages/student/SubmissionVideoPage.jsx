@@ -161,8 +161,29 @@ export default function SubmissionVideoPage() {
           {error.message}
         </Alert>
       ) : (
-        <Card>
-          <CardBody className="stack-md">
+        <div className="stack-lg">
+          <Alert variant={session?.report_published ? 'success' : 'warning'} title={
+            session?.report_published ? 'Evaluation report published' : 'Submitted — results pending'
+          }>
+            {session?.report_published
+              ? 'Your evaluation report is now available.'
+              : 'Your video was submitted successfully. Results will appear after an administrator publishes the report.'}
+            {session?.report_published && (
+              <div className="submission-inline-action">
+                <Button
+                  as={Link}
+                  to={`/student/evaluations/${session.id}`}
+                  variant="ghost"
+                  size="sm"
+                  rightIcon={<Icon name="arrowRight" size={15} />}
+                >
+                  View report
+                </Button>
+              </div>
+            )}
+          </Alert>
+          <Card>
+            <CardBody className="stack-md">
             {playbackError && (
               <Alert variant="danger" title="Video playback failed">
                 {playbackError}
@@ -259,8 +280,9 @@ export default function SubmissionVideoPage() {
               This video is streamed securely from backend storage and is not stored in browser
               local storage.
             </p>
-          </CardBody>
-        </Card>
+            </CardBody>
+          </Card>
+        </div>
       )}
     </div>
   )

@@ -26,10 +26,10 @@ export default function SessionMeta({ session }) {
             </>
           )}
 
-          {session.theme_chosen && (
+          {(session.theme_name || session.theme_chosen) && (
             <>
               <dt>Theme</dt>
-              <dd>{session.theme_chosen}</dd>
+              <dd>{session.theme_name || session.theme_chosen}</dd>
             </>
           )}
 

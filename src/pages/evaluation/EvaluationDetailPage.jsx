@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { usePolling } from '../../hooks/usePolling'
 import { useAuth } from '../../hooks/useAuth'
-import { EVALUATION_STATUS, ROLE_HOME } from '../../utils/constants'
+import { EVALUATION_STATUS, ROLE_HOME, ROLES } from '../../utils/constants'
 import PageHeader from '../../components/layout/PageHeader'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
@@ -13,17 +13,19 @@ import SessionMeta from '../../components/evaluation/SessionMeta'
 import SessionStatusPanel from '../../components/evaluation/SessionStatusPanel'
 import EvaluationResultView from '../../components/evaluation/EvaluationResultView'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
+import Card, { CardBody } from '../../components/ui/Card'
 
 const TERMINAL = [EVALUATION_STATUS.COMPLETED, EVALUATION_STATUS.FAILED]
 
 export default function EvaluationDetailPage() {
   const { sessionId } = useParams()
   const { user } = useAuth()
+  const isStudent = user?.role === ROLES.STUDENT
 
   const fetcher = useCallback(() => evaluationApi.getSubmission(sessionId), [sessionId])
 
   const { data: session, error, loading } = usePolling(fetcher, {
-    isDone: (s) => TERMINAL.includes(s?.status),
+    isDone: (s) => isStudent ? !!s?.report_published : TERMINAL.includes(s?.status),
     interval: 3000,
   })
 
@@ -52,14 +54,20 @@ export default function EvaluationDetailPage() {
     )
   }
 
-  const isCompleted = session?.status === EVALUATION_STATUS.COMPLETED
+  const canViewResult = isStudent
+    ? !!session?.report_published
+    : session?.status === EVALUATION_STATUS.COMPLETED
 
   return (
     <div className="container page">
       <PageHeader
         eyebrow="Evaluation"
         title={session?.team_name || session?.title || session?.source_filename || 'Submission'}
-        description="AI evaluation of your hackathon submission video."
+        description={
+          isStudent
+            ? 'Track publication status and view your report when it becomes available.'
+            : 'AI evaluation of the submitted hackathon demo.'
+        }
         actions={
           <Button
             as={Link}
@@ -75,11 +83,22 @@ export default function EvaluationDetailPage() {
       <div className="detail-layout">
         <SessionMeta session={session} />
         <div className="stack-lg">
-          {isCompleted ? (
+          {canViewResult ? (
             <>
               <EvaluationResultView result={session.result} />
               <SubmissionReport submissionId={session.id} />
             </>
+          ) : isStudent ? (
+            <Card className="student-result-pending">
+              <CardBody>
+                <span><Icon name="clock" size={28} /></span>
+                <h2>Submitted — results pending</h2>
+                <p>
+                  Your submission was recorded successfully. The evaluation report will appear
+                  here after the hackathon ends and an administrator publishes it.
+                </p>
+              </CardBody>
+            </Card>
           ) : (
             <SessionStatusPanel status={session?.status} error={session?.error} />
           )}

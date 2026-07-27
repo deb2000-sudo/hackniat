@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AuthShell from '../../components/layout/AuthShell'
-import Input, { PasswordInput, Select } from '../../components/ui/Input'
+import Input, { PasswordInput } from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import Alert from '../../components/ui/Alert'
 import { authApi } from '../../api/auth'
@@ -11,7 +11,6 @@ import { validateEvaluatorForm, validateStudentForm } from '../../utils/validato
 const STUDENT_INITIAL = {
   team_name: '',
   university: '',
-  theme_chosen: '',
   team_leader_name: '',
   niat_id: '',
   email: '',
@@ -27,8 +26,6 @@ const STUDENT_INITIAL = {
   password: '',
   confirm_password: '',
 }
-
-const THEMES = Array.from({ length: 8 }, (_, index) => `Theme ${index + 1}`)
 
 const EVALUATOR_INITIAL = {
   first_name: '',
@@ -195,18 +192,6 @@ export default function RegisterPage() {
                   onChange={update('university')}
                   error={errors.university}
                 />
-                <Select
-                  label="Theme chosen"
-                  required
-                  value={studentForm.theme_chosen}
-                  onChange={update('theme_chosen')}
-                  error={errors.theme_chosen}
-                >
-                  <option value="">Select a theme</option>
-                  {THEMES.map((theme) => (
-                    <option value={theme} key={theme}>{theme}</option>
-                  ))}
-                </Select>
                 <Input
                   label="NIAT ID"
                   required

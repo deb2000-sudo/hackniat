@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react'
+import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
+import { themesApi } from '../../api/themes'
+import { useAsync } from '../../hooks/useAsync'
 import Alert from '../ui/Alert'
 import Button from '../ui/Button'
 import Card, { CardBody, CardHeader } from '../ui/Card'
 import Icon from '../ui/Icon'
-import Input, { Textarea } from '../ui/Input'
+import Input, { Select, Textarea } from '../ui/Input'
 
 const EMPTY_PRIZES = {
   winner: '',
@@ -18,11 +21,19 @@ const EMPTY_FORM = {
   end_date: '',
   guidelines: '',
   prizes: EMPTY_PRIZES,
+  theme_ids: [],
   timeline: [],
 }
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const SCALAR_FIELDS = ['name', 'description', 'start_date', 'end_date', 'guidelines']
+const FORM_STEPS = [
+  { label: 'Event details', icon: 'calendar' },
+  { label: 'Prizes', icon: 'gift' },
+  { label: 'Themes', icon: 'sparkles' },
+  { label: 'Timeline', icon: 'clock' },
+  { label: 'Banner', icon: 'image' },
+]
 
 function createInitialForm(initialValue) {
   if (!initialValue) return { ...EMPTY_FORM, prizes: { ...EMPTY_PRIZES }, timeline: [] }
@@ -33,11 +44,13 @@ function createInitialForm(initialValue) {
     end_date: initialValue.end_date || '',
     guidelines: initialValue.guidelines || '',
     prizes: { ...EMPTY_PRIZES, ...(initialValue.prizes || {}) },
+    theme_ids: initialValue.theme_ids || initialValue.themes?.map((theme) => theme.id) || [],
     timeline: (initialValue.timeline || []).map((round) => ({
       title: round.title || '',
       description: round.description || '',
       start_date: round.start_date || '',
       end_date: round.end_date || '',
+      evaluation_requirement_id: round.evaluation_requirement_id || '',
     })),
   }
 }
@@ -54,6 +67,7 @@ function validate(form, banner) {
   Object.entries(form.prizes).forEach(([key, value]) => {
     if (!String(value || '').trim()) errors[`prizes.${key}`] = 'Prize details are required'
   })
+  if (!form.theme_ids.length) errors.theme_ids = 'Select at least one released theme'
 
   form.timeline.forEach((round, index) => {
     if (!round.title.trim()) errors[`timeline.${index}.title`] = 'Round title is required'
@@ -68,12 +82,36 @@ function validate(form, banner) {
   return errors
 }
 
+function validateStep(form, banner, step) {
+  const allErrors = validate(form, banner)
+  return Object.fromEntries(
+    Object.entries(allErrors).filter(([key]) => {
+      if (step === 0) return SCALAR_FIELDS.includes(key)
+      if (step === 1) return key.startsWith('prizes.')
+      if (step === 2) return key === 'theme_ids'
+      if (step === 3) return key.startsWith('timeline.')
+      return key === 'banner'
+    }),
+  )
+}
+
 export default function HackathonForm({ initialValue, onSubmit, submitting, submitError }) {
   const editing = !!initialValue
   const initialForm = useMemo(() => createInitialForm(initialValue), [initialValue])
   const [form, setForm] = useState(initialForm)
   const [banner, setBanner] = useState(null)
   const [errors, setErrors] = useState({})
+  const [step, setStep] = useState(0)
+  const {
+    data: requirements,
+    loading: requirementsLoading,
+    error: requirementsError,
+  } = useAsync(() => evaluationRequirementsApi.list())
+  const {
+    data: themes,
+    loading: themesLoading,
+    error: themesError,
+  } = useAsync(() => themesApi.list())
 
   const update = (key) => (event) => {
     setForm((current) => ({ ...current, [key]: event.target.value }))
@@ -93,7 +131,13 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
       ...current,
       timeline: [
         ...current.timeline,
-        { title: '', description: '', start_date: '', end_date: '' },
+        {
+          title: '',
+          description: '',
+          start_date: '',
+          end_date: '',
+          evaluation_requirement_id: '',
+        },
       ],
     }))
   }
@@ -119,8 +163,35 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     }))
   }
 
+  const toggleTheme = (themeId) => {
+    setForm((current) => ({
+      ...current,
+      theme_ids: current.theme_ids.includes(themeId)
+        ? current.theme_ids.filter((id) => id !== themeId)
+        : [...current.theme_ids, themeId],
+    }))
+    setErrors((current) => ({ ...current, theme_ids: undefined, form: undefined }))
+  }
+
+  const moveToStep = (nextStep) => {
+    setStep(nextStep)
+    setErrors({})
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const continueToNextStep = () => {
+    const validation = validateStep(form, banner, step)
+    setErrors(validation)
+    if (Object.keys(validation).length) return
+    moveToStep(Math.min(step + 1, FORM_STEPS.length - 1))
+  }
+
   const handleSubmit = (event) => {
     event.preventDefault()
+    if (step < FORM_STEPS.length - 1) {
+      continueToNextStep()
+      return
+    }
     const validation = validate(form, banner)
     setErrors(validation)
     if (Object.keys(validation).length) return
@@ -138,6 +209,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         description: round.description.trim() || null,
         start_date: round.start_date || null,
         end_date: round.end_date || null,
+        evaluation_requirement_id: round.evaluation_requirement_id || null,
       })),
     }
 
@@ -157,11 +229,15 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     if (JSON.stringify(cleaned.prizes) !== JSON.stringify(initialForm.prizes)) {
       changes.prizes = cleaned.prizes
     }
+    if (JSON.stringify(cleaned.theme_ids) !== JSON.stringify(initialForm.theme_ids)) {
+      changes.theme_ids = cleaned.theme_ids
+    }
     const normalizedInitialTimeline = initialForm.timeline.map((round) => ({
       title: round.title.trim(),
       description: round.description.trim() || null,
       start_date: round.start_date || null,
       end_date: round.end_date || null,
+      evaluation_requirement_id: round.evaluation_requirement_id || null,
     }))
     if (JSON.stringify(cleaned.timeline) !== JSON.stringify(normalizedInitialTimeline)) {
       changes.timeline = cleaned.timeline
@@ -181,7 +257,39 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         <Alert variant="danger">{submitError || errors.form}</Alert>
       )}
 
-      <Card className="hackathon-form-card">
+      <ol className="hackathon-form-stepper" aria-label="Hackathon creation progress">
+        {FORM_STEPS.map((item, index) => {
+          const completed = index < step && !Object.keys(validateStep(form, banner, index)).length
+          return (
+            <li
+              className={`${index === step ? 'is-active' : ''} ${completed ? 'is-complete' : ''}`}
+              key={item.label}
+            >
+              <button
+                type="button"
+                onClick={() => index <= step && moveToStep(index)}
+                disabled={index > step}
+                aria-current={index === step ? 'step' : undefined}
+              >
+                <span>{completed ? <Icon name="check" size={16} /> : <Icon name={item.icon} size={16} />}</span>
+                <small>Step {index + 1}</small>
+                <strong>{item.label}</strong>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+
+      <div className="hackathon-wizard-status">
+        <span>{String(step + 1).padStart(2, '0')}</span>
+        <div>
+          <small>Current section</small>
+          <strong>{FORM_STEPS[step].label}</strong>
+        </div>
+        <em>{Math.round(((step + 1) / FORM_STEPS.length) * 100)}% complete</em>
+      </div>
+
+      <Card className={`hackathon-form-card ${step !== 0 ? 'wizard-step-hidden' : ''}`}>
         <CardHeader>
           <div className="hackathon-form-heading">
             <span className="hackathon-form-heading__number">01</span>
@@ -238,7 +346,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         </CardBody>
       </Card>
 
-      <Card className="hackathon-form-card">
+      <Card className={`hackathon-form-card ${step !== 1 ? 'wizard-step-hidden' : ''}`}>
         <CardHeader>
           <div className="hackathon-form-heading">
             <span className="hackathon-form-heading__number">02</span>
@@ -277,10 +385,43 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         </CardBody>
       </Card>
 
-      <Card className="hackathon-form-card">
+      <Card className={`hackathon-form-card ${step !== 2 ? 'wizard-step-hidden' : ''}`}>
         <CardHeader>
           <div className="hackathon-form-heading">
             <span className="hackathon-form-heading__number">03</span>
+            <div><h3>Released themes</h3><p>Select the themes students can choose for this hackathon.</p></div>
+          </div>
+          <span className="hackathon-form-heading__icon"><Icon name="sparkles" size={20} /></span>
+        </CardHeader>
+        <CardBody className="stack-md">
+          {themesLoading ? (
+            <p className="text-sm text-muted">Loading themes…</p>
+          ) : themesError ? (
+            <Alert variant="danger">Themes could not be loaded: {themesError.message}</Alert>
+          ) : themes?.length ? (
+            <div className="hackathon-theme-picker">
+              {themes.map((theme) => {
+                const selected = form.theme_ids.includes(theme.id)
+                return (
+                  <label className={`hackathon-theme-option ${selected ? 'is-selected' : ''}`} key={theme.id}>
+                    <input type="checkbox" checked={selected} onChange={() => toggleTheme(theme.id)} />
+                    <span><Icon name={selected ? 'checkCircle' : 'sparkles'} size={19} /></span>
+                    <div><strong>{theme.name}</strong></div>
+                  </label>
+                )
+              })}
+            </div>
+          ) : (
+            <Alert variant="warning">Create themes from the Admin Themes screen before publishing this hackathon.</Alert>
+          )}
+          {errors.theme_ids && <span className="field__error">{errors.theme_ids}</span>}
+        </CardBody>
+      </Card>
+
+      <Card className={`hackathon-form-card ${step !== 3 ? 'wizard-step-hidden' : ''}`}>
+        <CardHeader>
+          <div className="hackathon-form-heading">
+            <span className="hackathon-form-heading__number">04</span>
             <div>
               <h3>Competition timeline</h3>
               <p>Optional — add each round or milestone in chronological order.</p>
@@ -340,6 +481,26 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
                     error={errors[`timeline.${index}.end_date`]}
                   />
                 </div>
+                <Select
+                  label="Evaluation requirement"
+                  value={round.evaluation_requirement_id}
+                  onChange={updateRound(index, 'evaluation_requirement_id')}
+                  hint={
+                    requirementsError
+                      ? 'Requirements could not be loaded. You can save this round without one.'
+                      : 'Optional. Students will use this field set for the round.'
+                  }
+                  disabled={requirementsLoading}
+                >
+                  <option value="">
+                    {requirementsLoading ? 'Loading requirements…' : 'No requirement'}
+                  </option>
+                  {(requirements || []).map((requirement) => (
+                    <option value={requirement.id} key={requirement.id}>
+                      {requirement.name} ({requirement.fields?.length || 0} fields)
+                    </option>
+                  ))}
+                </Select>
               </div>
             ))
           ) : (
@@ -348,10 +509,10 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         </CardBody>
       </Card>
 
-      <Card className="hackathon-form-card">
+      <Card className={`hackathon-form-card ${step !== 4 ? 'wizard-step-hidden' : ''}`}>
         <CardHeader>
           <div className="hackathon-form-heading">
-            <span className="hackathon-form-heading__number">04</span>
+            <span className="hackathon-form-heading__number">05</span>
             <div><h3>Event banner</h3><p>Add a high-quality visual for cards and the event header.</p></div>
           </div>
           <span className="hackathon-form-heading__icon"><Icon name="image" size={20} /></span>
@@ -395,10 +556,31 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
       </Card>
 
       <div className="hackathon-form-actions">
-        <p><Icon name="shield" size={17} /> Changes are securely saved to the hackathon workspace.</p>
-        <Button type="submit" variant="accent" size="lg" loading={submitting}>
-          {editing ? 'Save changes' : 'Create hackathon'}
-        </Button>
+        {step > 0 ? (
+          <Button
+            variant="ghost"
+            onClick={() => moveToStep(step - 1)}
+            leftIcon={<Icon name="arrowLeft" size={17} />}
+          >
+            Back
+          </Button>
+        ) : (
+          <p><Icon name="shield" size={17} /> Complete each section to continue.</p>
+        )}
+        {step < FORM_STEPS.length - 1 ? (
+          <Button
+            variant="accent"
+            size="lg"
+            onClick={continueToNextStep}
+            rightIcon={<Icon name="arrowRight" size={17} />}
+          >
+            Save and continue
+          </Button>
+        ) : (
+          <Button type="submit" variant="accent" size="lg" loading={submitting}>
+            {editing ? 'Save changes' : 'Create hackathon'}
+          </Button>
+        )}
       </div>
     </form>
   )

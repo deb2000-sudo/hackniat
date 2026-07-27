@@ -25,7 +25,6 @@ export function validateStudentForm(form) {
   const errors = {}
   if (!required(form.team_name)) errors.team_name = 'Team name is required'
   if (!required(form.university)) errors.university = 'University is required'
-  if (!/^Theme [1-8]$/.test(form.theme_chosen)) errors.theme_chosen = 'Select a theme'
   if (!required(form.team_leader_name)) errors.team_leader_name = 'Team leader name is required'
   if (!required(form.niat_id)) errors.niat_id = 'NIAT ID is required'
   if (!isEmail(form.email)) errors.email = 'Enter a valid team leader email'

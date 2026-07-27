@@ -1,6 +1,6 @@
 import { api, request } from './client'
 
-const JSON_FIELDS = new Set(['prizes', 'timeline'])
+const JSON_FIELDS = new Set(['prizes', 'timeline', 'theme_ids'])
 
 function toFormData(fields) {
   const formData = new FormData()
@@ -19,6 +19,8 @@ export const hackathonsApi = {
   list: (options) => api.get('/hackathons', options),
   get: (hackathonId, options) =>
     api.get(`/hackathons/${encodeURIComponent(hackathonId)}`, options),
+  listThemes: (hackathonId, options) =>
+    api.get(`/hackathons/${encodeURIComponent(hackathonId)}/themes`, options),
   create: (fields, options) => api.upload('/hackathons', toFormData(fields), options),
   update: (hackathonId, fields, options) =>
     request(

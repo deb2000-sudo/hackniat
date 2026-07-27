@@ -114,6 +114,13 @@ export default function HackathonsPage() {
                     </div>
                   </div>
                   <p className="text-sm hackathon-card__description">{hackathon.description}</p>
+                  {!!hackathon.themes?.length && (
+                    <div className="hackathon-card__themes">
+                      {hackathon.themes.map((theme) => (
+                        <span key={theme.id}>{theme.name}</span>
+                      ))}
+                    </div>
+                  )}
                   <div className="hackathon-card__footer">
                     <div className="hackathon-card__prize">
                       <Icon name="trophy" size={18} />

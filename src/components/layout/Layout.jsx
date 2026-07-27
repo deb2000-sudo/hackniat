@@ -7,10 +7,12 @@ export default function Layout() {
   return (
     <div className="app-shell">
       <Navbar />
-      <main className="grow">
-        <Outlet />
-      </main>
-      <Footer />
+      <div className="app-content">
+        <main className="grow">
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
     </div>
   )
 }
