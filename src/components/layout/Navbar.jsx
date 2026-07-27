@@ -14,8 +14,7 @@ const NAV_BY_ROLE = {
     { to: '/hackathons', label: 'Hackathons', icon: 'trophy' },
   ],
   [ROLES.EVALUATOR]: [
-    { to: '/evaluator', label: 'Dashboard', icon: 'chart', end: true },
-    { to: '/evaluator/review', label: 'Review submission', icon: 'search' },
+    { to: '/evaluator', label: 'Assigned submissions', icon: 'clipboard', end: true },
     { to: '/hackathons', label: 'Hackathons', icon: 'trophy' },
   ],
   [ROLES.ADMIN]: [

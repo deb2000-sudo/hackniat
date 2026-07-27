@@ -9,6 +9,14 @@ function normalizeSubmission(submission) {
     result: evaluation,
     criteria: submission.evaluation_criteria ?? submission.criteria ?? null,
     overall_score: evaluation?.overall_score ?? null,
+    review_status: submission.review_status || 'none',
+    evaluator_score:
+      submission.evaluator_score ??
+      submission.review_score ??
+      submission.final_score ??
+      null,
+    evaluator_notes: submission.evaluator_notes ?? submission.review_notes ?? null,
+    final_score: submission.final_score ?? null,
   }
 }
 
@@ -52,6 +60,27 @@ export const evaluationApi = {
     return submissions.map(normalizeSubmission)
   },
 
+  /** Evaluator landing screen: hackathons containing assigned submissions. */
+  listEvaluatorHackathons: async (options) => {
+    const hackathons = await api.get('/submissions/evaluator/hackathons', options)
+    if (!Array.isArray(hackathons)) {
+      throw new Error('The evaluator hackathons API returned an unsupported response format.')
+    }
+    return hackathons
+  },
+
+  /** Evaluator queue for one hackathon, restricted by the backend to assigned work. */
+  listEvaluatorHackathonSubmissions: async (hackathonId, options) => {
+    const submissions = await api.get(
+      `/submissions/evaluator/hackathons/${encodeURIComponent(hackathonId)}`,
+      options,
+    )
+    if (!Array.isArray(submissions)) {
+      throw new Error('The evaluator submissions API returned an unsupported response format.')
+    }
+    return submissions.map(normalizeSubmission)
+  },
+
   /** Admin only: assign or unassign a submission from an approved evaluator. */
   assignSubmission: async (submissionId, evaluatorId, options) => {
     const submission = await api.post(
@@ -76,6 +105,36 @@ export const evaluationApi = {
       body,
       options,
     )
+  },
+
+  /** Evaluator only: send a completed analysis and score to the admin. */
+  submitForAdminReview: async (submissionId, score, notes, options) => {
+    const submission = await api.post(
+      `/submissions/${encodeURIComponent(submissionId)}/submit-for-review`,
+      { final_score: score, evaluator_notes: notes || null },
+      options,
+    )
+    return normalizeSubmission(submission)
+  },
+
+  /** Admin only: approve an evaluator review and publish the final result. */
+  approveEvaluatorReview: async (submissionId, reviewNotes, options) => {
+    const submission = await api.post(
+      `/submissions/${encodeURIComponent(submissionId)}/approve-evaluation`,
+      { review_notes: reviewNotes || null },
+      options,
+    )
+    return normalizeSubmission(submission)
+  },
+
+  /** Admin only: return a submission to its evaluator for changes. */
+  requestEvaluatorChanges: async (submissionId, reviewNotes, options) => {
+    const submission = await api.post(
+      `/submissions/${encodeURIComponent(submissionId)}/request-changes`,
+      { review_notes: reviewNotes || null },
+      options,
+    )
+    return normalizeSubmission(submission)
   },
 
   /** Upload a video and requirement responses; legacy fields keep the current backend compatible. */

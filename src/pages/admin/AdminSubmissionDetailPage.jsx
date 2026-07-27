@@ -6,7 +6,7 @@ import { usePolling } from '../../hooks/usePolling'
 import { formatDateTime } from '../../utils/format'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
-import Badge, { StatusBadge } from '../../components/ui/Badge'
+import Badge, { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
@@ -17,18 +17,24 @@ import SubmissionReport from '../../components/evaluation/SubmissionReport'
 export default function AdminSubmissionDetailPage() {
   const { submissionId } = useParams()
   const fetcher = useCallback(() => evaluationApi.getSubmission(submissionId), [submissionId])
-  const { data: submission, loading, error } = usePolling(fetcher, {
+  const { data: submission, loading, error, restart: restartPolling } = usePolling(fetcher, {
     isDone: (item) => item?.status === 'completed',
     interval: 3000,
   })
   const [criteria, setCriteria] = useState('')
+  const [reviewNotes, setReviewNotes] = useState('')
   const [action, setAction] = useState('')
   const [actionError, setActionError] = useState('')
   const [publishOverride, setPublishOverride] = useState(null)
   const [publishedAtOverride, setPublishedAtOverride] = useState(undefined)
+  const [reviewOverride, setReviewOverride] = useState(null)
   const [actionMessage, setActionMessage] = useState('')
 
   const reportPublished = publishOverride ?? submission?.report_published ?? false
+  const reviewStatus = reviewOverride?.review_status ?? submission?.review_status ?? 'none'
+  const evaluatorScore = reviewOverride?.evaluator_score ?? submission?.evaluator_score
+  const evaluatorNotes = reviewOverride?.evaluator_notes ?? submission?.evaluator_notes
+  const finalScore = reviewOverride?.final_score ?? submission?.final_score
   const videoUrl = submission
     ? resolveApiUrl(
         submission.video_url ||
@@ -42,6 +48,7 @@ export default function AdminSubmissionDetailPage() {
     setActionMessage('')
     try {
       await evaluationApi.evaluateSubmission(submission.id, criteria.trim() || null)
+      restartPolling()
       setActionMessage('Analysis started. This page will update automatically when it completes.')
     } catch (analyzeError) {
       setActionError(analyzeError.message || 'Unable to start analysis.')
@@ -50,22 +57,27 @@ export default function AdminSubmissionDetailPage() {
     }
   }
 
-  const togglePublish = async () => {
-    const next = !reportPublished
-    setAction('publishing')
+  const decideEvaluatorReview = async (decision) => {
+    setAction(decision)
     setActionError('')
     setActionMessage('')
     try {
-      const updated = await evaluationApi.publishSubmissionReport(submission.id, next)
-      setPublishOverride(updated.report_published ?? next)
-      setPublishedAtOverride(updated.published_at ?? null)
-      setActionMessage(
-        next
-          ? 'Report published. The student can now view it.'
-          : 'Report unpublished. It is hidden from the student.',
-      )
-    } catch (publishError) {
-      setActionError(publishError.message || 'Unable to update report visibility.')
+      const updated = decision === 'approving'
+        ? await evaluationApi.approveEvaluatorReview(submission.id, reviewNotes.trim())
+        : await evaluationApi.requestEvaluatorChanges(submission.id, reviewNotes.trim())
+      const nextStatus = updated.review_status ||
+        (decision === 'approving' ? 'approved' : 'changes_requested')
+      setReviewOverride({ ...updated, review_status: nextStatus })
+      if (decision === 'approving') {
+        setPublishOverride(updated.report_published ?? true)
+        setPublishedAtOverride(updated.published_at ?? new Date().toISOString())
+        setActionMessage('Evaluation approved. The final score and report are now visible to the student.')
+      } else {
+        setPublishOverride(updated.report_published ?? false)
+        setActionMessage('Changes requested. The evaluator can update and resubmit their review.')
+      }
+    } catch (reviewError) {
+      setActionError(reviewError.message || 'Unable to update the evaluator review.')
     } finally {
       setAction('')
     }
@@ -158,6 +170,10 @@ export default function AdminSubmissionDetailPage() {
                 <span className="text-sm text-muted">Analysis status</span>
                 <StatusBadge status={submission?.status} />
               </div>
+              <div className="row-between">
+                <span className="text-sm text-muted">Evaluator review</span>
+                <ReviewStatusBadge status={reviewStatus} />
+              </div>
 
               {canAnalyze && (
                 <>
@@ -189,32 +205,88 @@ export default function AdminSubmissionDetailPage() {
                 </div>
               )}
 
-              {completed && (
+              {completed && reviewStatus !== 'pending_review' && (
                 <div className="admin-publish-control">
                   <div>
-                    <span>Student report</span>
-                    <Badge variant={reportPublished ? 'success' : 'warning'} dot>
-                      {reportPublished ? 'Published' : 'Private'}
-                    </Badge>
+                    <span>Review workflow</span>
+                    <ReviewStatusBadge status={reviewStatus} />
                   </div>
                   <p>
-                    {reportPublished
-                      ? 'The student can view the report.'
-                      : 'Review the report below before publishing it.'}
+                    {reviewStatus === 'approved'
+                      ? 'Approved — the report is published to the student.'
+                      : reviewStatus === 'changes_requested'
+                        ? 'Waiting for the evaluator to update and resubmit their review.'
+                        : 'Waiting for the assigned evaluator to submit a score and notes.'}
                   </p>
-                  <Button
-                    variant={reportPublished ? 'secondary' : 'success'}
-                    block
-                    loading={action === 'publishing'}
-                    onClick={togglePublish}
-                    leftIcon={<Icon name={reportPublished ? 'eyeOff' : 'eye'} size={17} />}
-                  >
-                    {reportPublished ? 'Unpublish report' : 'Publish report'}
-                  </Button>
                 </div>
               )}
             </CardBody>
           </Card>
+
+          {completed && reviewStatus === 'pending_review' && (
+            <Card className="admin-evaluator-review">
+              <CardHeader>
+                <h3>Evaluator recommendation</h3>
+                <ReviewStatusBadge status={reviewStatus} />
+              </CardHeader>
+              <CardBody className="stack-md">
+                <div className="admin-evaluator-score">
+                  <span>Evaluator score</span>
+                  <strong>{evaluatorScore ?? '—'}{evaluatorScore != null ? '/100' : ''}</strong>
+                </div>
+                <div className="evaluator-submitted-notes">
+                  <span>Evaluator notes</span>
+                  <p>{evaluatorNotes || 'No notes were provided.'}</p>
+                </div>
+                <Textarea
+                  label="Admin review notes"
+                  hint="Optional for approval; recommended when requesting changes."
+                  rows={3}
+                  maxLength={5000}
+                  value={reviewNotes}
+                  onChange={(event) => setReviewNotes(event.target.value)}
+                  disabled={action === 'approving' || action === 'requesting_changes'}
+                />
+                <div className="admin-review-actions">
+                  <Button
+                    variant="secondary"
+                    block
+                    loading={action === 'requesting_changes'}
+                    disabled={action === 'approving'}
+                    onClick={() => decideEvaluatorReview('requesting_changes')}
+                    leftIcon={<Icon name="refresh" size={17} />}
+                  >
+                    Request changes
+                  </Button>
+                  <Button
+                    variant="success"
+                    block
+                    loading={action === 'approving'}
+                    disabled={action === 'requesting_changes'}
+                    onClick={() => decideEvaluatorReview('approving')}
+                    leftIcon={<Icon name="check" size={17} />}
+                  >
+                    Approve & publish
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
+          {completed && reviewStatus === 'approved' && (
+            <Card>
+              <CardHeader><h3>Final decision</h3><ReviewStatusBadge status={reviewStatus} /></CardHeader>
+              <CardBody className="stack-sm">
+                <div className="row-between text-sm">
+                  <span className="text-muted">Final score</span>
+                  <strong>{finalScore ?? evaluatorScore ?? '—'}{(finalScore ?? evaluatorScore) != null ? '/100' : ''}</strong>
+                </div>
+                <p className="text-sm text-muted">
+                  The report and final score are visible to the student.
+                </p>
+              </CardBody>
+            </Card>
+          )}
 
           <Card>
             <CardHeader><h3>Visibility</h3></CardHeader>

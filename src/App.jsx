@@ -18,7 +18,8 @@ import EvaluationsPage from './pages/student/EvaluationsPage'
 import EvaluationDetailPage from './pages/evaluation/EvaluationDetailPage'
 
 import EvaluatorDashboard from './pages/evaluator/EvaluatorDashboard'
-import ReviewSubmissionPage from './pages/evaluator/ReviewSubmissionPage'
+import EvaluatorHackathonSubmissionsPage from './pages/evaluator/EvaluatorHackathonSubmissionsPage'
+import EvaluatorSubmissionDetailPage from './pages/evaluator/EvaluatorSubmissionDetailPage'
 
 import AdminDashboard from './pages/admin/AdminDashboard'
 import UsersPage from './pages/admin/UsersPage'
@@ -70,7 +71,15 @@ export default function App() {
             {/* Evaluator */}
             <Route element={<ProtectedRoute roles={[ROLES.EVALUATOR]} />}>
               <Route path="/evaluator" element={<EvaluatorDashboard />} />
-              <Route path="/evaluator/review" element={<ReviewSubmissionPage />} />
+              <Route path="/evaluator/review" element={<Navigate to="/evaluator" replace />} />
+              <Route
+                path="/evaluator/hackathons/:hackathonId"
+                element={<EvaluatorHackathonSubmissionsPage />}
+              />
+              <Route
+                path="/evaluator/submissions/:submissionId"
+                element={<EvaluatorSubmissionDetailPage />}
+              />
               <Route path="/evaluator/evaluations/:sessionId" element={<EvaluationDetailPage />} />
             </Route>
 

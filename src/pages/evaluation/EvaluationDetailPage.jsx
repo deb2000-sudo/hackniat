@@ -85,6 +85,17 @@ export default function EvaluationDetailPage() {
         <div className="stack-lg">
           {canViewResult ? (
             <>
+              {session?.final_score != null && (
+                <Card className="student-final-score">
+                  <CardBody>
+                    <div>
+                      <span>Final score</span>
+                      <p>Approved by the hackathon administrator</p>
+                    </div>
+                    <strong>{session.final_score}<small>/100</small></strong>
+                  </CardBody>
+                </Card>
+              )}
               <EvaluationResultView result={session.result} />
               <SubmissionReport submissionId={session.id} />
             </>
@@ -94,8 +105,8 @@ export default function EvaluationDetailPage() {
                 <span><Icon name="clock" size={28} /></span>
                 <h2>Submitted — results pending</h2>
                 <p>
-                  Your submission was recorded successfully. The evaluation report will appear
-                  here after the hackathon ends and an administrator publishes it.
+                  Your submission was recorded successfully. Results will appear here after the
+                  evaluator submits their review and an administrator approves it.
                 </p>
               </CardBody>
             </Card>

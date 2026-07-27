@@ -7,7 +7,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { formatDate, formatDateTime } from '../../utils/format'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
-import Badge, { StatusBadge } from '../../components/ui/Badge'
+import Badge, { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card, { CardBody } from '../../components/ui/Card'
 import EmptyState from '../../components/ui/EmptyState'
@@ -245,6 +245,7 @@ export default function AdminHackathonSubmissionsPage() {
                 <th>Team</th>
                 <th>Theme</th>
                 <th>Status</th>
+                <th>Review</th>
                 <th>Report</th>
                 <th>Submitted</th>
                 <th>Evaluator</th>
@@ -271,6 +272,7 @@ export default function AdminHackathonSubmissionsPage() {
                   </td>
                   <td>{submission.theme_name || submission.theme_chosen || '—'}</td>
                   <td><StatusBadge status={submission.status} /></td>
+                  <td><ReviewStatusBadge status={submission.review_status} /></td>
                   <td>
                     <Badge variant={submission.report_published ? 'success' : 'neutral'} dot>
                       {submission.report_published ? 'Published' : 'Private'}

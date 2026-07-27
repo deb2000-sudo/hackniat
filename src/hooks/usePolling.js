@@ -14,6 +14,7 @@ export function usePolling(fetcher, { isDone, interval = 3000, enabled = true } 
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(enabled)
+  const [nonce, setNonce] = useState(0)
   const timerRef = useRef(null)
   const stoppedRef = useRef(false)
   const fetcherRef = useRef(fetcher)
@@ -28,6 +29,13 @@ export function usePolling(fetcher, { isDone, interval = 3000, enabled = true } 
   const stop = useCallback(() => {
     stoppedRef.current = true
     if (timerRef.current) clearTimeout(timerRef.current)
+  }, [])
+
+  const restart = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    stoppedRef.current = false
+    setLoading(true)
+    setNonce((value) => value + 1)
   }, [])
 
   useEffect(() => {
@@ -64,7 +72,7 @@ export function usePolling(fetcher, { isDone, interval = 3000, enabled = true } 
       active = false
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [enabled, interval])
+  }, [enabled, interval, nonce])
 
-  return { data, error, loading, stop }
+  return { data, error, loading, stop, restart }
 }

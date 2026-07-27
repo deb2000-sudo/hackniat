@@ -48,3 +48,23 @@ export function StatusBadge({ status }) {
     </Badge>
   )
 }
+
+const REVIEW_STATUS = {
+  none: { label: 'Not submitted', variant: 'neutral' },
+  pending_review: { label: 'Pending admin review', variant: 'warning' },
+  changes_requested: { label: 'Changes requested', variant: 'danger' },
+  approved: { label: 'Approved', variant: 'success' },
+}
+
+export function ReviewStatusBadge({ status }) {
+  const normalized = status || 'none'
+  const config = REVIEW_STATUS[normalized] || {
+    label: String(normalized).replaceAll('_', ' '),
+    variant: 'neutral',
+  }
+  return (
+    <Badge variant={config.variant} dot>
+      {config.label}
+    </Badge>
+  )
+}

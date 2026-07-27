@@ -167,7 +167,7 @@ export default function SubmissionVideoPage() {
           }>
             {session?.report_published
               ? 'Your evaluation report is now available.'
-              : 'Your video was submitted successfully. Results will appear after an administrator publishes the report.'}
+              : 'Your video was submitted successfully. Results are pending evaluator review and admin approval.'}
             {session?.report_published && (
               <div className="submission-inline-action">
                 <Button
