@@ -2919,6 +2919,36 @@ code {
 .rec-timebar__fill { height: 100%; background: linear-gradient(90deg, var(--brand-500), var(--accent-500)); transition: width 0.25s linear; }
 .rec-timebar__fill--warn { background: linear-gradient(90deg, var(--warning-500), var(--danger-500)); }
 
+.rec-audio-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.rec-audio-pill--success {
+  color: var(--success-600);
+  background: var(--success-50);
+  border-color: #a7f3d0;
+}
+.rec-audio-pill--warning {
+  color: var(--warning-600);
+  background: var(--warning-50);
+  border-color: #fde68a;
+}
+.rec-audio-pill--danger {
+  color: var(--danger-600);
+  background: var(--danger-50);
+  border-color: #fecaca;
+}
+.rec-audio-pill--neutral {
+  color: var(--text-muted);
+}
+
 .net-indicator {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 12px; border-radius: var(--radius-full);

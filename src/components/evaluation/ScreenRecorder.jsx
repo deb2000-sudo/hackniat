@@ -6,9 +6,19 @@ import Icon from '../ui/Icon'
 import Alert from '../ui/Alert'
 import NetworkIndicator from './NetworkIndicator'
 
+const AUDIO_STATUS = {
+  idle: null,
+  requesting: { icon: 'mic', label: 'Requesting microphone…', tone: 'neutral' },
+  mic: { icon: 'mic', label: 'Microphone on', tone: 'success' },
+  mixed: { icon: 'mic', label: 'Mic + system audio', tone: 'success' },
+  system: { icon: 'volume', label: 'System audio only (no mic)', tone: 'warning' },
+  denied: { icon: 'micOff', label: 'Microphone blocked', tone: 'danger' },
+  none: { icon: 'micOff', label: 'No audio', tone: 'danger' },
+}
+
 /**
- * Records the user's screen (max `maxDuration` seconds) and hands the resulting
- * File to the parent via `onChange`. Passing `onChange(null)` resets it.
+ * Records the user's screen + microphone (max duration) and hands the resulting
+ * File to the parent via `onChange`.
  */
 export default function ScreenRecorder({ onChange, disabled = false }) {
   const {
@@ -20,6 +30,7 @@ export default function ScreenRecorder({ onChange, disabled = false }) {
     stream,
     recordedFile,
     previewUrl,
+    audioMode,
     start,
     stop,
     reset,
@@ -31,12 +42,11 @@ export default function ScreenRecorder({ onChange, disabled = false }) {
     onChangeRef.current = onChange
   }, [onChange])
 
-  // Bubble the recorded file (or null) up to the parent.
   useEffect(() => {
     onChangeRef.current?.(recordedFile)
   }, [recordedFile])
 
-  // Attach the live screen-share stream to the preview element.
+  // Live preview stays muted to avoid feedback; recorded preview plays with audio.
   useEffect(() => {
     const el = liveVideoRef.current
     if (el && stream) {
@@ -53,6 +63,7 @@ export default function ScreenRecorder({ onChange, disabled = false }) {
   const remaining = Math.max(0, maxDuration - elapsed)
   const pct = Math.min(100, (elapsed / maxDuration) * 100)
   const nearEnd = remaining <= 30
+  const audioStatus = AUDIO_STATUS[audioMode]
 
   if (!supported) {
     return (
@@ -66,11 +77,19 @@ export default function ScreenRecorder({ onChange, disabled = false }) {
   return (
     <div className="stack-md">
       <div className="row-between wrap" style={{ gap: 12 }}>
-        <p className="text-sm text-muted" style={{ maxWidth: '48ch' }}>
-          Share your screen and walk through your project. Recording stops automatically at{' '}
-          <strong>{formatDuration(maxDuration)}</strong>.
+        <p className="text-sm text-muted" style={{ maxWidth: '52ch' }}>
+          Share your screen and speak into your microphone. Your voice is recorded with the video.
+          Recording stops automatically at <strong>{formatDuration(maxDuration)}</strong>.
         </p>
-        <NetworkIndicator active={isRecording || status === 'idle'} />
+        <div className="row wrap" style={{ gap: 8 }}>
+          {audioStatus && (isRecording || audioMode === 'denied' || audioMode === 'none') && (
+            <span className={`rec-audio-pill rec-audio-pill--${audioStatus.tone}`}>
+              <Icon name={audioStatus.icon} size={14} />
+              {audioStatus.label}
+            </span>
+          )}
+          <NetworkIndicator active={isRecording || status === 'idle'} />
+        </div>
       </div>
 
       <div className="recorder-stage">
@@ -86,7 +105,7 @@ export default function ScreenRecorder({ onChange, disabled = false }) {
             />
             <span className="recording-preview-label">
               <Icon name="play" size={14} />
-              Full recording preview
+              Full recording preview — turn up volume to verify your voice
             </span>
           </>
         ) : isRecording ? (
@@ -110,13 +129,18 @@ export default function ScreenRecorder({ onChange, disabled = false }) {
             </div>
             <div style={{ fontWeight: 600, color: '#fff' }}>Record your submission</div>
             <p className="text-sm" style={{ marginTop: 4, color: '#c7cbd4' }}>
-              Click start, choose the screen or window to share, and present your project.
+              You&apos;ll be asked to share your screen, then allow the microphone so your voice is
+              included.
             </p>
           </div>
         )}
       </div>
 
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && (
+        <Alert variant={audioMode === 'denied' || audioMode === 'none' ? 'warning' : 'danger'}>
+          {error}
+        </Alert>
+      )}
 
       <div className="row-between wrap" style={{ gap: 12 }}>
         <div className="text-sm text-muted">
@@ -126,12 +150,15 @@ export default function ScreenRecorder({ onChange, disabled = false }) {
                 <Icon name="checkCircle" size={16} style={{ color: 'var(--success-500)' }} />
                 Recorded {formatDuration(elapsed)} · {formatFileSize(recordedFile.size)}
               </span>
-              <span className="text-xs">Play or seek through the preview before uploading.</span>
+              <span className="text-xs">Play the preview (with sound) before uploading.</span>
             </div>
           ) : isRecording ? (
-            <span>{formatDuration(remaining)} remaining</span>
+            <span className="row" style={{ gap: 8 }}>
+              <Icon name={audioMode === 'mic' || audioMode === 'mixed' ? 'mic' : 'micOff'} size={14} />
+              {formatDuration(remaining)} remaining
+            </span>
           ) : (
-            <span>Max duration {formatDuration(maxDuration)}</span>
+            <span>Max duration {formatDuration(maxDuration)} · microphone required for voice</span>
           )}
         </div>
 
@@ -156,7 +183,7 @@ export default function ScreenRecorder({ onChange, disabled = false }) {
               variant="accent"
               onClick={start}
               disabled={disabled}
-              leftIcon={<Icon name="monitor" size={18} />}
+              leftIcon={<Icon name="mic" size={18} />}
             >
               Start screen recording
             </Button>
