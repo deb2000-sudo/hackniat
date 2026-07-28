@@ -143,7 +143,10 @@ function WorkflowTracking({ analysisCompleted, reviewStatus }) {
 
 export default function EvaluatorSubmissionDetailPage() {
   const { submissionId } = useParams()
-  const fetcher = useCallback(() => evaluationApi.getSubmission(submissionId), [submissionId])
+  const fetcher = useCallback(
+    (opts) => evaluationApi.getSubmission(submissionId, opts),
+    [submissionId],
+  )
   const { data: submission, loading, error, restart: restartPolling } = usePolling(fetcher, {
     isDone: (item) => ['completed', 'failed'].includes(item?.status),
     interval: 3000,

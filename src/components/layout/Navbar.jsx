@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { prefetchRouteData } from '../../lib/prefetch'
 import { ROLES } from '../../utils/constants'
 import Avatar from '../ui/Avatar'
 import Icon from '../ui/Icon'
@@ -121,6 +122,8 @@ export default function Navbar() {
                       <NavLink
                         key={child.to}
                         to={child.to}
+                        onMouseEnter={() => prefetchRouteData(child.to)}
+                        onFocus={() => prefetchRouteData(child.to)}
                         onClick={() => setOpen(false)}
                         className={({ isActive }) =>
                           `sidebar-sub-link ${isActive ? 'is-active' : ''}`
@@ -139,6 +142,8 @@ export default function Navbar() {
                 key={link.to}
                 to={link.to}
                 end={link.end}
+                onMouseEnter={() => prefetchRouteData(link.to)}
+                onFocus={() => prefetchRouteData(link.to)}
                 onClick={() => setOpen(false)}
                 className={({ isActive }) => `sidebar-link ${isActive ? 'is-active' : ''}`}
               >

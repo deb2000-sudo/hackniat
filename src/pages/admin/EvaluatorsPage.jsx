@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { adminApi } from '../../api/admin'
 import { useAsync } from '../../hooks/useAsync'
+import { queryKeys } from '../../lib/queryKeys'
+import { invalidateQueries } from '../../lib/queryCache'
 import { APPROVAL_STATUS } from '../../utils/constants'
 import PageHeader from '../../components/layout/PageHeader'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
@@ -14,13 +16,16 @@ import EmptyState from '../../components/ui/EmptyState'
 import { formatDate } from '../../utils/format'
 
 export default function EvaluatorsPage() {
-  const { data, loading, error, reload } = useAsync(async () => {
-    const [evaluators, pending] = await Promise.all([
-      adminApi.getEvaluators(),
-      adminApi.getPendingEvaluators(),
-    ])
-    return { evaluators, pending }
-  }, [])
+  const { data, loading, error, reload } = useAsync(
+    async () => {
+      const [evaluators, pending] = await Promise.all([
+        adminApi.getEvaluators(),
+        adminApi.getPendingEvaluators(),
+      ])
+      return { evaluators, pending }
+    },
+    { key: queryKeys.adminPendingEvaluators, staleTime: 30_000 },
+  )
 
   const [approvingId, setApprovingId] = useState(null)
   const [actionError, setActionError] = useState('')
@@ -33,7 +38,9 @@ export default function EvaluatorsPage() {
     setActionError('')
     try {
       await adminApi.approveEvaluator(userId)
-      await reload()
+      invalidateQueries(queryKeys.adminOverview)
+      invalidateQueries(queryKeys.adminPendingEvaluators)
+      await reload({ force: true })
     } catch (err) {
       setActionError(err.message || 'Failed to approve evaluator.')
     } finally {
@@ -48,7 +55,7 @@ export default function EvaluatorsPage() {
         title="Evaluator Management"
         description="Approve new evaluators and view all evaluator accounts."
         actions={
-          <Button variant="secondary" onClick={reload} leftIcon={<Icon name="refresh" size={18} />}>
+          <Button variant="secondary" onClick={() => reload({ force: true })} leftIcon={<Icon name="refresh" size={18} />}>
             Refresh
           </Button>
         }

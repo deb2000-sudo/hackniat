@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
+import { queryKeys } from '../../lib/queryKeys'
 import { ROLES } from '../../utils/constants'
 import { formatDate } from '../../utils/format'
 import { getHackathonDuration, getHackathonStatus } from '../../utils/hackathons'
@@ -24,7 +25,10 @@ const FILTERS = [
 export default function HackathonsPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === ROLES.ADMIN
-  const { data, loading, error, reload } = useAsync(() => hackathonsApi.list())
+  const { data, loading, error, reload } = useAsync(
+    (opts) => hackathonsApi.list(opts),
+    { key: queryKeys.hackathons, staleTime: 60_000 },
+  )
   const [filter, setFilter] = useState('all')
   const hackathons = useMemo(
     () =>
@@ -47,7 +51,7 @@ export default function HackathonsPage() {
           </div>
         </div>
         <div className="hackathons-hero__actions">
-          <Button variant="secondary" onClick={reload} loading={loading} leftIcon={<Icon name="refresh" size={18} />}>
+          <Button variant="secondary" onClick={() => reload({ force: true })} loading={loading && !data} leftIcon={<Icon name="refresh" size={18} />}>
             Refresh
           </Button>
           {isAdmin && (

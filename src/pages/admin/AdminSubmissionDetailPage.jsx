@@ -16,7 +16,10 @@ import SubmissionReport from '../../components/evaluation/SubmissionReport'
 
 export default function AdminSubmissionDetailPage() {
   const { submissionId } = useParams()
-  const fetcher = useCallback(() => evaluationApi.getSubmission(submissionId), [submissionId])
+  const fetcher = useCallback(
+    (opts) => evaluationApi.getSubmission(submissionId, opts),
+    [submissionId],
+  )
   const { data: submission, loading, error, restart: restartPolling } = usePolling(fetcher, {
     isDone: (item) => item?.status === 'completed',
     interval: 3000,

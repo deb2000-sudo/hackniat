@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
+import { queryKeys } from '../../lib/queryKeys'
 import { formatDate } from '../../utils/format'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
@@ -13,24 +14,27 @@ import Input from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
 
 export default function AdminSubmissionsPage() {
-  const { data, loading, error, reload } = useAsync(async () => {
-    const [hackathons, submissions] = await Promise.all([
-      evaluationApi.listSubmissionHackathons(),
-      evaluationApi.listAllSubmissions(),
-    ])
-    const evaluatedByHackathon = submissions.reduce((counts, submission) => {
-      if (submission.status !== 'completed' || !submission.hackathon_id) return counts
-      counts.set(
-        submission.hackathon_id,
-        (counts.get(submission.hackathon_id) || 0) + 1,
-      )
-      return counts
-    }, new Map())
-    return hackathons.map((hackathon) => ({
-      ...hackathon,
-      evaluated_count: evaluatedByHackathon.get(hackathon.hackathon_id) || 0,
-    }))
-  })
+  const { data, loading, error, reload } = useAsync(
+    async () => {
+      const [hackathons, submissions] = await Promise.all([
+        evaluationApi.listSubmissionHackathons(),
+        evaluationApi.listAllSubmissions(),
+      ])
+      const evaluatedByHackathon = submissions.reduce((counts, submission) => {
+        if (submission.status !== 'completed' || !submission.hackathon_id) return counts
+        counts.set(
+          submission.hackathon_id,
+          (counts.get(submission.hackathon_id) || 0) + 1,
+        )
+        return counts
+      }, new Map())
+      return hackathons.map((hackathon) => ({
+        ...hackathon,
+        evaluated_count: evaluatedByHackathon.get(hackathon.hackathon_id) || 0,
+      }))
+    },
+    { key: queryKeys.submissionsAdminHackathons, staleTime: 30_000 },
+  )
   const [query, setQuery] = useState('')
 
   const hackathons = useMemo(() => {
@@ -49,8 +53,8 @@ export default function AdminSubmissionsPage() {
         actions={
           <Button
             variant="secondary"
-            onClick={reload}
-            loading={loading}
+            onClick={() => reload({ force: true })}
+            loading={loading && !data}
             leftIcon={<Icon name="refresh" size={17} />}
           >
             Refresh

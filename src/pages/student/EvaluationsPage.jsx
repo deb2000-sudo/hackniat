@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
+import { queryKeys } from '../../lib/queryKeys'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
@@ -13,7 +14,10 @@ import { LoadingBlock } from '../../components/ui/Spinner'
 import SessionTable from '../../components/evaluation/SessionTable'
 
 export default function EvaluationsPage() {
-  const { data, loading, error, reload } = useAsync(() => evaluationApi.listSubmissions())
+  const { data, loading, error, reload } = useAsync(
+    (opts) => evaluationApi.listSubmissions(opts),
+    { key: queryKeys.submissionsMine, staleTime: 30_000 },
+  )
   const evaluations = useMemo(() => data || [], [data])
 
   const stats = useMemo(
@@ -33,8 +37,8 @@ export default function EvaluationsPage() {
         actions={
           <Button
             variant="secondary"
-            onClick={reload}
-            loading={loading}
+            onClick={() => reload({ force: true })}
+            loading={loading && !data}
             leftIcon={<Icon name="refresh" size={18} />}
           >
             Refresh

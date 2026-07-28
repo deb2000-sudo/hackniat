@@ -4,6 +4,8 @@ import { evaluationApi } from '../../api/evaluation'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
+import { queryKeys } from '../../lib/queryKeys'
+import { invalidateQueries } from '../../lib/queryCache'
 import { formatFileSize } from '../../utils/format'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -204,17 +206,26 @@ export default function NewEvaluationPage() {
     loading: requirementsLoading,
     error: requirementsError,
     reload: reloadRequirements,
-  } = useAsync(() => evaluationRequirementsApi.list())
+  } = useAsync(
+    (opts) => evaluationRequirementsApi.list(opts),
+    { key: queryKeys.evaluationRequirements, staleTime: 60_000 },
+  )
   const {
     data: hackathons,
     loading: hackathonsLoading,
     error: hackathonsError,
     reload: reloadHackathons,
-  } = useAsync(() => hackathonsApi.list())
+  } = useAsync(
+    (opts) => hackathonsApi.list(opts),
+    { key: queryKeys.hackathons, staleTime: 60_000 },
+  )
   const {
     data: videoMeta,
     error: videoMetaError,
-  } = useAsync(() => evaluationApi.getAcceptedVideoTypes())
+  } = useAsync(
+    (opts) => evaluationApi.getAcceptedVideoTypes(opts),
+    { key: queryKeys.acceptedVideoTypes, staleTime: 5 * 60_000 },
+  )
 
   const [selectedHackathonId, setSelectedHackathonId] = useState('')
   const [selectedThemeId, setSelectedThemeId] = useState('')
@@ -423,6 +434,7 @@ export default function NewEvaluationPage() {
       }, {
         onStageChange: setPhase,
       })
+      invalidateQueries(queryKeys.submissionsMine)
       setSubmittedSession(submitted)
     } catch (submitError) {
       setError(submitError.message || 'Your submission could not be recorded. Please try again.')

@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { adminApi } from '../../api/admin'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
+import { queryKeys } from '../../lib/queryKeys'
 import { ROLES } from '../../utils/constants'
 import { formatDate } from '../../utils/format'
 import { getHackathonStatus } from '../../utils/hackathons'
@@ -17,35 +19,41 @@ import Badge, { RoleBadge } from '../../components/ui/Badge'
 import Avatar from '../../components/ui/Avatar'
 
 export default function AdminDashboard() {
-  const { data, loading, error } = useAsync(async () => {
-    const [users, evaluators, pending] = await Promise.all([
-      adminApi.getUsers(),
-      adminApi.getEvaluators(),
-      adminApi.getPendingEvaluators(),
-    ])
-    return { users, evaluators, pending }
-  }, [])
+  // Non-blocking: paint the shell immediately; each section shows its own loader.
+  const { data, loading, error } = useAsync(
+    async () => {
+      const [users, evaluators, pending] = await Promise.all([
+        adminApi.getUsers(),
+        adminApi.getEvaluators(),
+        adminApi.getPendingEvaluators(),
+      ])
+      return { users, evaluators, pending }
+    },
+    { key: queryKeys.adminOverview, staleTime: 30_000 },
+  )
   const {
     data: hackathonData,
     loading: hackathonsLoading,
     error: hackathonsError,
     reload: reloadHackathons,
-  } = useAsync(() => hackathonsApi.list())
+  } = useAsync(
+    (opts) => hackathonsApi.list(opts),
+    { key: queryKeys.hackathons, staleTime: 60_000 },
+  )
 
-  if (loading) {
-    return (
-      <div className="container page">
-        <LoadingBlock label="Loading overview…" />
-      </div>
-    )
-  }
-
-  const users = data?.users || []
+  const users = useMemo(() => data?.users || [], [data])
   const evaluators = data?.evaluators || []
   const pending = data?.pending || []
-  const students = users.filter((u) => u.role === ROLES.STUDENT)
-  const hackathons = [...(hackathonData || [])].sort((a, b) =>
-    String(a.start_date || '').localeCompare(String(b.start_date || '')),
+  const students = useMemo(
+    () => users.filter((u) => u.role === ROLES.STUDENT),
+    [users],
+  )
+  const hackathons = useMemo(
+    () =>
+      [...(hackathonData || [])].sort((a, b) =>
+        String(a.start_date || '').localeCompare(String(b.start_date || '')),
+      ),
+    [hackathonData],
   )
 
   return (
@@ -65,11 +73,15 @@ export default function AdminDashboard() {
       )}
 
       <div className="grid grid-4 admin-overview-stats" style={{ marginBottom: 28 }}>
-        <StatCard icon="users" value={users.length} label="Total users" />
-        <StatCard icon="user" value={students.length} label="Students" />
-        <StatCard icon="shield" value={evaluators.length} label="Evaluators" />
-        <StatCard icon="clock" value={pending.length} label="Pending approvals" />
-        <StatCard icon="calendar" value={hackathonData?.length ?? '—'} label="Hackathons" />
+        <StatCard icon="users" value={loading && !data ? '—' : users.length} label="Total users" />
+        <StatCard icon="user" value={loading && !data ? '—' : students.length} label="Students" />
+        <StatCard icon="shield" value={loading && !data ? '—' : evaluators.length} label="Evaluators" />
+        <StatCard icon="clock" value={loading && !data ? '—' : pending.length} label="Pending approvals" />
+        <StatCard
+          icon="calendar"
+          value={hackathonsLoading && !hackathonData ? '—' : (hackathonData?.length ?? 0)}
+          label="Hackathons"
+        />
       </div>
 
       <Card className="admin-hackathons-card">
@@ -82,8 +94,8 @@ export default function AdminDashboard() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={reloadHackathons}
-              loading={hackathonsLoading}
+              onClick={() => reloadHackathons({ force: true })}
+              loading={hackathonsLoading && !hackathonData}
               leftIcon={<Icon name="refresh" size={16} />}
             >
               Refresh
@@ -98,7 +110,7 @@ export default function AdminDashboard() {
             <Alert variant="danger" title="Unable to load hackathons">
               <div className="stack-sm">
                 <span>{hackathonsError.message}</span>
-                <Button variant="secondary" size="sm" onClick={reloadHackathons}>Try again</Button>
+                <Button variant="secondary" size="sm" onClick={() => reloadHackathons({ force: true })}>Try again</Button>
               </div>
             </Alert>
           ) : hackathonsLoading && !hackathonData ? (
@@ -158,7 +170,9 @@ export default function AdminDashboard() {
             </Button>
           </CardHeader>
           <CardBody>
-            {pending.length ? (
+            {loading && !data ? (
+              <LoadingBlock label="Loading…" />
+            ) : pending.length ? (
               <div className="stack-md">
                 {pending.slice(0, 5).map((u) => (
                   <div className="row-between" key={u.id}>

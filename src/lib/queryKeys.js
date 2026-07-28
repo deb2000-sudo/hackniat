@@ -1,0 +1,20 @@
+/** Stable cache keys for shared server state. */
+export const queryKeys = {
+  submissionsMine: 'submissions:mine',
+  submissionsAdminHackathons: 'submissions:admin-hackathons',
+  submissionsAdminAll: 'submissions:admin-all',
+  submissionsEvaluatorHackathons: 'submissions:evaluator-hackathons',
+  submissionsHackathonAdmin: (id) => `submissions:admin-hackathon:${id}`,
+  submissionsHackathonEvaluator: (id) => `submissions:evaluator-hackathon:${id}`,
+  submission: (id) => `submission:${id}`,
+  submissionReport: (id) => `submission-report:${id}`,
+  hackathons: 'hackathons:list',
+  hackathon: (id) => `hackathon:${id}`,
+  themes: 'themes:list',
+  evaluationRequirements: 'evaluation-requirements:list',
+  acceptedVideoTypes: 'submissions:accepted-video-types',
+  adminUsers: 'admin:users',
+  adminEvaluators: 'admin:evaluators',
+  adminPendingEvaluators: 'admin:pending-evaluators',
+  adminOverview: 'admin:overview',
+}

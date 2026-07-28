@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useAsync } from '../../hooks/useAsync'
 import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
+import { queryKeys } from '../../lib/queryKeys'
 import { formatDate, formatScore } from '../../utils/format'
 import PageHeader from '../../components/layout/PageHeader'
 import Button from '../../components/ui/Button'
@@ -17,8 +18,14 @@ import { LoadingBlock } from '../../components/ui/Spinner'
 
 export default function StudentDashboard() {
   const { user } = useAuth()
-  const { data, loading, error, reload } = useAsync(() => evaluationApi.listSubmissions())
-  const { data: hackathons } = useAsync(() => hackathonsApi.list())
+  const { data, loading, error, reload } = useAsync(
+    (opts) => evaluationApi.listSubmissions(opts),
+    { key: queryKeys.submissionsMine, staleTime: 30_000 },
+  )
+  const { data: hackathons } = useAsync(
+    (opts) => hackathonsApi.list(opts),
+    { key: queryKeys.hackathons, staleTime: 60_000 },
+  )
   const sessions = useMemo(() => data || [], [data])
 
   const stats = useMemo(() => {
@@ -42,8 +49,8 @@ export default function StudentDashboard() {
           <>
             <Button
               variant="secondary"
-              onClick={reload}
-              loading={loading}
+              onClick={() => reload({ force: true })}
+              loading={loading && !data}
               leftIcon={<Icon name="refresh" size={18} />}
             >
               Refresh
@@ -81,7 +88,12 @@ export default function StudentDashboard() {
               <Card className="student-hackathon-theme-card" key={hackathon.id}>
                 <div className="student-hackathon-theme-card__media">
                   {hackathon.banner_url ? (
-                    <img src={hackathon.banner_url} alt={`${hackathon.name} banner`} />
+                    <img
+                      src={hackathon.banner_url}
+                      alt={`${hackathon.name} banner`}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <span><Icon name="trophy" size={28} /></span>
                   )}

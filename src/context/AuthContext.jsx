@@ -1,6 +1,8 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 import { authApi } from '../api/auth'
 import { ApiError } from '../api/client'
+import { clearQueryCache } from '../lib/queryCache'
+import { prefetchForRole } from '../lib/prefetch'
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext(null)
@@ -30,7 +32,9 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true
     ;(async () => {
-      await refresh()
+      const me = await refresh()
+      // Warm role dashboards in the background while the shell paints.
+      if (me?.role) prefetchForRole(me.role)
       if (active) setLoading(false)
     })()
     return () => {
@@ -41,7 +45,10 @@ export function AuthProvider({ children }) {
   const login = useCallback(
     async (credentials) => {
       await authApi.login(credentials)
-      return refresh()
+      const me = await refresh()
+      // Prefetch starts before navigation so the destination page often hits a warm cache.
+      if (me?.role) prefetchForRole(me.role)
+      return me
     },
     [refresh],
   )
@@ -50,6 +57,7 @@ export function AuthProvider({ children }) {
     try {
       await authApi.logout()
     } finally {
+      clearQueryCache()
       setUser(null)
     }
   }, [])

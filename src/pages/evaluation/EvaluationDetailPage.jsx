@@ -22,11 +22,17 @@ export default function EvaluationDetailPage() {
   const { user } = useAuth()
   const isStudent = user?.role === ROLES.STUDENT
 
-  const fetcher = useCallback(() => evaluationApi.getSubmission(sessionId), [sessionId])
+  const fetcher = useCallback(
+    (opts) => evaluationApi.getSubmission(sessionId, opts),
+    [sessionId],
+  )
 
   const { data: session, error, loading } = usePolling(fetcher, {
-    isDone: (s) => isStudent ? !!s?.report_published : TERMINAL.includes(s?.status),
-    interval: 3000,
+    isDone: (s) => (isStudent ? !!s?.report_published : TERMINAL.includes(s?.status)),
+    // Students may wait a long time for publish — start at 5s and ease up to 30s.
+    // Evaluators/admins need snappier updates while AI is processing.
+    interval: isStudent ? 5000 : 3000,
+    maxInterval: isStudent ? 30_000 : 3000,
   })
 
   const backTo = ROLE_HOME[user?.role] || '/'

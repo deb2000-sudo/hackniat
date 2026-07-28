@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
+import { queryKeys } from '../../lib/queryKeys'
 import { formatDate } from '../../utils/format'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
@@ -13,8 +14,9 @@ import Input from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
 
 export default function EvaluatorDashboard() {
-  const { data, loading, error, reload } = useAsync(() =>
-    evaluationApi.listEvaluatorHackathons(),
+  const { data, loading, error, reload } = useAsync(
+    (opts) => evaluationApi.listEvaluatorHackathons(opts),
+    { key: queryKeys.submissionsEvaluatorHackathons, staleTime: 30_000 },
   )
   const [query, setQuery] = useState('')
 
@@ -39,8 +41,8 @@ export default function EvaluatorDashboard() {
         actions={
           <Button
             variant="secondary"
-            onClick={reload}
-            loading={loading}
+            onClick={() => reload({ force: true })}
+            loading={loading && !data}
             leftIcon={<Icon name="refresh" size={17} />}
           >
             Refresh

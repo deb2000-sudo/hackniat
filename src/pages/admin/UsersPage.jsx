@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { adminApi } from '../../api/admin'
 import { useAsync } from '../../hooks/useAsync'
+import { queryKeys } from '../../lib/queryKeys'
 import PageHeader from '../../components/layout/PageHeader'
 import Card, { CardBody } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -15,7 +16,10 @@ import EmptyState from '../../components/ui/EmptyState'
 import { formatDate } from '../../utils/format'
 
 export default function UsersPage() {
-  const { data, loading, error, reload } = useAsync(() => adminApi.getUsers(), [])
+  const { data, loading, error, reload } = useAsync(
+    (opts) => adminApi.getUsers(opts),
+    { key: queryKeys.adminUsers, staleTime: 30_000 },
+  )
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState(null)
   const [name, setName] = useState('')
@@ -66,7 +70,7 @@ export default function UsersPage() {
         title="Student Management"
         description="View and manage all registered student teams."
         actions={
-          <Button variant="secondary" onClick={reload} leftIcon={<Icon name="refresh" size={18} />}>
+          <Button variant="secondary" onClick={() => reload({ force: true })} leftIcon={<Icon name="refresh" size={18} />}>
             Refresh
           </Button>
         }
