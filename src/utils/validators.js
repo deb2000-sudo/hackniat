@@ -22,13 +22,32 @@ export function isMobile(value) {
  * @returns {Record<string,string>} field -> error message (empty when valid)
  */
 export function validateStudentForm(form) {
+  return {
+    ...validateStudentTeamDetails(form),
+    ...validateStudentTeamLeader(form),
+    ...validateStudentTeamMembers(form),
+    ...validateStudentSecurity(form),
+  }
+}
+
+export function validateStudentTeamDetails(form) {
   const errors = {}
   if (!required(form.team_name)) errors.team_name = 'Team name is required'
   if (!required(form.university)) errors.university = 'University is required'
-  if (!required(form.team_leader_name)) errors.team_leader_name = 'Team leader name is required'
   if (!required(form.niat_id)) errors.niat_id = 'NIAT ID is required'
+  return errors
+}
+
+export function validateStudentTeamLeader(form) {
+  const errors = {}
+  if (!required(form.team_leader_name)) errors.team_leader_name = 'Team leader name is required'
   if (!isEmail(form.email)) errors.email = 'Enter a valid team leader email'
   if (!isMobile(form.mobile_no)) errors.mobile_no = 'Enter a valid mobile number (10-15 digits)'
+  return errors
+}
+
+export function validateStudentTeamMembers(form) {
+  const errors = {}
 
   for (const number of [1, 2]) {
     const nameKey = `team_member_${number}_name`
@@ -59,6 +78,11 @@ export function validateStudentForm(form) {
     }
   })
 
+  return errors
+}
+
+export function validateStudentSecurity(form) {
+  const errors = {}
   if (!minLength(form.password, 6)) errors.password = 'Password must be at least 6 characters'
   if (form.password !== form.confirm_password) errors.confirm_password = 'Passwords do not match'
   return errors

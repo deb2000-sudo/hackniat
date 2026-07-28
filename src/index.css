@@ -2784,7 +2784,7 @@ code {
 .auth__feature-icon { width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.15); display: grid; place-items: center; flex-shrink: 0; }
 .auth__main { display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
 .auth__card { width: 100%; max-width: 440px; }
-.auth__card--wide { max-width: 720px; }
+.auth__card--wide { max-width: 560px; }
 .auth__card h1 { font-size: 1.6rem; }
 .form-section-title {
   padding-bottom: 8px; border-bottom: 1px solid var(--border);
@@ -2801,6 +2801,7 @@ code {
   background: var(--surface);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 .register-role-panel.is-open {
   box-shadow: var(--shadow-md);
@@ -2842,24 +2843,209 @@ code {
   color: var(--heading);
   font-size: 1rem;
 }
-.register-role-trigger__copy small {
-  color: var(--text-muted);
-  font-size: 0.82rem;
-}
 .register-role-trigger__chevron {
   color: var(--text-muted);
-  transition: transform 0.2s ease;
+  transition: transform 0.28s ease;
   flex-shrink: 0;
 }
 .register-role-trigger__chevron.is-open {
   transform: rotate(180deg);
 }
-.register-role-panel__body {
-  padding: 8px 18px 20px;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  animation: fade 0.15s ease;
+
+/* Smooth accordion open/close without nested scrollbars */
+.register-role-panel__collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s ease;
 }
+.register-role-panel__collapse[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+.register-role-panel__collapse-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.register-role-panel__body {
+  padding: 4px 18px 20px;
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.register-page {
+  max-width: 100%;
+}
+
+/* Section-wise learner wizard */
+.student-register-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: hidden;
+}
+
+.student-register-steps {
+  list-style: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0;
+  margin: 0;
+  padding: 4px 0 2px;
+}
+
+.student-register-steps__item {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--text-subtle);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.student-register-steps__mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  z-index: 1;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.student-register-steps__label {
+  letter-spacing: 0.02em;
+}
+
+.student-register-steps__connector {
+  position: absolute;
+  top: 14px;
+  left: calc(50% + 18px);
+  width: calc(100% - 36px);
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+  transition: background 0.25s ease;
+}
+
+.student-register-steps__item.is-active {
+  color: var(--brand-700);
+}
+.student-register-steps__item.is-active .student-register-steps__mark {
+  border-color: var(--brand-600);
+  color: var(--brand-700);
+  background: var(--brand-50);
+  transform: scale(1.06);
+}
+.student-register-steps__item.is-done {
+  color: var(--success-600);
+}
+.student-register-steps__item.is-done .student-register-steps__mark {
+  border-color: var(--success-500);
+  background: var(--success-500);
+  color: #fff;
+}
+.student-register-steps__item.is-done .student-register-steps__connector {
+  background: var(--success-500);
+}
+
+.student-register-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.student-register-section__head {
+  margin-bottom: 14px;
+}
+.student-register-section__head h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+.student-register-section__head p {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.student-register-section--forward {
+  animation: registerSlideIn 0.28s ease;
+}
+.student-register-section--back {
+  animation: registerSlideBack 0.28s ease;
+}
+
+@keyframes registerSlideIn {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes registerSlideBack {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: none; }
+}
+
+.student-register-members {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+.student-register-member-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.student-register-member-row .field {
+  gap: 4px;
+}
+.student-register-panel .field {
+  gap: 5px;
+}
+.student-register-panel .input,
+.student-register-panel .textarea {
+  padding: 9px 11px;
+}
+@media (max-width: 640px) {
+  .student-register-member-row {
+    grid-template-columns: 1fr;
+  }
+  .student-register-steps__label {
+    font-size: 0.65rem;
+  }
+}
+
+.student-register-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.student-register-success {
+  padding: 8px 0 4px;
+  text-align: center;
+}
+.student-register-success__mark {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--success-50);
+  color: var(--success-600);
+}
+
 .register-alt {
   display: flex;
   flex-direction: column;
