@@ -29,13 +29,11 @@ export default function EvaluationDetailPage() {
 
   const { data: session, error, loading } = usePolling(fetcher, {
     isDone: (s) => (isStudent ? !!s?.report_published : TERMINAL.includes(s?.status)),
-    // Students may wait a long time for publish — start at 5s and ease up to 30s.
-    // Evaluators/admins need snappier updates while AI is processing.
     interval: isStudent ? 5000 : 3000,
     maxInterval: isStudent ? 30_000 : 3000,
   })
 
-  const backTo = ROLE_HOME[user?.role] || '/'
+  const backTo = isStudent ? '/student/evaluations' : ROLE_HOME[user?.role] || '/'
 
   if (loading && !session) {
     return (
@@ -53,7 +51,7 @@ export default function EvaluationDetailPage() {
         </Alert>
         <div>
           <Button as={Link} to={backTo} variant="secondary" leftIcon={<Icon name="arrowLeft" size={18} />}>
-            Back to dashboard
+            Back
           </Button>
         </div>
       </div>
@@ -64,16 +62,80 @@ export default function EvaluationDetailPage() {
     ? !!session?.report_published
     : session?.status === EVALUATION_STATUS.COMPLETED
 
+  // Student view: Final Score + Detailed Analysis only (no submission details sidebar).
+  if (isStudent) {
+    return (
+      <div className="container container--narrow page student-eval-page">
+        <PageHeader
+          eyebrow="Evaluation"
+          title={session?.team_name || session?.title || session?.source_filename || 'Your evaluation'}
+          description={
+            canViewResult
+              ? 'Your final score and detailed analysis report.'
+              : 'Results appear here once an administrator publishes your report.'
+          }
+          actions={
+            <Button
+              as={Link}
+              to={backTo}
+              variant="secondary"
+              leftIcon={<Icon name="arrowLeft" size={18} />}
+            >
+              Back
+            </Button>
+          }
+        />
+
+        {canViewResult ? (
+          <div className="stack-lg student-eval-results">
+            <Card className="student-final-score student-final-score--hero">
+              <CardBody>
+                <div className="student-final-score__copy">
+                  <span className="student-final-score__label">
+                    <Icon name="trophy" size={18} />
+                    Final score
+                  </span>
+                  <p>Approved by the hackathon administrator</p>
+                </div>
+                <div className="student-final-score__value">
+                  {session?.final_score != null ? (
+                    <strong>
+                      {session.final_score}
+                      <small>/100</small>
+                    </strong>
+                  ) : (
+                    <strong className="student-final-score__empty">—</strong>
+                  )}
+                </div>
+              </CardBody>
+            </Card>
+
+            <SubmissionReport submissionId={session.id} />
+          </div>
+        ) : (
+          <Card className="student-result-pending">
+            <CardBody>
+              <span><Icon name="clock" size={28} /></span>
+              <h2>Submitted — results pending</h2>
+              <p>
+                Your submission was recorded successfully. Your final score and detailed analysis
+                will appear here after the evaluator submits their review and an administrator
+                publishes the report.
+              </p>
+            </CardBody>
+          </Card>
+        )}
+      </div>
+    )
+  }
+
+  // Evaluator / admin view keeps the full detail layout.
   return (
     <div className="container page">
       <PageHeader
         eyebrow="Evaluation"
         title={session?.team_name || session?.title || session?.source_filename || 'Submission'}
-        description={
-          isStudent
-            ? 'Track publication status and view your report when it becomes available.'
-            : 'AI evaluation of the submitted hackathon demo.'
-        }
+        description="AI evaluation of the submitted hackathon demo."
         actions={
           <Button
             as={Link}
@@ -91,31 +153,9 @@ export default function EvaluationDetailPage() {
         <div className="stack-lg">
           {canViewResult ? (
             <>
-              {session?.final_score != null && (
-                <Card className="student-final-score">
-                  <CardBody>
-                    <div>
-                      <span>Final score</span>
-                      <p>Approved by the hackathon administrator</p>
-                    </div>
-                    <strong>{session.final_score}<small>/100</small></strong>
-                  </CardBody>
-                </Card>
-              )}
               <EvaluationResultView result={session.result} />
               <SubmissionReport submissionId={session.id} />
             </>
-          ) : isStudent ? (
-            <Card className="student-result-pending">
-              <CardBody>
-                <span><Icon name="clock" size={28} /></span>
-                <h2>Submitted — results pending</h2>
-                <p>
-                  Your submission was recorded successfully. Results will appear here after the
-                  evaluator submits their review and an administrator approves it.
-                </p>
-              </CardBody>
-            </Card>
           ) : (
             <SessionStatusPanel status={session?.status} error={session?.error} />
           )}

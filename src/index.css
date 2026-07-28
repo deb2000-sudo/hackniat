@@ -903,6 +903,14 @@ code {
   color: var(--text-muted);
 }
 
+.student-eval-page .page-header {
+  margin-bottom: 24px;
+}
+
+.student-eval-results {
+  max-width: 760px;
+}
+
 .student-final-score .card__body {
   display: flex;
   align-items: center;
@@ -910,6 +918,33 @@ code {
   gap: 18px;
   padding: 20px 22px;
   border-left: 4px solid var(--success-500);
+}
+
+.student-final-score--hero {
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(255, 255, 255, 0.95) 45%),
+    var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.student-final-score--hero .card__body {
+  padding: 28px 30px;
+  border-left-width: 5px;
+}
+
+.student-final-score__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--heading);
+  font-weight: 750;
+  font-size: 1.05rem;
+}
+
+.student-final-score__copy p {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 .student-final-score span {
@@ -929,10 +964,32 @@ code {
   line-height: 1;
 }
 
+.student-final-score--hero strong {
+  font-size: clamp(2.4rem, 5vw, 3.2rem);
+  letter-spacing: -0.03em;
+}
+
 .student-final-score strong small {
   margin-left: 2px;
   color: var(--text-muted);
   font-size: .8rem;
+}
+
+.student-final-score--hero strong small {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.student-final-score__empty {
+  color: var(--text-subtle) !important;
+}
+
+@media (max-width: 560px) {
+  .student-final-score--hero .card__body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
 }
 
 /* Admin submission review */
