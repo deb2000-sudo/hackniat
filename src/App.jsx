@@ -12,6 +12,7 @@ import { LoadingBlock } from './components/ui/Spinner'
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'))
+const EvaluatorRegisterPage = lazy(() => import('./pages/auth/EvaluatorRegisterPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'))
@@ -70,6 +71,7 @@ export default function App() {
             <Route element={<PublicOnlyRoute />}>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register/evaluator" element={<EvaluatorRegisterPage />} />
             </Route>
 
             <Route element={<Layout />}>

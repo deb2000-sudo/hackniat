@@ -2794,6 +2794,92 @@ code {
 .auth-tab { flex: 1; text-align: center; padding: 9px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.88rem; color: var(--text-muted); cursor: pointer; }
 .auth-tab.active { background: var(--surface); color: var(--brand-700); box-shadow: var(--shadow-sm); }
 .auth-tab:hover { text-decoration: none; }
+
+.register-role-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.register-role-panel.is-open {
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-300);
+}
+.register-role-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: none;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+.register-role-trigger:hover {
+  background: var(--surface-2);
+}
+.register-role-trigger__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--brand-700);
+  background: var(--brand-50);
+}
+.register-role-trigger__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.register-role-trigger__copy strong {
+  color: var(--heading);
+  font-size: 1rem;
+}
+.register-role-trigger__copy small {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.register-role-trigger__chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.register-role-trigger__chevron.is-open {
+  transform: rotate(180deg);
+}
+.register-role-panel__body {
+  padding: 8px 18px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  animation: fade 0.15s ease;
+}
+.register-alt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+.register-alt p { margin: 0; }
+.register-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.register-back-link:hover {
+  color: var(--brand-700);
+  text-decoration: none;
+}
 @media (max-width: 900px) { .auth { grid-template-columns: 1fr; } .auth__aside { display: none; } }
 
 /* ------------------------------ Hero / landing ------------------------- */
