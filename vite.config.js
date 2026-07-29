@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import babel from '@rolldown/plugin-babel'
 
 // The backend uses HttpOnly cookies for auth. To keep requests same-origin
@@ -22,6 +23,7 @@ const proxyPrefixes = [
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     babel({ presets: [reactCompilerPreset()] }),
   ],
   server: {

@@ -9,7 +9,7 @@ import { LoadingBlock } from './components/ui/Spinner'
 
 // Route-level code splitting: only the landing/auth shell is eager; every
 // feature page loads on demand so login and first paint stay lean.
-const LandingPage = lazy(() => import('./pages/LandingPage'))
+const DropLandingPage = lazy(() => import('./pages/DropLandingPage'))
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'))
 const EvaluatorRegisterPage = lazy(() => import('./pages/auth/EvaluatorRegisterPage'))
@@ -66,7 +66,7 @@ export default function App() {
       <AuthProvider>
         <Suspense fallback={<RouteFallback />}>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<DropLandingPage />} />
 
             <Route element={<PublicOnlyRoute />}>
               <Route path="/login" element={<LoginPage />} />

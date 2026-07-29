@@ -1,0 +1,63 @@
+/* =========================================================================
+   Application stylesheet entry.
+
+   The cascade layer order below IS the migration strategy:
+
+     theme      Tailwind design tokens
+     base       Tailwind preflight (element resets)
+     legacy     index.css — the pre-Tailwind design system
+     components repeated multi-utility patterns
+     utilities  Tailwind utilities
+
+   `legacy` sits ABOVE preflight, so the 30+ pages still on index.css keep
+   their typography and element styling untouched. It sits BELOW utilities,
+   so on a migrated page a Tailwind class always wins without !important or
+   specificity games.
+
+   That ordering is what makes this migration incremental: pages move to
+   utilities one at a time, and index.css shrinks as they do. Delete a legacy
+   rule only once nothing references it.
+   ========================================================================= */
+
+@layer theme, base, legacy, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import './index.css' layer(legacy);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  /* ---- Drop: dark canvas ---- */
+  --color-canvas: #0a0a0b;
+  --color-surface: #131316;
+  --color-raised: #1c1c22;
+  --color-hairline: #2a2a31;
+  --color-ink: #f4f4f1;
+  --color-muted: #8a8a94;
+
+  /* ---- Drop: volt lime accent ---- */
+  --color-volt: #c8fa3c;
+  --color-volt-deep: #a8d62b;
+  --color-volt-tint: #1f2a08;
+  --color-volt-edge: #3d5210;
+  --color-on-volt: #1a2405;
+
+  /* ---- Drop: states (readiness check + status badges only) ---- */
+  --color-passed: #3ddc91;
+  --color-warn: #ffb020;
+  --color-missing: #ff5c5c;
+  --color-info: #5b9eff;
+
+  --font-sans: 'General Sans', 'Satoshi', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+
+  --radius-drop: 10px;
+
+  /* Breakpoints are the design's own, not Tailwind's defaults:
+     md  nav switches from hamburger to inline links
+     lg  readiness check splits into two columns
+     xl  hackathon grid reaches three across */
+  --breakpoint-md: 721px;
+  --breakpoint-lg: 861px;
+  --breakpoint-xl: 1025px;
+}
