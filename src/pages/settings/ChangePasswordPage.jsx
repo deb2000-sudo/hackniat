@@ -10,6 +10,7 @@ import Icon from '../../components/ui/Icon'
 import { PasswordInput } from '../../components/ui/Input'
 
 const INITIAL_FORM = {
+  current_password: '',
   new_password: '',
   confirm_new_password: '',
 }
@@ -34,6 +35,7 @@ export default function ChangePasswordPage() {
     form.new_password.length >= 6 &&
     form.confirm_new_password.length >= 6 &&
     form.new_password === form.confirm_new_password
+  const canSubmit = form.current_password.length > 0 && passwordsMatch
   const confirmError =
     form.confirm_new_password && form.new_password !== form.confirm_new_password
       ? 'New password and confirm new password do not match'
@@ -46,7 +48,7 @@ export default function ChangePasswordPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    if (!passwordsMatch || loading) return
+    if (!canSubmit || loading) return
 
     setLoading(true)
     setSubmitError('')
@@ -84,6 +86,16 @@ export default function ChangePasswordPage() {
         <CardBody>
           <form className="stack-md" onSubmit={handleSubmit} noValidate>
             {success && <Alert variant="success">{success}</Alert>}
+            {submitError && <Alert variant="danger">{submitError}</Alert>}
+
+            <PasswordInput
+              label="Current password"
+              autoComplete="current-password"
+              required
+              value={form.current_password}
+              onChange={update('current_password')}
+              disabled={loading || !!success}
+            />
 
             <PasswordInput
               label="New password"
@@ -103,7 +115,7 @@ export default function ChangePasswordPage() {
               required
               value={form.confirm_new_password}
               onChange={update('confirm_new_password')}
-              error={confirmError || submitError}
+              error={confirmError}
               disabled={loading || !!success}
             />
 
@@ -112,7 +124,7 @@ export default function ChangePasswordPage() {
               variant="accent"
               block
               loading={loading}
-              disabled={!passwordsMatch || !!success}
+              disabled={!canSubmit || !!success}
             >
               Change password
             </Button>

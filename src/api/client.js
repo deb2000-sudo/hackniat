@@ -1,4 +1,24 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const CSRF_COOKIE_NAME = 'csrf_token'
+const CSRF_HEADER_NAME = 'X-CSRF-Token'
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
+/** Read a browser-accessible cookie by its exact name. */
+function getCookie(name) {
+  const prefix = `${encodeURIComponent(name)}=`
+  const cookie = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+
+  if (!cookie) return null
+
+  try {
+    return decodeURIComponent(cookie.slice(prefix.length))
+  } catch {
+    return cookie.slice(prefix.length)
+  }
+}
 
 /** Resolve a backend-provided relative media URL against the configured API origin. */
 export function resolveApiUrl(path) {
@@ -68,9 +88,20 @@ async function parseBody(res) {
  */
 export async function request(path, options = {}) {
   const { method = 'GET', body, formData, headers = {}, signal } = options
+  const normalizedMethod = method.toUpperCase()
 
   const finalHeaders = { ...headers }
   let payload
+
+  if (
+    MUTATING_METHODS.has(normalizedMethod) &&
+    !Object.keys(finalHeaders).some(
+      (name) => name.toLowerCase() === CSRF_HEADER_NAME.toLowerCase(),
+    )
+  ) {
+    const csrfToken = getCookie(CSRF_COOKIE_NAME)
+    if (csrfToken) finalHeaders[CSRF_HEADER_NAME] = csrfToken
+  }
 
   if (formData) {
     // Let the browser set the multipart boundary automatically.
@@ -83,7 +114,7 @@ export async function request(path, options = {}) {
   let res
   try {
     res = await fetch(`${BASE_URL}${path}`, {
-      method,
+      method: normalizedMethod,
       headers: finalHeaders,
       body: payload,
       credentials: 'include',
