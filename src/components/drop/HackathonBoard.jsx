@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconArrow, IconUsers } from './icons'
 import { DAY, describeRemaining, formatRemaining, useNow } from './useCountdown'
+import { BADGE, BADGE_CLOSED, BADGE_CLOSING, BADGE_OPEN, MONO, PANEL, WRAP } from './theme'
 
 /**
  * Deadlines are anchored once, at module load, to a fixed offset from now.
@@ -107,19 +108,20 @@ const matches = (filter, hackathon, remaining) => {
 }
 
 const statusOf = (remaining) => {
-  if (remaining <= 0) return { label: 'Closed', tone: 'border-hairline bg-raised text-muted' }
-  if (remaining < DAY) return { label: 'Closing soon', tone: 'border-[#4A3308] bg-[#2A1E05] text-warn' }
-  return { label: 'Open', tone: 'border-volt-edge bg-volt-tint text-volt' }
+  if (remaining <= 0) return { label: 'Closed', tone: BADGE_CLOSED }
+  if (remaining < DAY) return { label: 'Closing soon', tone: BADGE_CLOSING }
+  return { label: 'Open', tone: BADGE_OPEN }
 }
 
-const WRAP = 'mx-auto w-full max-w-[1180px] px-5'
 const META_LABEL = 'text-[11.5px] tracking-[0.06em] text-muted uppercase'
 
 function HackathonCard({ hackathon, remaining }) {
   const status = statusOf(remaining)
 
   return (
-    <article className="group flex flex-col rounded-drop border border-hairline bg-surface p-[22px] transition-[transform,border-color,background-color] duration-150 hover:-translate-y-[3px] hover:border-volt-edge hover:bg-raised">
+    <article
+      className={`${PANEL} group flex flex-col p-[22px] transition-[transform,border-color,background-color] duration-150 hover:-translate-y-[3px] hover:border-volt-edge hover:bg-raised`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-[18px] font-semibold tracking-[-0.015em] text-ink">
@@ -127,11 +129,7 @@ function HackathonCard({ hackathon, remaining }) {
           </h3>
           <p className="mt-[5px] text-[13.5px] text-muted">by {hackathon.org}</p>
         </div>
-        <span
-          className={`shrink-0 rounded-full border px-2.5 py-[5px] text-[11.5px] font-medium whitespace-nowrap ${status.tone}`}
-        >
-          {status.label}
-        </span>
+        <span className={`${BADGE} ${status.tone}`}>{status.label}</span>
       </div>
 
       <p className="my-[18px] mt-5 border-y border-hairline py-3.5 font-mono text-[20px] tracking-[-0.01em] text-ink tabular-nums">
@@ -159,7 +157,7 @@ function HackathonCard({ hackathon, remaining }) {
       <p className="mt-auto flex items-center gap-2 border-t border-hairline pt-4 text-[13.5px] text-muted">
         <IconUsers width={15} height={15} />
         <span>
-          <span className="font-mono tabular-nums">
+          <span className={MONO}>
             {hackathon.entrants.toLocaleString('en-US')}
           </span>{' '}
           building
@@ -194,7 +192,7 @@ export default function HackathonBoard() {
         </div>
 
         <div
-          className="drop-filters -mx-5 mb-4 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] md:mx-0 md:mb-6 md:px-0"
+          className="drop-no-scrollbar -mx-5 mb-4 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] md:mx-0 md:mb-6 md:px-0"
           role="group"
           aria-label="Filter hackathons"
         >

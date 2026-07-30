@@ -1,0 +1,364 @@
+/* =========================================================================
+   Drop — global theme.
+
+   Any page or component opts in by wrapping itself in `.drop`. That gives it
+   the dark canvas, the type treatment, and a dark skin over the shared
+   component classes from index.css (.input, .btn, .alert, .card …), so the
+   existing UI primitives work on a Drop surface without being rewritten.
+
+   Everything lives in @layer components: above `legacy` so it beats
+   index.css, below `utilities` so a Tailwind class still wins.
+   ========================================================================= */
+
+@layer components {
+  /* ----------------------------- Surface ------------------------------- */
+  .drop {
+    /* Remap the legacy design-system variables onto the Drop palette. Every
+       rule in index.css resolves these at use time, so any component dropped
+       onto a Drop surface adapts without being skinned individually — this
+       catches the rules we haven't looked at, not just the ones we have.
+       Only the greyscale ramp is remapped: brand/accent stay put so volt
+       can't leak in through the back door. */
+    --bg: var(--color-canvas);
+    --surface: var(--color-surface);
+    --surface-2: var(--color-raised);
+    --border: var(--color-hairline);
+    --border-strong: var(--color-hairline);
+    --text: var(--color-ink);
+    --text-muted: var(--color-muted);
+    --text-subtle: var(--color-muted);
+    --heading: var(--color-ink);
+
+    /* Flat surfaces: the brief calls for hairline borders, not shadows. */
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-brand: none;
+
+    min-height: 100vh;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .drop h1,
+  .drop h2,
+  .drop h3,
+  .drop h4 {
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  /* index.css (layer: legacy) styles bare `a` indigo for the rest of the app.
+     Default to inherited colour here; any text-* utility still wins. */
+  .drop a {
+    color: inherit;
+  }
+
+  .drop :focus-visible {
+    outline: 2px solid var(--color-volt);
+    outline-offset: 3px;
+  }
+
+  .drop ::selection {
+    background: var(--color-volt);
+    color: var(--color-on-volt);
+  }
+
+  .drop .text-muted,
+  .drop .text-subtle {
+    color: var(--color-muted);
+  }
+
+  /* Paint the document itself so overscroll never flashes the light app
+     theme that index.css sets on <body>. Toggled by useDropSurface(). */
+  body.drop-active {
+    background: var(--color-canvas);
+    color-scheme: dark;
+  }
+
+  html:has(body.drop-active) {
+    scroll-behavior: smooth;
+    scroll-padding-top: 76px;
+  }
+
+  /* ---------------------- Form controls (dark skin) -------------------- */
+  .drop .label {
+    color: var(--color-ink);
+  }
+
+  .drop .input,
+  .drop .textarea,
+  .drop .select {
+    background: var(--color-surface);
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .input::placeholder,
+  .drop .textarea::placeholder {
+    color: #6b6b75;
+  }
+
+  .drop .input:focus,
+  .drop .textarea:focus,
+  .drop .select:focus {
+    border-color: var(--color-volt-edge);
+    box-shadow: 0 0 0 3px rgb(200 250 60 / 0.12);
+  }
+
+  .drop .input--error,
+  .drop .textarea--error,
+  .drop .select--error {
+    border-color: var(--color-missing);
+  }
+
+  .drop .input--error:focus,
+  .drop .textarea--error:focus {
+    box-shadow: 0 0 0 3px rgb(255 92 92 / 0.15);
+  }
+
+  .drop .field__error {
+    color: var(--color-missing);
+  }
+
+  .drop .field__hint {
+    color: var(--color-muted);
+  }
+
+  .drop .input-group__addon {
+    color: var(--color-muted);
+  }
+
+  .drop .input-group__addon:hover {
+    color: var(--color-ink);
+  }
+
+  /* ------------------------------ Buttons ------------------------------ */
+  .drop .btn {
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .btn--accent,
+  .drop .btn--primary {
+    background: var(--color-volt);
+    color: var(--color-on-volt);
+    box-shadow: none;
+  }
+
+  .drop .btn--accent:hover:not(:disabled),
+  .drop .btn--primary:hover:not(:disabled) {
+    background: var(--color-volt-deep);
+    filter: none;
+  }
+
+  .drop .btn--secondary {
+    background: transparent;
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+  }
+
+  .drop .btn--secondary:hover:not(:disabled) {
+    background: var(--color-surface);
+    border-color: #3a3a44;
+  }
+
+  .drop .btn--ghost {
+    color: var(--color-muted);
+  }
+
+  .drop .btn--ghost:hover:not(:disabled) {
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  /* ------------------------------ Surfaces ----------------------------- */
+  .drop .card {
+    background: var(--color-surface);
+    border-color: var(--color-hairline);
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+  }
+
+  /* ------------------------------- Alerts ------------------------------ */
+  .drop .alert {
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .alert--danger {
+    background: #2a1010;
+    border-color: #5a2222;
+    color: #ff8a8a;
+  }
+
+  .drop .alert--success {
+    background: #0c2a1d;
+    border-color: #1c5540;
+    color: #6fe3ae;
+  }
+
+  .drop .alert--warning {
+    background: #2a1e05;
+    border-color: #4a3308;
+    color: #ffc55c;
+  }
+
+  .drop .alert--info {
+    background: #0e1f38;
+    border-color: #24406b;
+    color: #8fbeff;
+  }
+
+  /* Auth heading sits between the page h1 and a section h2. */
+  .drop-auth-card h1 {
+    font-size: 26px;
+    letter-spacing: -0.025em;
+  }
+
+  /* ------------------- Register role picker (dark skin) ---------------- */
+  .drop .register-role-panel {
+    border-color: var(--color-hairline);
+    border-radius: var(--radius-drop);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .drop .register-role-panel.is-open {
+    border-color: var(--color-volt-edge);
+    box-shadow: none;
+  }
+
+  .drop .register-role-trigger {
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  .drop .register-role-trigger:hover {
+    background: var(--color-raised);
+  }
+
+  .drop .register-role-trigger__icon {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+  }
+
+  .drop .register-role-trigger__copy strong {
+    color: var(--color-ink);
+  }
+
+  .drop .register-role-trigger__chevron {
+    color: var(--color-muted);
+  }
+
+  .drop .register-role-panel__body {
+    border-top-color: var(--color-hairline);
+  }
+
+  .drop .register-back-link {
+    color: var(--color-muted);
+  }
+
+  .drop .register-back-link:hover {
+    color: var(--color-ink);
+  }
+
+  /* ---------------- Multi-step register stepper (dark skin) ------------ */
+  .drop .student-register-steps__item,
+  .drop .hackathon-form-stepper__item,
+  .drop .submission-stepper__item {
+    color: var(--color-muted);
+  }
+
+  .drop .student-register-steps__mark {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+    color: var(--color-muted);
+  }
+
+  .drop .student-register-steps__connector {
+    background: var(--color-hairline);
+  }
+
+  /* Active step takes the volt accent; completed steps use the passed state,
+     which is legitimate status colour rather than decoration. */
+  .drop .student-register-steps__item.is-active {
+    color: var(--color-volt);
+  }
+
+  .drop .student-register-steps__item.is-active .student-register-steps__mark {
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
+    color: var(--color-volt);
+  }
+
+  .drop .student-register-steps__item.is-done {
+    color: var(--color-passed);
+  }
+
+  .drop .student-register-steps__item.is-done .student-register-steps__mark {
+    border-color: var(--color-passed);
+    background: var(--color-passed);
+    color: var(--color-canvas);
+  }
+
+  .drop .student-register-steps__item.is-done .student-register-steps__connector {
+    background: var(--color-passed);
+  }
+
+  .drop .student-register-panel {
+    background: transparent;
+    border-color: var(--color-hairline);
+  }
+
+  /* Step indicators used by the multi-step register forms. */
+  .drop .form-section-title {
+    border-bottom-color: var(--color-hairline);
+    color: var(--color-ink);
+  }
+
+  .drop .auth-tabs {
+    background: var(--color-surface);
+  }
+
+  .drop .auth-tab {
+    color: var(--color-muted);
+  }
+
+  .drop .auth-tab.active {
+    background: var(--color-raised);
+    color: var(--color-ink);
+    box-shadow: none;
+  }
+}
+
+/* Unlayered on purpose: this must outrank utilities. */
+@media (prefers-reduced-motion: reduce) {
+  html:has(body.drop-active) {
+    scroll-behavior: auto;
+  }
+
+  .drop *,
+  .drop *::before,
+  .drop *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .drop [class*='hover:-translate']:hover {
+    transform: none !important;
+  }
+}
+
+/* Horizontal rails: keep the scrolling, drop the scrollbar. */
+.drop-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

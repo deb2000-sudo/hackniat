@@ -45,7 +45,7 @@ export default function HackathonsPage() {
         <div className="hackathons-hero__content">
           <span className="hackathons-hero__icon"><Icon name="trophy" size={26} /></span>
           <div>
-            <div className="eyebrow">HackNIAT events</div>
+            <div className="eyebrow">Drop events</div>
             <h1>Build. Compete. Make an impact.</h1>
             <p>Discover active and upcoming hackathons, timelines, rewards, and participation guidelines.</p>
           </div>

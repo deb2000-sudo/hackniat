@@ -7,6 +7,7 @@ import Alert from '../../components/ui/Alert'
 import { useAuth } from '../../hooks/useAuth'
 import { validateLoginForm } from '../../utils/validators'
 import { ROLE_HOME } from '../../utils/constants'
+import { LINK_INLINE } from '../../components/drop/theme'
 
 const initial = { email: '', password: '' }
 
@@ -48,7 +49,7 @@ export default function LoginPage() {
       <div className="stack-md">
         <div>
           <h1>Welcome back</h1>
-          <p className="text-muted">Sign in to continue to HackNIAT.</p>
+          <p className="text-muted">Sign in to continue to Drop.</p>
         </div>
 
         {submitError && <Alert variant="danger">{submitError}</Alert>}
@@ -82,7 +83,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-sm text-center text-muted">
-          Don&apos;t have an account? <Link to="/register">Create one</Link>
+          Don&apos;t have an account? <Link to="/register" className={LINK_INLINE}>Create one</Link>
         </p>
       </div>
     </AuthShell>

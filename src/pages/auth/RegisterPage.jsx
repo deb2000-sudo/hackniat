@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import AuthShell from '../../components/layout/AuthShell'
 import StudentRegisterForm from '../../components/auth/StudentRegisterForm'
 import Icon from '../../components/ui/Icon'
+import { LINK_INLINE } from '../../components/drop/theme'
 
 /**
  * Learner registration entry. Expanding "Learner from Nxtwave" reveals a
@@ -25,7 +26,7 @@ export default function RegisterPage() {
       <div className="stack-md register-page">
         <div>
           <h1>Create your account</h1>
-          <p className="text-muted">Join HackNIAT to submit your hackathon project.</p>
+          <p className="text-muted">Join Drop to submit your hackathon project.</p>
         </div>
 
         <div className={`register-role-panel ${learnerOpen ? 'is-open' : ''}`}>
@@ -70,7 +71,7 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-sm text-center text-muted">
-          Already have an account? <Link to="/login">Sign in</Link>
+          Already have an account? <Link to="/login" className={LINK_INLINE}>Sign in</Link>
         </p>
       </div>
     </AuthShell>

@@ -1,11 +1,12 @@
-import { Fragment, useEffect } from 'react'
+import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import DropNav from '../components/drop/DropNav'
 import HackathonBoard from '../components/drop/HackathonBoard'
 import CountUpStat from '../components/drop/CountUpStat'
 import { IconMissing, IconPassed, IconWarn } from '../components/drop/icons'
 import { HOUR, formatRemaining, useCountdown } from '../components/drop/useCountdown'
-import '../styles/drop-landing.css'
+import { useDropSurface } from '../components/drop/useDropSurface'
+import { BTN, BTN_GHOST, BTN_VOLT, EYEBROW, MONO, PANEL, PILL_VOLT, WRAP } from '../components/drop/theme'
 
 const PITCH =
   "Most hackathons take your submission and hand back a number. Drop tells you what's wrong before the deadline, and tells you why afterwards."
@@ -90,12 +91,6 @@ const reassurance = (ms) => {
   return 'Cutting it close.'
 }
 
-const WRAP = 'mx-auto w-full max-w-[1180px] px-5'
-const BTN =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-drop border px-[22px] text-[15px] leading-none transition-colors'
-const BTN_VOLT = `${BTN} border-transparent bg-volt font-semibold text-on-volt hover:bg-volt-deep`
-const BTN_GHOST = `${BTN} border-hairline font-medium text-ink hover:border-[#3A3A44] hover:bg-surface`
-
 /**
  * Owns the ticking clock so the 1Hz update stays a leaf. Hoisting useCountdown
  * into the page component re-rendered the entire landing tree every second.
@@ -111,25 +106,10 @@ function ReadinessClock() {
 }
 
 export default function DropLandingPage() {
-  useEffect(() => {
-    document.body.classList.add('drop-active')
-
-    const previousTitle = document.title
-    const meta = document.querySelector('meta[name="description"]')
-    const previousDescription = meta?.getAttribute('content')
-
-    document.title = 'Drop — Build. Ship. Drop.'
-    meta?.setAttribute('content', PITCH)
-
-    return () => {
-      document.body.classList.remove('drop-active')
-      document.title = previousTitle
-      if (previousDescription != null) meta?.setAttribute('content', previousDescription)
-    }
-  }, [])
+  useDropSurface({ title: 'Drop — Build. Ship. Drop.', description: PITCH })
 
   return (
-    <div className="drop min-h-screen bg-canvas font-sans text-base leading-relaxed text-ink [color-scheme:dark] [&_:focus-visible]:outline-2 [&_:focus-visible]:outline-offset-[3px] [&_:focus-visible]:outline-volt">
+    <div className="drop">
       <a
         href="#top"
         className="absolute top-3 left-5 z-60 -translate-y-[200%] rounded-drop bg-volt px-4 py-2.5 text-sm font-semibold text-on-volt focus-visible:translate-y-0"
@@ -142,10 +122,10 @@ export default function DropLandingPage() {
       <main id="top">
         {/* ------------------------------ Hero ------------------------------ */}
         <section className={`${WRAP} pt-6 pb-10 md:pt-22 md:pb-24`} aria-labelledby="drop-hero-title">
-          <p className="inline-flex items-center gap-[9px] rounded-full border border-volt-edge bg-volt-tint px-3.5 py-[7px] text-[13px] font-medium text-volt">
+          <p className={PILL_VOLT}>
             <span className="size-1.5 shrink-0 rounded-full bg-volt" aria-hidden="true" />
             <span>
-              <span className="font-mono tabular-nums">14</span> hackathons live right now
+              <span className={MONO}>14</span> hackathons live right now
             </span>
           </p>
 
@@ -191,9 +171,7 @@ export default function DropLandingPage() {
         <section className="border-y border-hairline py-16 md:py-26" aria-labelledby="drop-check-title">
           <div className={WRAP}>
             <div className="mb-7 max-w-[660px] md:mb-12">
-              <span className="mb-3.5 block font-mono text-xs font-medium tracking-[0.12em] text-muted uppercase">
-                Readiness check
-              </span>
+              <span className={`${EYEBROW} mb-3.5`}>Readiness check</span>
               <h2
                 id="drop-check-title"
                 className="text-[30px] leading-[1.08] font-semibold tracking-[-0.03em] text-ink md:text-4xl xl:text-[44px]"
@@ -208,7 +186,7 @@ export default function DropLandingPage() {
 
             <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
               {/* Left — the draft */}
-              <div className="overflow-hidden rounded-drop border border-hairline bg-surface">
+              <div className={`${PANEL} overflow-hidden`}>
                 <div className="flex items-center justify-between gap-3 border-b border-hairline px-4 py-3">
                   <span className="font-mono text-[12.5px] text-muted">submission.md</span>
                   <span className="rounded-md border border-hairline bg-raised px-[9px] py-1 font-mono text-[11px] tracking-[0.04em] text-muted uppercase">
@@ -249,7 +227,7 @@ export default function DropLandingPage() {
               </div>
 
               {/* Right — the result */}
-              <div className="rounded-drop border border-hairline bg-surface p-[22px]">
+              <div className={`${PANEL} p-[22px]`}>
                 <ReadinessClock />
 
                 <p className="mt-3.5 mb-5 flex flex-wrap items-center gap-2.5 border-b border-hairline pb-5 font-mono text-[12.5px] text-muted">

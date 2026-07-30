@@ -566,7 +566,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
               label="Hackathon URL"
               type="url"
               maxLength={2000}
-              placeholder="https://hackniat.example.com"
+              placeholder="https://drop.example.com"
               hint="Optional · Official website"
               value={form.hackathon_url}
               onChange={update('hackathon_url')}

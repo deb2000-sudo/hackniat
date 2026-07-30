@@ -276,7 +276,7 @@ export default function StudentRegisterForm({ onSuccess }) {
             <>
               <div className="student-register-section__head">
                 <h3>Account security</h3>
-                <p>Choose a password for your HackNIAT account.</p>
+                <p>Choose a password for your Drop account.</p>
               </div>
               <div className="stack-md">
                 <PasswordInput

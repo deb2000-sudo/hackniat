@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import AuthShell from '../../components/layout/AuthShell'
 import EvaluatorRegisterForm from '../../components/auth/EvaluatorRegisterForm'
 import Icon from '../../components/ui/Icon'
+import { LINK_INLINE } from '../../components/drop/theme'
 
 /**
  * Dedicated evaluator registration page. Lazy-loaded so the student register
@@ -26,7 +27,7 @@ export default function EvaluatorRegisterPage() {
         <EvaluatorRegisterForm />
 
         <p className="text-sm text-center text-muted">
-          Already have an account? <Link to="/login">Sign in</Link>
+          Already have an account? <Link to="/login" className={LINK_INLINE}>Sign in</Link>
         </p>
       </div>
     </AuthShell>

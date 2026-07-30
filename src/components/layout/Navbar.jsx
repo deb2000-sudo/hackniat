@@ -56,7 +56,7 @@ export default function Navbar() {
       <div className="mobile-sidebar-bar">
         <Link to={`/${user.role}`} className="brand">
           <span className="brand__mark"><Icon name="sparkles" size={19} /></span>
-          <span className="brand__name">Hack<span>NIAT</span></span>
+          <span className="brand__name">Drop</span>
         </Link>
         <button
           type="button"
@@ -82,7 +82,7 @@ export default function Navbar() {
         <div className="sidebar__header">
           <Link to={`/${user.role}`} className="brand" onClick={() => setOpen(false)}>
             <span className="brand__mark"><Icon name="sparkles" size={20} /></span>
-            <span className="brand__name">Hack<span>NIAT</span></span>
+            <span className="brand__name">Drop</span>
           </Link>
           <button
             type="button"
@@ -96,7 +96,7 @@ export default function Navbar() {
 
         <div className="sidebar__workspace">
           <span>{user.role === ROLES.ADMIN ? 'Administration' : 'Workspace'}</span>
-          <small>{user.role === ROLES.ADMIN ? 'Manage HackNIAT' : 'HackNIAT portal'}</small>
+          <small>{user.role === ROLES.ADMIN ? 'Manage Drop' : 'Drop portal'}</small>
         </div>
 
         <nav className="sidebar__nav" aria-label="Primary navigation">

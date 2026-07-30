@@ -61,7 +61,7 @@ export default function AdminDashboard() {
       <PageHeader
         eyebrow="Administration"
         title="Overview"
-        description="Manage users and evaluator approvals across HackNIAT."
+        description="Manage users and evaluator approvals across Drop."
       />
 
       {error && (

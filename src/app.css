@@ -24,6 +24,7 @@
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/preflight.css' layer(base);
 @import './index.css' layer(legacy);
+@import './styles/drop-theme.css';
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme {
