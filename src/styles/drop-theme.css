@@ -762,13 +762,20 @@
   }
 
   .drop .spinner {
-    border-color: var(--color-hairline);
+    border-color: rgb(200 250 60 / 0.18);
     border-top-color: var(--color-volt);
   }
 
   .drop .spinner--on-brand {
-    border-color: rgb(26 36 5 / 0.35);
+    border-color: rgb(26 36 5 / 0.28);
     border-top-color: var(--color-on-volt);
+  }
+
+  .drop .drop-loader__mark {
+    border-color: var(--color-hairline);
+    background:
+      radial-gradient(circle at 50% 40%, rgb(200 250 60 / 0.1), transparent 62%),
+      var(--color-surface);
   }
 
   .drop .badge--brand {
@@ -1017,6 +1024,13 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  /* Keep loading indicators gently moving under reduced motion. */
+  .drop .spinner,
+  .drop .drop-spinner__arc {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
   }
 
   .drop [class*='hover:-translate']:hover {

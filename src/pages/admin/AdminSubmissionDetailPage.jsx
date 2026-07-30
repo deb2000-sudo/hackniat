@@ -11,7 +11,7 @@ import Button from '../../components/ui/Button'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
 import { Textarea } from '../../components/ui/Input'
-import { LoadingBlock } from '../../components/ui/Spinner'
+import Spinner, { LoadingBlock } from '../../components/ui/Spinner'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
 
 export default function AdminSubmissionDetailPage() {
@@ -213,7 +213,7 @@ export default function AdminSubmissionDetailPage() {
 
               {processing && (
                 <div className="admin-analysis-processing">
-                  <span className="spinner" />
+                  <Spinner />
                   <div><strong>Analysis in progress</strong><small>Updating automatically…</small></div>
                 </div>
               )}

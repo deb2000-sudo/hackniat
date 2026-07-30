@@ -54,7 +54,7 @@ const MetricScoringPage = lazy(() => import('./pages/MetricScoringPage'))
 
 function RouteFallback() {
   return (
-    <div className="container page">
+    <div className="drop min-h-screen bg-canvas">
       <LoadingBlock label="Loading…" />
     </div>
   )

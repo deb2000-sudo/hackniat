@@ -11,7 +11,13 @@ export default function ProtectedRoute({ roles }) {
   const { user, loading, isAuthenticated } = useAuth()
   const location = useLocation()
 
-  if (loading) return <LoadingBlock label="Checking your session…" />
+  if (loading) {
+    return (
+      <div className="drop min-h-[40vh]">
+        <LoadingBlock label="Checking your session…" />
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />

@@ -7,7 +7,13 @@ import { ROLE_HOME } from '../../utils/constants'
 export default function PublicOnlyRoute() {
   const { user, loading, isAuthenticated } = useAuth()
 
-  if (loading) return <LoadingBlock label="Loading…" />
+  if (loading) {
+    return (
+      <div className="drop min-h-screen bg-canvas">
+        <LoadingBlock label="Loading…" />
+      </div>
+    )
+  }
   if (isAuthenticated) return <Navigate to={ROLE_HOME[user.role] || '/'} replace />
 
   return <Outlet />
