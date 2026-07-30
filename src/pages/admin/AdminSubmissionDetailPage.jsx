@@ -4,9 +4,9 @@ import { evaluationApi } from '../../api/evaluation'
 import { resolveApiUrl } from '../../api/client'
 import { usePolling } from '../../hooks/usePolling'
 import { formatDateTime } from '../../utils/format'
-import PageHeader from '../../components/layout/PageHeader'
+import { BTN_GHOST, EYEBROW, WRAP_APP } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
-import Badge, { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
+import Badge, { AiModeBadge, ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
@@ -21,10 +21,9 @@ export default function AdminSubmissionDetailPage() {
     [submissionId],
   )
   const { data: submission, loading, error, restart: restartPolling } = usePolling(fetcher, {
-    isDone: (item) => item?.status === 'completed',
+    isDone: (item) => ['completed', 'failed'].includes(item?.status),
     interval: 3000,
   })
-  const [criteria, setCriteria] = useState('')
   const [reviewNotes, setReviewNotes] = useState('')
   const [action, setAction] = useState('')
   const [actionError, setActionError] = useState('')
@@ -50,7 +49,7 @@ export default function AdminSubmissionDetailPage() {
     setActionError('')
     setActionMessage('')
     try {
-      await evaluationApi.evaluateSubmission(submission.id, criteria.trim() || null)
+      await evaluationApi.evaluateSubmission(submission.id, null)
       restartPolling()
       setActionMessage('Analysis started. This page will update automatically when it completes.')
     } catch (analyzeError) {
@@ -87,50 +86,77 @@ export default function AdminSubmissionDetailPage() {
   }
 
   if (loading && !submission) {
-    return <div className="container page"><LoadingBlock label="Loading submission…" /></div>
-  }
-
-  if (error && !submission) {
     return (
-      <div className="container container--narrow page stack-md">
-        <Alert variant="danger" title="Unable to load submission">{error.message}</Alert>
-        <div><Button as={Link} to="/admin/submissions" variant="secondary">Back to submissions</Button></div>
+      <div className={`${WRAP_APP} py-7 md:py-10`}>
+        <LoadingBlock label="Loading submission…" />
       </div>
     )
   }
 
-  const canAnalyze = ['uploaded', 'failed'].includes(submission?.status)
+  if (error && !submission) {
+    return (
+      <div className={`${WRAP_APP} py-7 md:py-10`}>
+        <Alert variant="danger" title="Unable to load submission">
+          {error.message}
+        </Alert>
+        <div className="mt-5">
+          <Link to="/admin/submissions" className={BTN_GHOST}>
+            <Icon name="arrowLeft" size={17} />
+            Back to submissions
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const canAnalyze =
+    Boolean(submission?.show_ai_evaluation_button) &&
+    ['uploaded', 'failed'].includes(submission?.status)
   const processing = submission?.status === 'processing'
   const completed = submission?.status === 'completed'
+  const failed = submission?.status === 'failed'
 
   return (
-    <div className="container page admin-submission-detail">
-      <PageHeader
-        eyebrow="Submission review"
-        title={submission?.team_name || 'Student submission'}
-        description={[
-          submission?.hackathon_name,
-          submission?.theme_name || submission?.theme_chosen,
-          formatDateTime(submission?.created_at),
-        ].filter(Boolean).join(' · ')}
-        actions={
-          <Button
-            as={Link}
-            to={
-              submission?.hackathon_id
-                ? `/admin/submissions/hackathons/${submission.hackathon_id}`
-                : '/admin/submissions'
-            }
-            variant="secondary"
-            leftIcon={<Icon name="arrowLeft" size={17} />}
-          >
-            Back to hackathon
-          </Button>
-        }
-      />
+    <div className={`${WRAP_APP} py-7 md:py-10 admin-submission-detail`}>
+      <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0 max-w-3xl">
+          <span className={EYEBROW}>Submission review</span>
+          <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
+            {submission?.team_name || 'Student submission'}
+          </h1>
+          <p className="mt-2 text-[14px] text-muted md:text-[15px]">
+            {[
+              submission?.hackathon_name,
+              submission?.theme_name || submission?.theme_chosen,
+              formatDateTime(submission?.created_at),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </div>
+        <Link
+          to={
+            submission?.hackathon_id
+              ? `/admin/submissions/hackathons/${submission.hackathon_id}`
+              : '/admin/submissions'
+          }
+          className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}
+        >
+          <Icon name="arrowLeft" size={17} />
+          Back to hackathon
+        </Link>
+      </header>
 
-      {actionError && <Alert variant="danger">{actionError}</Alert>}
-      {actionMessage && <Alert variant="success">{actionMessage}</Alert>}
+      {actionError && (
+        <div className="mb-4">
+          <Alert variant="danger">{actionError}</Alert>
+        </div>
+      )}
+      {actionMessage && (
+        <div className="mb-4">
+          <Alert variant="success">{actionMessage}</Alert>
+        </div>
+      )}
 
       <div className="admin-submission-layout">
         <div className="stack-lg">
@@ -180,6 +206,10 @@ export default function AdminSubmissionDetailPage() {
             <CardHeader><h3>AI analysis</h3><Icon name="sparkles" size={19} className="text-muted" /></CardHeader>
             <CardBody className="stack-md">
               <div className="row-between">
+                <span className="text-sm text-muted">AI mode</span>
+                <AiModeBadge auto={submission?.auto_ai_evaluation} />
+              </div>
+              <div className="row-between">
                 <span className="text-sm text-muted">Analysis status</span>
                 <StatusBadge status={submission?.status} />
               </div>
@@ -189,33 +219,33 @@ export default function AdminSubmissionDetailPage() {
               </div>
 
               {canAnalyze && (
-                <>
-                  <Textarea
-                    label="Evaluation criteria"
-                    hint="Optional focus for this analysis."
-                    rows={4}
-                    maxLength={2000}
-                    value={criteria}
-                    onChange={(event) => setCriteria(event.target.value)}
-                    disabled={action === 'analyzing'}
-                  />
-                  <Button
-                    variant="accent"
-                    block
-                    loading={action === 'analyzing'}
-                    onClick={analyze}
-                    leftIcon={<Icon name="sparkles" size={17} />}
-                  >
-                    {submission?.status === 'failed' ? 'Retry analysis' : 'Analyze submission'}
-                  </Button>
-                </>
+                <Button
+                  variant="accent"
+                  block
+                  loading={action === 'analyzing'}
+                  onClick={analyze}
+                  leftIcon={<Icon name="sparkles" size={17} />}
+                >
+                  {failed ? 'Retry AI Evaluation' : 'AI Evaluation'}
+                </Button>
               )}
 
               {processing && (
                 <div className="admin-analysis-processing">
                   <Spinner />
-                  <div><strong>Analysis in progress</strong><small>Updating automatically…</small></div>
+                  <div>
+                    <strong>
+                      {submission?.auto_ai_evaluation
+                        ? 'AI evaluation running automatically'
+                        : 'Analysis in progress'}
+                    </strong>
+                    <small>Updating automatically…</small>
+                  </div>
                 </div>
+              )}
+
+              {failed && !canAnalyze && (
+                <Alert variant="danger">AI evaluation failed.</Alert>
               )}
 
               {completed && reviewStatus !== 'pending_review' && (
@@ -330,7 +360,10 @@ export default function AdminSubmissionDetailPage() {
               {reportPublished ? 'Published to student' : 'Preview — not published'}
             </Badge>
           </div>
-          <SubmissionReport submissionId={submission.id} />
+          <SubmissionReport
+            submissionId={submission.id}
+            embeddedAnalysis={submission?.analysis || submission?.result}
+          />
         </div>
       )}
     </div>

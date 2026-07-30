@@ -93,6 +93,9 @@ export async function request(path, options = {}) {
   const finalHeaders = { ...headers }
   let payload
 
+  // Double-submit CSRF: when the backend sets a readable csrf_token cookie
+  // (e.g. deployed API), mirror it on mutating requests. Local backends that
+  // do not mint/require CSRF simply leave the cookie absent — do not block.
   if (
     MUTATING_METHODS.has(normalizedMethod) &&
     !Object.keys(finalHeaders).some(

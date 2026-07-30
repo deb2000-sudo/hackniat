@@ -92,11 +92,17 @@ export default function AdminHackathonSubmissionsPage() {
         evaluatorId || null,
       )
       patchSubmission(updated)
-      setActionMessage(
-        evaluatorId
-          ? `Submission assigned to ${updated.assigned_evaluator_name || 'the selected evaluator'}.`
-          : 'Submission is now unassigned.',
-      )
+      if (!evaluatorId) {
+        setActionMessage('Submission is now unassigned.')
+      } else if (updated.status === 'processing' || updated.auto_ai_evaluation) {
+        setActionMessage(
+          `Assigned to ${updated.assigned_evaluator_name || 'the selected evaluator'}. AI evaluation queued.`,
+        )
+      } else {
+        setActionMessage(
+          `Submission assigned to ${updated.assigned_evaluator_name || 'the selected evaluator'}.`,
+        )
+      }
     } catch (err) {
       setActionError(err.message || 'Unable to update the evaluator assignment.')
     } finally {
@@ -130,10 +136,11 @@ export default function AdminHackathonSubmissionsPage() {
         reload()
       }
       setSelectedIds(new Set())
+      const queued = Number(result?.auto_ai_evaluation_queued || 0)
       setActionMessage(
         `${result?.assigned_count ?? updatedSubmissions.length} assigned across ${
           result?.evaluator_count ?? evaluators.length
-        } evaluators.`,
+        } evaluators${queued ? ` · ${queued} AI evaluation${queued === 1 ? '' : 's'} queued` : ''}.`,
       )
     } catch (err) {
       setActionError(err.message || 'Unable to divide the selected submissions.')

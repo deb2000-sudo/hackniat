@@ -164,6 +164,9 @@ export default function AdminSubmissionsPage() {
                       <strong className={`${MONO} mr-1`}>{awaiting}</strong>
                       Awaiting evaluation
                     </span>
+                    <span className={`${BADGE} ${hackathon.auto_ai_evaluation ? BADGE_OPEN : BADGE_CLOSED}`}>
+                      {hackathon.auto_ai_evaluation ? 'AI runs automatically' : 'Manual AI'}
+                    </span>
                   </div>
 
                   <Link

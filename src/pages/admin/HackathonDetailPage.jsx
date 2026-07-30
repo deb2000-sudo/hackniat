@@ -117,6 +117,16 @@ export default function HackathonDetailPage() {
       label: 'Winner takes',
       value: hackathon.prizes?.winner || 'To be announced',
     },
+    {
+      icon: 'video',
+      label: 'Working demo',
+      value: hackathon.working_demo_video_required === false ? 'Optional' : 'Required',
+    },
+    {
+      icon: 'sparkles',
+      label: 'AI evaluation',
+      value: hackathon.auto_ai_evaluation ? 'Automatic' : 'Manual',
+    },
   ]
 
   return (
@@ -187,7 +197,7 @@ export default function HackathonDetailPage() {
         </div>
       </section>
 
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 md:mb-8 md:gap-4">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:mb-8 md:gap-4">
         {summary.map((item) => (
           <div key={item.label} className={`${PANEL} flex items-center gap-3.5 p-4`}>
             <span className="grid size-11 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-volt">

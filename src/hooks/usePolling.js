@@ -12,7 +12,9 @@ function isSamePollSnapshot(prev, next) {
     prev.error === next.error &&
     prev.overall_score === next.overall_score &&
     prev.final_score === next.final_score &&
-    prev.review_status === next.review_status
+    prev.review_status === next.review_status &&
+    prev.auto_ai_evaluation === next.auto_ai_evaluation &&
+    prev.show_ai_evaluation_button === next.show_ai_evaluation_button
   )
 }
 

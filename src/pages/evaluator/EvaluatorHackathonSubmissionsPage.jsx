@@ -6,7 +6,7 @@ import { formatDateTime } from '../../utils/format'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
-import { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
+import { AiQueueBadge, ReviewStatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card, { CardBody } from '../../components/ui/Card'
 import EmptyState from '../../components/ui/EmptyState'
@@ -117,7 +117,7 @@ export default function EvaluatorHackathonSubmissionsPage() {
                     <strong>{submission.team_name || 'Unnamed team'}</strong>
                   </td>
                   <td>{submission.theme_name || submission.theme_chosen || '—'}</td>
-                  <td><StatusBadge status={submission.status} /></td>
+                  <td><AiQueueBadge submission={submission} /></td>
                   <td><ReviewStatusBadge status={submission.review_status} /></td>
                   <td className="text-muted">{formatDateTime(submission.created_at)}</td>
                   <td>

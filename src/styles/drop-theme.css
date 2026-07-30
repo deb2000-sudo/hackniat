@@ -386,6 +386,35 @@
     max-width: none;
   }
 
+  .drop .admin-submission-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (min-width: 1100px) {
+    .drop .admin-submission-layout {
+      grid-template-columns: minmax(0, 1.8fr) minmax(340px, 420px);
+      gap: 24px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .drop .admin-submission-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .drop .evaluation-accordion {
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+  }
+
+  .drop .evaluation-accordion[open] {
+    border-color: var(--color-hairline);
+    box-shadow: none;
+  }
+
   .drop .admin-submission-hackathons {
     grid-template-columns: repeat(1, minmax(0, 1fr));
     gap: 18px;
@@ -973,6 +1002,152 @@
     border-left-color: var(--color-volt-edge);
     background: var(--color-raised);
     color: var(--color-muted);
+  }
+
+  .drop .hackathon-form-card {
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+    background: var(--color-surface);
+    border-color: var(--color-hairline);
+  }
+
+  .drop .hackathon-form-card .card__header {
+    background: var(--color-raised);
+    border-bottom: 1px solid var(--color-hairline);
+  }
+
+  .drop .hackathon-form-heading h3,
+  .drop .hackathon-form-card .card__header h3 {
+    color: var(--color-ink);
+  }
+
+  .drop .hackathon-form-heading p,
+  .drop .hackathon-form-heading__number {
+    color: var(--color-muted);
+  }
+
+  .drop .hackathon-form-stepper {
+    background: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+    padding: 12px;
+  }
+
+  .drop .hackathon-form-stepper li:not(:last-child)::after {
+    background: var(--color-hairline);
+  }
+
+  .drop .hackathon-form-stepper button {
+    color: var(--color-muted);
+  }
+
+  .drop .hackathon-form-stepper button > span {
+    background: var(--color-raised);
+    border: 1px solid var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  .drop .hackathon-form-stepper button strong {
+    color: var(--color-ink);
+  }
+
+  .drop .hackathon-form-stepper li.is-active {
+    background: var(--color-volt-tint);
+  }
+
+  .drop .hackathon-form-stepper li.is-active button {
+    color: var(--color-volt);
+  }
+
+  .drop .hackathon-form-stepper li.is-active button > span {
+    background: var(--color-volt);
+    border-color: var(--color-volt);
+    color: var(--color-on-volt);
+    box-shadow: none;
+  }
+
+  .drop .hackathon-form-stepper li.is-complete button > span {
+    background: var(--color-passed);
+    border-color: var(--color-passed);
+    color: var(--color-canvas);
+  }
+
+  .drop .hackathon-wizard-status {
+    background: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+    color: var(--color-ink);
+  }
+
+  .drop .hackathon-wizard-status > span {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+    border: 1px solid var(--color-volt-edge);
+  }
+
+  .drop .hackathon-wizard-status small,
+  .drop .hackathon-wizard-status em {
+    color: var(--color-muted);
+  }
+
+  .drop .hackathon-wizard-status strong {
+    color: var(--color-ink);
+  }
+
+  .drop .hackathon-form-actions {
+    background: rgb(19 19 22 / 0.94);
+    border-color: var(--color-hairline);
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+    backdrop-filter: blur(12px);
+  }
+
+  .drop .hackathon-form-actions p {
+    color: var(--color-muted);
+  }
+
+  .drop .timeline-round-editor {
+    background: var(--color-raised);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .hackathon-video-toggle {
+    background: var(--color-raised);
+    border-color: var(--color-hairline);
+  }
+
+  .drop .hackathon-video-toggle strong {
+    color: var(--color-ink);
+  }
+
+  .drop .hackathon-video-toggle small {
+    color: var(--color-muted);
+  }
+
+  .drop .selected-file-row {
+    background: #0c2a1d;
+    border-color: #1c5540;
+  }
+
+  .drop .selected-file-row > span,
+  .drop .selected-file-row small {
+    color: #6fe3ae;
+  }
+
+  .drop .selected-file-row strong {
+    color: var(--color-ink);
+  }
+
+  .drop .hackathon-theme-option {
+    background: var(--color-raised);
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+  }
+
+  .drop .hackathon-theme-option.is-selected {
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
   }
 
   .drop .filter-pill--active {

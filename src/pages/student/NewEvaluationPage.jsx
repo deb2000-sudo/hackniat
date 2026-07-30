@@ -15,11 +15,11 @@ import Input, { Select, Textarea } from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import ScreenRecorder from '../../components/evaluation/ScreenRecorder'
 
-const STEPS = [
-  { label: 'Requirements', short: 'Details' },
-  { label: 'Working demo', short: 'Demo' },
-  { label: 'Review video', short: 'Review' },
-  { label: 'Submit', short: 'Submit' },
+const ALL_STEPS = [
+  { id: 'requirements', label: 'Requirements', short: 'Details' },
+  { id: 'demo', label: 'Working demo', short: 'Demo' },
+  { id: 'review', label: 'Review video', short: 'Review' },
+  { id: 'submit', label: 'Submit', short: 'Submit' },
 ]
 
 const DEFAULT_VIDEO_ACCEPT = 'video/webm,video/mp4,video/quicktime,.webm,.mp4,.mov'
@@ -42,15 +42,15 @@ const UPLOAD_PHASE = {
   },
 }
 
-function Stepper({ current }) {
+function Stepper({ current, steps }) {
   return (
     <ol className="submission-stepper" aria-label="Submission progress">
-      {STEPS.map((step, index) => {
+      {steps.map((step, index) => {
         const done = index < current
         return (
           <li
             className={`${index === current ? 'is-active' : ''} ${done ? 'is-done' : ''}`}
-            key={step.label}
+            key={step.id}
             aria-current={index === current ? 'step' : undefined}
           >
             <span className="submission-stepper__number">
@@ -105,7 +105,10 @@ function serializeAnswers(requirement, answers) {
 function buildLegacyDetails(requirement, answers) {
   const serialized = serializeAnswers(requirement, answers)
   const otherFields = (requirement?.fields || []).filter(
-    (field) => !['problem_statement', 'solution_description'].includes(field.key),
+    (field) =>
+      !['problem_statement', 'solution_description', 'mvp_link', 'github_link'].includes(
+        field.key,
+      ),
   )
   const additional = otherFields
     .map((field) => `${field.label}: ${serialized[field.key] || 'Not provided'}`)
@@ -128,7 +131,14 @@ function buildLegacyDetails(requirement, answers) {
       .filter(Boolean)
       .join('\n\n')
       .slice(0, 5000),
+    mvp_link: serialized.mvp_link || null,
+    github_link: serialized.github_link || null,
+    field_answers: serialized,
   }
+}
+
+function isVideoRequired(hackathon) {
+  return hackathon?.working_demo_video_required !== false
 }
 
 function RequirementField({ field, value, error, disabled, onChange }) {
@@ -232,6 +242,8 @@ export default function NewEvaluationPage() {
   const [selectedRequirementId, setSelectedRequirementId] = useState('')
   const [answers, setAnswers] = useState({})
   const [answerErrors, setAnswerErrors] = useState({})
+  const [mvpLink, setMvpLink] = useState('')
+  const [githubLink, setGithubLink] = useState('')
   const [file, setFile] = useState(null)
   const [videoSource, setVideoSource] = useState(null)
   const [demoPreviewUrl, setDemoPreviewUrl] = useState('')
@@ -269,6 +281,16 @@ export default function NewEvaluationPage() {
       null,
     [activeHackathon, selectedThemeId],
   )
+  const videoRequired = isVideoRequired(activeHackathon)
+  const steps = useMemo(
+    () =>
+      videoRequired
+        ? ALL_STEPS
+        : ALL_STEPS.filter((item) => item.id === 'requirements' || item.id === 'submit'),
+    [videoRequired],
+  )
+  const safeStep = Math.min(step, Math.max(steps.length - 1, 0))
+  const currentStage = steps[safeStep]?.id || 'requirements'
 
   const busy = phase !== 'idle'
   const videoAccept =
@@ -316,6 +338,17 @@ export default function NewEvaluationPage() {
     setError('')
   }
 
+  const validateOptionalUrl = (value, label) => {
+    if (!String(value || '').trim()) return undefined
+    try {
+      const url = new URL(String(value).trim())
+      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported protocol')
+      return undefined
+    } catch {
+      return `Enter a complete ${label} URL beginning with http:// or https://.`
+    }
+  }
+
   const completeRequirements = () => {
     if (!activeRequirement) {
       setError('No evaluation requirement is available for this submission.')
@@ -330,6 +363,10 @@ export default function NewEvaluationPage() {
       return
     }
     const validation = validateRequirement(activeRequirement, answers)
+    const mvpError = validateOptionalUrl(mvpLink, 'MVP')
+    const githubError = validateOptionalUrl(githubLink, 'GitHub')
+    if (mvpError) validation.mvp_link = mvpError
+    if (githubError) validation.github_link = githubError
     setAnswerErrors(validation)
     if (Object.keys(validation).length) {
       setError('Complete the required fields before continuing.')
@@ -407,30 +444,37 @@ export default function NewEvaluationPage() {
       return
     }
     setError('')
-    setStep(2)
+    setStep(steps.findIndex((item) => item.id === 'review'))
   }
 
   const continueToSubmit = () => {
-    if (!file) {
+    if (videoRequired && !file) {
       setError('Record your working demo before continuing.')
       return
     }
     setError('')
-    setStep(3)
+    setStep(steps.findIndex((item) => item.id === 'submit'))
   }
 
   const handleSubmit = async () => {
-    if (!file || !videoSource || !activeRequirement) return
+    if (!activeRequirement) return
+    if (videoRequired && (!file || !videoSource)) {
+      setError('Record or upload your working demo before submitting.')
+      return
+    }
     setError('')
     try {
-      setPhase('preparing')
+      setPhase(file ? 'preparing' : 'finalizing')
+      const legacy = buildLegacyDetails(activeRequirement, answers)
       const submitted = await evaluationApi.createSubmission(file, {
-        ...buildLegacyDetails(activeRequirement, answers),
+        ...legacy,
+        mvp_link: mvpLink.trim() || legacy.mvp_link || null,
+        github_link: githubLink.trim() || legacy.github_link || null,
         hackathon_id: activeHackathon.id,
         theme_id: activeTheme.id,
-        video_source: videoSource,
+        video_source: file ? videoSource : null,
         evaluation_requirement_id: activeRequirement.id,
-        requirement_responses: serializeAnswers(activeRequirement, answers),
+        field_answers: legacy.field_answers,
       }, {
         onStageChange: setPhase,
       })
@@ -472,12 +516,14 @@ export default function NewEvaluationPage() {
               >
                 View submissions
               </Button>
-              <Button
-                variant="secondary"
-                onClick={() => navigate(`/student/submissions/${submittedSession.id}`)}
-              >
-                View uploaded video
-              </Button>
+              {submittedSession.video_path || submittedSession.source_filename ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate(`/student/submissions/${submittedSession.id}`)}
+                >
+                  View uploaded video
+                </Button>
+              ) : null}
             </div>
           </CardBody>
         </Card>
@@ -490,8 +536,12 @@ export default function NewEvaluationPage() {
       <div className="submission-wizard__intro">
         <div>
           <div className="eyebrow">Project submission</div>
-          <h1>Submit your working demo</h1>
-          <p>Complete every stage to send your project for AI evaluation.</p>
+          <h1>{videoRequired ? 'Submit your working demo' : 'Submit your project'}</h1>
+          <p>
+            {videoRequired
+              ? 'Complete every stage to send your project for AI evaluation.'
+              : 'This hackathon does not require a working demo video. Complete the requirements and submit.'}
+          </p>
         </div>
         <div className="submission-wizard__secure">
           <Icon name="shield" size={17} />
@@ -499,17 +549,23 @@ export default function NewEvaluationPage() {
         </div>
       </div>
 
-      <Stepper current={step} />
+      <Stepper current={safeStep} steps={steps} />
 
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <section className="submission-panel" hidden={step !== 0}>
+      <section className="submission-panel" hidden={currentStage !== 'requirements'}>
         <Card>
           <CardHeader className="submission-panel__header">
             <div>
-              <span className="submission-panel__eyebrow">Step 1 of 4</span>
+              <span className="submission-panel__eyebrow">
+                Step 1 of {steps.length}
+              </span>
               <h2>Complete the requirements</h2>
-              <p>Tell us about your project before recording the demo.</p>
+              <p>
+                {videoRequired
+                  ? 'Tell us about your project before recording the demo.'
+                  : 'Tell us about your project, then submit for evaluation.'}
+              </p>
             </div>
             <span className="submission-panel__icon"><Icon name="clipboard" size={22} /></span>
           </CardHeader>
@@ -619,6 +675,41 @@ export default function NewEvaluationPage() {
                     />
                   ))}
                 </div>
+
+                <div className="grid grid-2">
+                  <Input
+                    label="MVP link"
+                    type="url"
+                    placeholder="https://"
+                    value={mvpLink}
+                    error={answerErrors.mvp_link}
+                    hint="Optional link to a live MVP or deployed demo."
+                    disabled={busy || !!submittedSession}
+                    onChange={(event) => {
+                      setMvpLink(event.target.value)
+                      setAnswerErrors((current) => ({ ...current, mvp_link: undefined }))
+                    }}
+                  />
+                  <Input
+                    label="GitHub link"
+                    type="url"
+                    placeholder="https://github.com/…"
+                    value={githubLink}
+                    error={answerErrors.github_link}
+                    hint="Optional repository URL for your project."
+                    disabled={busy || !!submittedSession}
+                    onChange={(event) => {
+                      setGithubLink(event.target.value)
+                      setAnswerErrors((current) => ({ ...current, github_link: undefined }))
+                    }}
+                  />
+                </div>
+
+                {!videoRequired && (
+                  <Alert variant="info" title="Video not required">
+                    This hackathon accepts text-only submissions. You can continue straight to submit.
+                  </Alert>
+                )}
               </>
             )}
           </CardBody>
@@ -633,12 +724,12 @@ export default function NewEvaluationPage() {
             onClick={completeRequirements}
             rightIcon={<Icon name="arrowRight" size={18} />}
           >
-            Continue to demo
+            {videoRequired ? 'Continue to demo' : 'Continue to submit'}
           </Button>
         </div>
       </section>
 
-      <section className="submission-panel" hidden={step !== 1}>
+      <section className="submission-panel" hidden={currentStage !== 'demo'}>
         <Card>
           <CardHeader className="submission-panel__header">
             <div>
@@ -766,7 +857,7 @@ export default function NewEvaluationPage() {
         </div>
       </section>
 
-      <section className="submission-panel" hidden={step !== 2}>
+      <section className="submission-panel" hidden={currentStage !== 'review'}>
         <Card>
           <CardHeader className="submission-panel__header">
             <div>
@@ -853,11 +944,13 @@ export default function NewEvaluationPage() {
         </div>
       </section>
 
-      <section className="submission-panel" hidden={step !== 3}>
+      <section className="submission-panel" hidden={currentStage !== 'submit'}>
         <Card>
           <CardHeader className="submission-panel__header">
             <div>
-              <span className="submission-panel__eyebrow">Step 4 of 4</span>
+              <span className="submission-panel__eyebrow">
+                Step {steps.length} of {steps.length}
+              </span>
               <h2>Submit for evaluation</h2>
               <p>Review everything once more and record your final submission.</p>
             </div>
@@ -865,7 +958,9 @@ export default function NewEvaluationPage() {
           </CardHeader>
           <CardBody className="stack-lg">
             <Alert variant="success" title="Your submission is ready">
-              Your requirement responses and working demo will be uploaded together.
+              {videoRequired
+                ? 'Your requirement responses and working demo will be uploaded together.'
+                : 'Your requirement responses will be submitted for evaluation.'}
             </Alert>
 
             <div className="submission-final-summary">
@@ -884,14 +979,25 @@ export default function NewEvaluationPage() {
                 <span><small>Theme</small><strong>{activeTheme?.name}</strong></span>
                 <Icon name="checkCircle" size={18} />
               </div>
-              <div>
-                <Icon name="video" size={19} />
-                <span>
-                  <small>{videoSource === 'recorded' ? 'Recorded demo' : 'Uploaded demo'}</small>
-                  <strong>{file?.name}</strong>
-                </span>
-                <Icon name="checkCircle" size={18} />
-              </div>
+              {videoRequired ? (
+                <div>
+                  <Icon name="video" size={19} />
+                  <span>
+                    <small>{videoSource === 'recorded' ? 'Recorded demo' : 'Uploaded demo'}</small>
+                    <strong>{file?.name}</strong>
+                  </span>
+                  <Icon name="checkCircle" size={18} />
+                </div>
+              ) : (
+                <div>
+                  <Icon name="info" size={19} />
+                  <span>
+                    <small>Working demo</small>
+                    <strong>Not required for this hackathon</strong>
+                  </span>
+                  <Icon name="checkCircle" size={18} />
+                </div>
+              )}
             </div>
 
             <Alert variant="info">

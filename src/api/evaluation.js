@@ -3,10 +3,17 @@ import { api } from './client'
 function normalizeSubmission(submission) {
   if (!submission) return submission
   const evaluation = submission.evaluation ?? submission.result ?? null
+  const analysis = submission.analysis ?? evaluation?.analysis ?? null
   return {
     ...submission,
     evaluation,
     result: evaluation,
+    analysis,
+    field_scores:
+      analysis?.field_scores ??
+      evaluation?.field_scores ??
+      submission.field_scores ??
+      null,
     criteria: submission.evaluation_criteria ?? submission.criteria ?? null,
     overall_score: evaluation?.overall_score ?? null,
     review_status: submission.review_status || 'none',
@@ -17,6 +24,8 @@ function normalizeSubmission(submission) {
       null,
     evaluator_notes: submission.evaluator_notes ?? submission.review_notes ?? null,
     final_score: submission.final_score ?? null,
+    auto_ai_evaluation: Boolean(submission.auto_ai_evaluation),
+    show_ai_evaluation_button: Boolean(submission.show_ai_evaluation_button),
   }
 }
 
@@ -104,11 +113,17 @@ export const evaluationApi = {
   ) => {
     const body = { submission_ids: submissionIds }
     if (evaluatorIds?.length) body.evaluator_ids = evaluatorIds
-    return api.post(
+    const result = await api.post(
       `/submissions/admin/hackathons/${encodeURIComponent(hackathonId)}/assign-equally`,
       body,
       options,
     )
+    return {
+      ...result,
+      submissions: Array.isArray(result?.submissions)
+        ? result.submissions.map(normalizeSubmission)
+        : [],
+    }
   },
 
   /** Evaluator only: send a completed analysis and score to the admin. */
@@ -141,13 +156,36 @@ export const evaluationApi = {
     return normalizeSubmission(submission)
   },
 
-  /** Upload a video directly to GCS, then finalize the small JSON submission. */
+  /** Upload a video (optional) via signed URL, then finalize the submission. */
   createSubmission: async (file, details, options) => {
     const { onStageChange, ...requestOptions } = options || {}
-    const contentType = file.type || undefined
     const tooLargeMessage = 'Video is too large for direct upload — please retry.'
 
+    const baseBody = {
+      hackathon_id: details.hackathon_id,
+      theme_id: details.theme_id,
+      problem_statement: details.problem_statement,
+      solution_description: details.solution_description,
+      mvp_link: details.mvp_link || null,
+      github_link: details.github_link || null,
+      field_answers: details.field_answers || null,
+      evaluation_requirement_id: details.evaluation_requirement_id || null,
+      video_source: details.video_source || null,
+    }
+
     try {
+      if (!file) {
+        onStageChange?.('finalizing')
+        const submission = await api.post(
+          '/submissions/from-upload',
+          baseBody,
+          requestOptions,
+        )
+        return normalizeSubmission(submission)
+      }
+
+      const contentType = file.type || undefined
+
       onStageChange?.('preparing')
       const prep = await api.post(
         '/submissions/upload-url',
@@ -191,14 +229,11 @@ export const evaluationApi = {
       const submission = await api.post(
         '/submissions/from-upload',
         {
+          ...baseBody,
           video_path: prep.video_path,
           content_type: prep.content_type,
           source_filename: prep.source_filename,
           video_source: details.video_source,
-          hackathon_id: details.hackathon_id,
-          theme_id: details.theme_id,
-          problem_statement: details.problem_statement,
-          solution_description: details.solution_description,
         },
         requestOptions,
       )

@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
+import { BTN_GHOST, EYEBROW, WRAP_APP } from '../../components/drop/theme'
 import HackathonForm from '../../components/hackathons/HackathonForm'
-import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
@@ -36,7 +36,7 @@ export default function HackathonFormPage() {
 
   if (loading) {
     return (
-      <div className="container page">
+      <div className={`${WRAP_APP} py-7 md:py-10`}>
         <LoadingBlock label={editing ? 'Loading hackathon…' : 'Preparing form…'} />
       </div>
     )
@@ -44,9 +44,11 @@ export default function HackathonFormPage() {
 
   if (error) {
     return (
-      <div className="container container--narrow page stack-md">
-        <Alert variant="danger" title="Unable to load hackathon">{error.message}</Alert>
-        <div>
+      <div className={`${WRAP_APP} py-7 md:py-10`}>
+        <Alert variant="danger" title="Unable to load hackathon">
+          {error.message}
+        </Alert>
+        <div className="mt-5">
           <Button variant="secondary" onClick={() => navigate('/hackathons')}>
             Back to hackathons
           </Button>
@@ -56,25 +58,28 @@ export default function HackathonFormPage() {
   }
 
   return (
-    <div className="container container--narrow page">
-      <PageHeader
-        eyebrow="Hackathons"
-        title={editing ? 'Edit hackathon' : 'Create hackathon'}
-        description={
-          editing
-            ? 'Only changed fields and a newly selected banner will be sent.'
-            : 'Configure the event, prizes, timeline, guidelines, and optional banner.'
-        }
-        actions={
-          <Button
-            variant="secondary"
-            onClick={() => navigate(editing ? `/hackathons/${hackathonId}` : '/hackathons')}
-            leftIcon={<Icon name="arrowLeft" size={18} />}
-          >
-            Cancel
-          </Button>
-        }
-      />
+    <div className={`${WRAP_APP} py-7 md:py-10`}>
+      <header className="mb-7 flex flex-col gap-4 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0 max-w-3xl">
+          <span className={EYEBROW}>Hackathons</span>
+          <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
+            {editing ? 'Edit hackathon' : 'Create hackathon'}
+          </h1>
+          <p className="mt-2 text-[15px] text-muted md:text-base">
+            {editing
+              ? 'Only changed fields and a newly selected banner will be sent.'
+              : 'Configure the event, prizes, timeline, guidelines, and optional banner.'}
+          </p>
+        </div>
+        <Link
+          to={editing ? `/hackathons/${hackathonId}` : '/hackathons'}
+          className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}
+        >
+          <Icon name="arrowLeft" size={17} />
+          Cancel
+        </Link>
+      </header>
+
       <HackathonForm
         initialValue={editing ? data : null}
         onSubmit={save}

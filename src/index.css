@@ -4650,6 +4650,68 @@ code {
 .hackathon-form-heading__number { font-family: var(--mono); color: var(--brand-600); font-size: .74rem; font-weight: 800; }
 .hackathon-form-heading p { margin-top: 3px; color: var(--text-muted); font-size: .75rem; font-weight: 400; }
 .hackathon-form-heading__icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; color: var(--brand-600); background: var(--brand-50); }
+
+.hackathon-video-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.hackathon-video-toggle input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-volt, #c8fa3c);
+  flex-shrink: 0;
+}
+.hackathon-video-toggle strong {
+  display: block;
+  color: var(--heading);
+  font-size: 0.92rem;
+}
+.hackathon-video-toggle small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.field-scores-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.field-scores-table th,
+.field-scores-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.field-scores-table th {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--surface-2);
+}
+.field-scores-table tr:last-child td { border-bottom: none; }
+.field-scores-table .field-scores-rationale {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.field-scores-table .mono {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
 .hackathon-banner-preview { max-height: 280px; border-radius: 14px; border: 1px solid var(--border); }
 .selected-file-row { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border: 1px solid #a7f3d0; border-radius: 11px; background: var(--success-50); }
 .selected-file-row > span { color: var(--success-600); }

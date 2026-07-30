@@ -4,16 +4,7 @@ import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDate } from '../../utils/format'
-import {
-  BADGE,
-  BADGE_CLOSED,
-  BTN_GHOST,
-  BTN_VOLT,
-  EYEBROW,
-  MONO,
-  PANEL,
-  WRAP_APP,
-} from '../../components/drop/theme'
+import { BADGE, BADGE_CLOSED, BADGE_OPEN, BTN_GHOST, BTN_VOLT, EYEBROW, MONO, PANEL, WRAP_APP } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
 import EmptyState from '../../components/ui/EmptyState'
 import Icon from '../../components/ui/Icon'
@@ -148,6 +139,11 @@ export default function EvaluatorDashboard() {
                       <Icon name="calendar" size={15} />
                       {formatDate(hackathon.start_date)} – {formatDate(hackathon.end_date)}
                     </p>
+                    <div className="mt-3">
+                      <span className={`${BADGE} ${hackathon.auto_ai_evaluation ? BADGE_OPEN : BADGE_CLOSED}`}>
+                        {hackathon.auto_ai_evaluation ? 'AI runs automatically' : 'Manual AI'}
+                      </span>
+                    </div>
                   </div>
 
                   <Link

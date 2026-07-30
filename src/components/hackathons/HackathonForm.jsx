@@ -21,6 +21,8 @@ const EMPTY_FORM = {
   end_date: '',
   hackathon_url: '',
   guidelines: '',
+  working_demo_video_required: true,
+  auto_ai_evaluation: false,
   prizes: EMPTY_PRIZES,
   theme_ids: [],
   timeline: [],
@@ -45,6 +47,8 @@ function createInitialForm(initialValue) {
     end_date: initialValue.end_date || '',
     hackathon_url: initialValue.hackathon_url || '',
     guidelines: initialValue.guidelines || '',
+    working_demo_video_required: initialValue.working_demo_video_required !== false,
+    auto_ai_evaluation: initialValue.auto_ai_evaluation === true,
     prizes: { ...EMPTY_PRIZES, ...(initialValue.prizes || {}) },
     theme_ids: initialValue.theme_ids || initialValue.themes?.map((theme) => theme.id) || [],
     timeline: (initialValue.timeline || []).map((round) => ({
@@ -212,6 +216,8 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
       description: form.description.trim(),
       hackathon_url: form.hackathon_url.trim(),
       guidelines: form.guidelines.trim(),
+      working_demo_video_required: form.working_demo_video_required ? 'true' : 'false',
+      auto_ai_evaluation: form.auto_ai_evaluation ? 'true' : 'false',
       prizes: Object.fromEntries(
         Object.entries(form.prizes).map(([key, value]) => [key, value.trim()]),
       ),
@@ -246,6 +252,15 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     }
     if (cleaned.hackathon_url !== initialForm.hackathon_url.trim()) {
       changes.hackathon_url = cleaned.hackathon_url
+    }
+    if (
+      Boolean(form.working_demo_video_required) !==
+      Boolean(initialForm.working_demo_video_required)
+    ) {
+      changes.working_demo_video_required = cleaned.working_demo_video_required
+    }
+    if (Boolean(form.auto_ai_evaluation) !== Boolean(initialForm.auto_ai_evaluation)) {
+      changes.auto_ai_evaluation = cleaned.auto_ai_evaluation
     }
     const normalizedInitialTimeline = initialForm.timeline.map((round) => ({
       title: round.title.trim(),
@@ -358,6 +373,44 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
             error={errors.guidelines}
             style={{ minHeight: 180 }}
           />
+          <label className="hackathon-video-toggle">
+            <input
+              type="checkbox"
+              checked={form.working_demo_video_required}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  working_demo_video_required: event.target.checked,
+                }))
+              }
+            />
+            <span>
+              <strong>Working demo video required</strong>
+              <small>
+                When enabled, students must record or upload a demo. Turn off to allow
+                text-only submissions.
+              </small>
+            </span>
+          </label>
+          <label className="hackathon-video-toggle">
+            <input
+              type="checkbox"
+              checked={form.auto_ai_evaluation}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  auto_ai_evaluation: event.target.checked,
+                }))
+              }
+            />
+            <span>
+              <strong>Auto AI evaluation for evaluators</strong>
+              <small>
+                When enabled, AI analysis starts automatically after assignment. When off,
+                evaluators trigger AI Evaluation manually.
+              </small>
+            </span>
+          </label>
         </CardBody>
       </Card>
 

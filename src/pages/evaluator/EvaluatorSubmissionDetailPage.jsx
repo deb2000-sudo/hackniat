@@ -4,10 +4,14 @@ import { evaluationApi } from '../../api/evaluation'
 import { resolveApiUrl } from '../../api/client'
 import { usePolling } from '../../hooks/usePolling'
 import { formatDateTime } from '../../utils/format'
-import PageHeader from '../../components/layout/PageHeader'
+import {
+  BTN_GHOST,
+  EYEBROW,
+  WRAP_APP,
+} from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
 import Accordion from '../../components/ui/Accordion'
-import { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
+import { AiModeBadge, ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
@@ -151,10 +155,8 @@ export default function EvaluatorSubmissionDetailPage() {
     isDone: (item) => ['completed', 'failed'].includes(item?.status),
     interval: 3000,
   })
-  const [criteria, setCriteria] = useState('')
   const [reviewOverride, setReviewOverride] = useState(null)
   const [action, setAction] = useState('')
-  const [analysisStarted, setAnalysisStarted] = useState(false)
   const [actionError, setActionError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
 
@@ -173,8 +175,7 @@ export default function EvaluatorSubmissionDetailPage() {
     setActionError('')
     setActionMessage('')
     try {
-      await evaluationApi.evaluateSubmission(submission.id, criteria.trim() || null)
-      setAnalysisStarted(true)
+      await evaluationApi.evaluateSubmission(submission.id, null)
       restartPolling()
       setActionMessage('AI analysis started. This page will update automatically.')
     } catch (analyzeError) {
@@ -214,26 +215,35 @@ export default function EvaluatorSubmissionDetailPage() {
   }
 
   if (loading && !submission) {
-    return <div className="container page"><LoadingBlock label="Loading assigned submission…" /></div>
-  }
-
-  if (error && !submission) {
     return (
-      <div className="container container--narrow page stack-md">
-        <Alert variant="danger" title="Unable to load assigned submission">{error.message}</Alert>
-        <div><Button as={Link} to="/evaluator" variant="secondary">Back to assignments</Button></div>
+      <div className={`${WRAP_APP} py-7 md:py-10`}>
+        <LoadingBlock label="Loading assigned submission…" />
       </div>
     )
   }
 
-  const canAnalyze = ['uploaded', 'failed'].includes(submission?.status) && !analysisStarted
-  const processing = submission?.status === 'processing' || analysisStarted
+  if (error && !submission) {
+    return (
+      <div className={`${WRAP_APP} py-7 md:py-10`}>
+        <Alert variant="danger" title="Unable to load assigned submission">
+          {error.message}
+        </Alert>
+        <div className="mt-5">
+          <Link to="/evaluator" className={BTN_GHOST}>
+            <Icon name="arrowLeft" size={17} />
+            Back to assignments
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const canAnalyze =
+    Boolean(submission?.show_ai_evaluation_button) &&
+    ['uploaded', 'failed'].includes(submission?.status)
+  const processing = submission?.status === 'processing'
   const completed = submission?.status === 'completed'
-  const displayStatus = ['completed', 'failed'].includes(submission?.status)
-    ? submission.status
-    : analysisStarted
-      ? 'processing'
-      : submission?.status
+  const failed = submission?.status === 'failed'
   const canSubmit = completed && ['none', 'changes_requested'].includes(reviewStatus)
   const rawAnalysisScore = submission?.result?.overall_score
   const dashboardScore = currentScore ?? (
@@ -243,42 +253,57 @@ export default function EvaluatorSubmissionDetailPage() {
   ) ?? 0
 
   return (
-    <div className="container page admin-submission-detail">
-      <PageHeader
-        eyebrow="Assigned submission"
-        title={submission?.team_name || 'Student submission'}
-        description={[
-          submission?.hackathon_name,
-          submission?.theme_name || submission?.theme_chosen,
-          formatDateTime(submission?.created_at),
-        ].filter(Boolean).join(' · ')}
-        actions={
-          <Button
-            as={Link}
-            to={
-              submission?.hackathon_id
-                ? `/evaluator/hackathons/${submission.hackathon_id}`
-                : '/evaluator'
-            }
-            variant="secondary"
-            leftIcon={<Icon name="arrowLeft" size={17} />}
-          >
-            Back to queue
-          </Button>
-        }
-      />
+    <div className={`${WRAP_APP} py-7 md:py-10 admin-submission-detail`}>
+      <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0 max-w-3xl">
+          <span className={EYEBROW}>Assigned submission</span>
+          <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
+            {submission?.team_name || 'Student submission'}
+          </h1>
+          <p className="mt-2 text-[14px] text-muted md:text-[15px]">
+            {[
+              submission?.hackathon_name,
+              submission?.theme_name || submission?.theme_chosen,
+              formatDateTime(submission?.created_at),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </div>
+        <Link
+          to={
+            submission?.hackathon_id
+              ? `/evaluator/hackathons/${submission.hackathon_id}`
+              : '/evaluator'
+          }
+          className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}
+        >
+          <Icon name="arrowLeft" size={17} />
+          Back to queue
+        </Link>
+      </header>
 
-      {actionError && <Alert variant="danger">{actionError}</Alert>}
-      {actionMessage && <Alert variant="success">{actionMessage}</Alert>}
+      {actionError && (
+        <div className="mb-4">
+          <Alert variant="danger">{actionError}</Alert>
+        </div>
+      )}
+      {actionMessage && (
+        <div className="mb-4">
+          <Alert variant="success">{actionMessage}</Alert>
+        </div>
+      )}
       {reviewStatus === 'changes_requested' && (
-        <Alert variant="warning" title="Changes requested">
-          {submission?.review_notes ||
-            'Review the submission and analysis, then update your score or notes and resubmit it.'}
-        </Alert>
+        <div className="mb-4">
+          <Alert variant="warning" title="Changes requested">
+            {submission?.review_notes ||
+              'Review the submission and analysis, then update your score or notes and resubmit it.'}
+          </Alert>
+        </div>
       )}
 
       <div className="admin-submission-layout">
-        <div className="stack-lg">
+        <div className="stack-lg min-w-0">
           <Accordion
             title="Project details"
             description="Problem statement, solution description, and working demo."
@@ -306,13 +331,13 @@ export default function EvaluatorSubmissionDetailPage() {
                     {submission?.source_filename || 'Working demo'}
                   </small>
                 </div>
-              <video
-                className="admin-submission-video"
-                src={videoUrl}
-                controls
-                playsInline
-                preload="metadata"
-              />
+                <video
+                  className="admin-submission-video"
+                  src={videoUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                />
               </div>
             </div>
           </Accordion>
@@ -322,6 +347,7 @@ export default function EvaluatorSubmissionDetailPage() {
               submissionId={submission.id}
               collapsible
               recommendation={submission?.result?.recommendation}
+              embeddedAnalysis={submission?.analysis || submission?.result}
             />
           )}
 
@@ -349,43 +375,52 @@ export default function EvaluatorSubmissionDetailPage() {
           )}
         </div>
 
-        <aside className="stack-lg evaluator-review-sidebar">
+        <aside className="stack-lg evaluator-review-sidebar min-w-0">
           <Card className="admin-analysis-control">
-            <CardHeader><h3>AI analysis</h3><Icon name="sparkles" size={19} className="text-muted" /></CardHeader>
+            <CardHeader>
+              <h3>AI analysis</h3>
+              <Icon name="sparkles" size={19} className="text-muted" />
+            </CardHeader>
             <CardBody className="stack-md">
               <div className="row-between">
+                <span className="text-sm text-muted">AI mode</span>
+                <AiModeBadge auto={submission?.auto_ai_evaluation} />
+              </div>
+              <div className="row-between">
                 <span className="text-sm text-muted">Analysis status</span>
-                <StatusBadge status={displayStatus} />
+                <StatusBadge status={submission?.status} />
               </div>
 
               {canAnalyze && (
-                <>
-                  <Textarea
-                    label="Evaluation criteria"
-                    hint="Optional focus for this analysis."
-                    rows={4}
-                    maxLength={2000}
-                    value={criteria}
-                    onChange={(event) => setCriteria(event.target.value)}
-                    disabled={action === 'analyzing'}
-                  />
-                  <Button
-                    variant="accent"
-                    block
-                    loading={action === 'analyzing'}
-                    onClick={analyze}
-                    leftIcon={<Icon name="sparkles" size={17} />}
-                  >
-                    {submission?.status === 'failed' ? 'Retry AI analysis' : 'Run AI analysis'}
-                  </Button>
-                </>
+                <Button
+                  variant="accent"
+                  block
+                  loading={action === 'analyzing'}
+                  onClick={analyze}
+                  leftIcon={<Icon name="sparkles" size={17} />}
+                >
+                  {failed ? 'Retry AI Evaluation' : 'AI Evaluation'}
+                </Button>
               )}
 
-              {processing && !completed && (
+              {processing && (
                 <div className="admin-analysis-processing">
                   <Spinner />
-                  <div><strong>Analysis in progress</strong><small>Updating automatically…</small></div>
+                  <div>
+                    <strong>
+                      {submission?.auto_ai_evaluation
+                        ? 'AI evaluation running automatically'
+                        : 'Analysis in progress'}
+                    </strong>
+                    <small>Updating automatically…</small>
+                  </div>
                 </div>
+              )}
+
+              {failed && !canAnalyze && (
+                <Alert variant="danger">
+                  AI evaluation failed. Ask an administrator if you need it re-run.
+                </Alert>
               )}
 
               {completed && (
@@ -399,7 +434,9 @@ export default function EvaluatorSubmissionDetailPage() {
 
           {completed && canSubmit && (
             <Card>
-              <CardHeader><h3>Submit to admin</h3></CardHeader>
+              <CardHeader>
+                <h3>Submit to admin</h3>
+              </CardHeader>
               <CardBody>
                 <EvaluatorReviewForm
                   initialScore={currentScore}

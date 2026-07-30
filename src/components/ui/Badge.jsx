@@ -68,3 +68,50 @@ export function ReviewStatusBadge({ status }) {
     </Badge>
   )
 }
+
+/** Hackathon / submission AI mode: automatic queue vs manual trigger. */
+export function AiModeBadge({ auto }) {
+  return (
+    <Badge variant={auto ? 'info' : 'neutral'} dot>
+      {auto ? 'AI runs automatically' : 'Manual AI'}
+    </Badge>
+  )
+}
+
+/**
+ * Evaluator queue chip for analysis readiness.
+ * Auto mode: Queued while processing/uploaded, Ready when completed.
+ * Manual mode: highlight when the AI Evaluation action is available.
+ */
+export function AiQueueBadge({ submission }) {
+  if (!submission) return null
+  if (submission.auto_ai_evaluation) {
+    if (submission.status === 'completed') {
+      return (
+        <Badge variant="success" dot>
+          Ready
+        </Badge>
+      )
+    }
+    if (submission.status === 'failed') {
+      return (
+        <Badge variant="danger" dot>
+          failed
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="info" dot>
+        Queued
+      </Badge>
+    )
+  }
+  if (submission.show_ai_evaluation_button) {
+    return (
+      <Badge variant="accent" dot>
+        AI Evaluation
+      </Badge>
+    )
+  }
+  return <StatusBadge status={submission.status} />
+}
