@@ -10,8 +10,14 @@
  * action, the live countdown, and one accent detail. Everything else is grey.
  */
 
-/** Page gutter + max width. */
+/** Page gutter + max width (landing / marketing). */
 export const WRAP = 'mx-auto w-full max-w-[1180px] px-5'
+
+/** Wider content column for authenticated app pages beside the sidebar. */
+export const WRAP_APP = 'mx-auto w-full max-w-[1480px] px-5 md:px-8'
+
+/** Narrow reading width for forms and detail flows. */
+export const WRAP_NARROW = 'mx-auto w-full max-w-[760px] px-5 md:px-8'
 
 const BTN_BASE =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-drop border px-[22px] text-[15px] leading-none transition-colors'

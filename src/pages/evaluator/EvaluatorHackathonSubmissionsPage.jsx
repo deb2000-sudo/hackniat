@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
 import { formatDateTime } from '../../utils/format'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
 import { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
@@ -38,7 +39,7 @@ export default function EvaluatorHackathonSubmissionsPage() {
   const hackathonName = data?.[0]?.hackathon_name || 'Assigned submissions'
 
   return (
-    <div className="container page admin-submissions-page">
+    <div className={`${WRAP_APP} py-7 md:py-10 admin-submissions-page`}>
       <PageHeader
         eyebrow="Evaluator queue"
         title={hackathonName}
@@ -88,7 +89,7 @@ export default function EvaluatorHackathonSubmissionsPage() {
         >
           <option value="all">All review statuses</option>
           <option value="none">Not submitted</option>
-          <option value="pending_review">Pending admin review</option>
+          <option value="pending_review">pending admin review</option>
           <option value="changes_requested">Changes requested</option>
           <option value="approved">Approved</option>
         </Select>

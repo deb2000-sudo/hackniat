@@ -1,16 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import {
-  metricScoringApi,
-} from '../api/metricScoring'
+import { metricScoringApi } from '../api/metricScoring'
 import { evaluationRequirementsApi } from '../api/evaluationRequirements'
 import { ApiError } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import { ROLES } from '../utils/constants'
-import PageHeader from '../components/layout/PageHeader'
+import {
+  BADGE,
+  BADGE_CLOSED,
+  BADGE_CLOSING,
+  BADGE_OPEN,
+  BTN_GHOST,
+  EYEBROW,
+  MONO,
+  PANEL,
+  WRAP_APP,
+} from '../components/drop/theme'
 import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
-import Card, { CardBody, CardHeader } from '../components/ui/Card'
 import Icon from '../components/ui/Icon'
 import Input, { Textarea } from '../components/ui/Input'
 import Modal from '../components/ui/Modal'
@@ -230,20 +237,25 @@ export default function MetricScoringPage() {
   }
 
   return (
-    <div className="container page metric-scoring-page">
-      <PageHeader
-        eyebrow="Evaluation setup"
-        title="AI metric scoring"
-        description={
-          isAdmin
+    <div className={`${WRAP_APP} py-7 md:py-10`}>
+      <header className="mb-7 max-w-3xl sm:mb-9">
+        <span className={EYEBROW}>Evaluation setup</span>
+        <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
+          AI metric scoring
+        </h1>
+        <p className="mt-2 text-[15px] text-muted md:text-base">
+          {isAdmin
             ? 'Define a natural-language scoring instruction for every field in an evaluation requirement.'
-            : 'Review the field-level instructions used to score this evaluation requirement.'
-        }
-      />
+            : 'Review the field-level instructions used to score this evaluation requirement.'}
+        </p>
+      </header>
 
-      <Card className="metric-scoring-lookup">
-        <CardBody>
-          <form className="metric-scoring-lookup__form" onSubmit={openRequirement}>
+      <section className={`${PANEL} mb-6 p-4 sm:p-5`}>
+        <form
+          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          onSubmit={openRequirement}
+        >
+          <div className="min-w-0 flex-1">
             <Input
               label="Evaluation requirement ID"
               value={requirementIdInput}
@@ -253,40 +265,51 @@ export default function MetricScoringPage() {
               }}
               placeholder="Paste the requirement ID"
             />
-            <Button
-              type="submit"
-              variant="secondary"
-              leftIcon={<Icon name="search" size={17} />}
-            >
-              Load requirement
-            </Button>
-          </form>
-        </CardBody>
-      </Card>
+          </div>
+          <button type="submit" className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}>
+            <Icon name="search" size={17} />
+            Load requirement
+          </button>
+        </form>
+      </section>
 
       {requirementId && loadError && (
-        <Alert variant="danger" title="Unable to load requirement">{loadError}</Alert>
+        <div className="mb-6">
+          <Alert variant="danger" title="Unable to load requirement">
+            {loadError}
+          </Alert>
+        </div>
       )}
-      {requirementId && loading && <LoadingBlock label="Loading requirement and AI scoring…" />}
+      {requirementId && loading && (
+        <LoadingBlock label="Loading requirement and AI scoring…" />
+      )}
 
       {requirementId && !loading && requirement && (
-        <form className="stack-lg metric-scoring-form" onSubmit={save} noValidate>
-          <div className="metric-scoring-context">
-            <div className="metric-scoring-context__icon">
-              <Icon name="sparkles" size={22} />
+        <form className="flex flex-col gap-6 pb-28" onSubmit={save} noValidate>
+          <section
+            className={`${PANEL} flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5`}
+          >
+            <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
+              <span className="grid size-11 shrink-0 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt">
+                <Icon name="sparkles" size={20} />
+              </span>
+              <div className="min-w-0">
+                <span className={`${EYEBROW} !tracking-[0.1em]`}>Scoring for</span>
+                <h2 className="mt-1 truncate text-[20px] font-semibold tracking-[-0.02em] text-ink md:text-[22px]">
+                  {requirement.name || requirement.title || 'Evaluation requirement'}
+                </h2>
+                <p className="mt-1 text-[13.5px] text-muted">
+                  <span className={MONO}>{fields.length}</span>{' '}
+                  {fields.length === 1 ? 'field' : 'fields'}
+                  {' · '}
+                  {scoring ? 'Configuration saved' : 'Not configured yet'}
+                </p>
+              </div>
             </div>
-            <div>
-              <span className="text-xs text-muted">SCORING FOR</span>
-              <h2>{requirement.name || requirement.title || 'Evaluation requirement'}</h2>
-              <p>
-                {fields.length} {fields.length === 1 ? 'field' : 'fields'} ·{' '}
-                {scoring ? 'Configuration saved' : 'Not configured yet'}
-              </p>
-            </div>
-            <span className={`metric-scoring-status ${scoring ? 'is-configured' : ''}`}>
+            <span className={`${BADGE} ${scoring ? BADGE_OPEN : BADGE_CLOSING}`}>
               {scoring ? 'Configured' : 'Draft'}
             </span>
-          </div>
+          </section>
 
           {!isAdmin && (
             <Alert variant="info">
@@ -302,15 +325,26 @@ export default function MetricScoringPage() {
             </Alert>
           ) : (
             <>
-              <Card>
-                <CardHeader className="metric-scoring-name-header">
+              <section className={`${PANEL} overflow-hidden`}>
+                <div className="flex flex-col gap-2 border-b border-hairline px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
                   <div>
-                    <h3>Configuration details</h3>
-                    <p>Name this set of field-level scoring instructions.</p>
+                    <h3 className="text-[16px] font-semibold tracking-[-0.02em] text-ink">
+                      Configuration details
+                    </h3>
+                    <p className="mt-1 text-[13.5px] text-muted">
+                      Name this set of field-level scoring instructions.
+                    </p>
                   </div>
-                  {scoring?.id && <code>{scoring.id}</code>}
-                </CardHeader>
-                <CardBody>
+                  {scoring?.id ? (
+                    <code
+                      className={`${MONO} max-w-full truncate rounded-drop border border-hairline bg-raised px-2.5 py-1.5 text-[11.5px] text-muted sm:max-w-[280px]`}
+                      title={scoring.id}
+                    >
+                      {scoring.id}
+                    </code>
+                  ) : null}
+                </div>
+                <div className="p-4 sm:p-5 sm:max-w-xl">
                   <Input
                     label="Configuration name"
                     required
@@ -323,28 +357,45 @@ export default function MetricScoringPage() {
                     error={errors.name}
                     disabled={!isAdmin}
                   />
-                </CardBody>
-              </Card>
-
-              <div className="metric-scoring-fields-heading">
-                <div>
-                  <h2>Field scoring prompts</h2>
-                  <p>Each prompt tells the AI what to assess for that submission field.</p>
                 </div>
-                <span>{metrics.length} prompts</span>
+              </section>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-ink md:text-[24px]">
+                    Field scoring prompts
+                  </h2>
+                  <p className="mt-1 text-[13.5px] text-muted">
+                    Each prompt tells the AI what to assess for that submission field.
+                  </p>
+                </div>
+                <span className={`${BADGE} ${BADGE_CLOSED}`}>
+                  <span className={`${MONO} mr-1`}>{metrics.length}</span> prompts
+                </span>
               </div>
 
-              <div className="metric-scoring-grid">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {metrics.map((metric, index) => (
-                  <Card className="metric-card" key={metric.field_key}>
-                    <CardHeader className="metric-card__header">
-                      <span className="metric-card__number">{String(index + 1).padStart(2, '0')}</span>
-                      <div>
-                        <h3>{metric.field_label}</h3>
-                        <code>{metric.field_key}</code>
+                  <article
+                    key={metric.field_key}
+                    className={`${PANEL} flex flex-col overflow-hidden transition-[border-color] focus-within:border-volt-edge`}
+                  >
+                    <div className="flex items-start gap-3 border-b border-hairline bg-raised/50 px-4 py-3.5 sm:px-5">
+                      <span
+                        className={`${MONO} grid size-9 shrink-0 place-items-center rounded-drop border border-hairline bg-surface text-[12px] font-semibold text-volt`}
+                      >
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <div className="min-w-0">
+                        <h3 className="truncate text-[15.5px] font-semibold tracking-[-0.015em] text-ink">
+                          {metric.field_label}
+                        </h3>
+                        <code className={`${MONO} mt-0.5 block truncate text-[12px] text-muted`}>
+                          {metric.field_key}
+                        </code>
                       </div>
-                    </CardHeader>
-                    <CardBody className="stack-md">
+                    </div>
+                    <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
                       <Textarea
                         label="Scoring prompt"
                         required
@@ -355,7 +406,7 @@ export default function MetricScoringPage() {
                         disabled={!isAdmin}
                         rows={5}
                       />
-                      <div className="grid grid-2 metric-card__numbers">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <Input
                           label="Maximum score"
                           type="number"
@@ -381,31 +432,42 @@ export default function MetricScoringPage() {
                           disabled={!isAdmin}
                         />
                       </div>
-                    </CardBody>
-                  </Card>
+                    </div>
+                  </article>
                 ))}
               </div>
 
               {isAdmin && (
-                <div className="metric-scoring-actions">
-                  {scoring && (
-                    <Button
-                      variant="ghost"
-                      className="metric-scoring-delete"
-                      leftIcon={<Icon name="trash" size={17} />}
-                      onClick={() => setConfirmDelete(true)}
+                <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 md:left-[264px]">
+                  <div className="pointer-events-auto mx-auto w-full max-w-[1480px] px-5 pb-4 md:px-8">
+                    <div
+                      className={`${PANEL} flex flex-col-reverse gap-3 bg-surface/95 p-3 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-3.5`}
                     >
-                      Delete configuration
-                    </Button>
-                  )}
-                  <Button
-                    type="submit"
-                    variant="accent"
-                    loading={saving}
-                    leftIcon={<Icon name="sparkles" size={18} />}
-                  >
-                    {scoring ? 'Save changes' : 'Create AI scoring'}
-                  </Button>
+                      {scoring ? (
+                        <button
+                          type="button"
+                          className={`${BTN_GHOST} w-full border-transparent text-[#ff8a8a] hover:border-[#5a2222] hover:bg-[#2a1010] sm:w-auto`}
+                          onClick={() => setConfirmDelete(true)}
+                        >
+                          <Icon name="trash" size={17} />
+                          Delete configuration
+                        </button>
+                      ) : (
+                        <span className="hidden text-[13px] text-muted sm:inline">
+                          Changes apply to this requirement only.
+                        </span>
+                      )}
+                      <Button
+                        type="submit"
+                        variant="accent"
+                        loading={saving}
+                        leftIcon={<Icon name="sparkles" size={18} />}
+                        className="w-full sm:w-auto sm:min-w-[200px]"
+                      >
+                        {scoring ? 'Save changes' : 'Create AI scoring'}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </>
@@ -414,10 +476,18 @@ export default function MetricScoringPage() {
       )}
 
       {(!requirementId || (!loading && !requirement && !loadError)) && (
-        <div className="metric-scoring-empty">
-          <span><Icon name="sparkles" size={28} /></span>
-          <h2>Choose an evaluation requirement</h2>
-          <p>Load a requirement to create or review its field-by-field AI scoring prompts.</p>
+        <div
+          className={`${PANEL} mt-2 flex min-h-[280px] flex-col items-center justify-center border-dashed px-6 py-14 text-center`}
+        >
+          <span className="mb-4 grid size-14 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt">
+            <Icon name="sparkles" size={26} />
+          </span>
+          <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-ink">
+            Choose an evaluation requirement
+          </h2>
+          <p className="mt-2 max-w-[48ch] text-[14.5px] text-muted">
+            Load a requirement to create or review its field-by-field AI scoring prompts.
+          </p>
         </div>
       )}
 

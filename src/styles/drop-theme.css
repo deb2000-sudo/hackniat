@@ -17,8 +17,9 @@
        rule in index.css resolves these at use time, so any component dropped
        onto a Drop surface adapts without being skinned individually — this
        catches the rules we haven't looked at, not just the ones we have.
-       Only the greyscale ramp is remapped: brand/accent stay put so volt
-       can't leak in through the back door. */
+       Greyscale + brand/status surfaces are remapped so light indigo washes
+       don't flash on authenticated pages. Primary CTAs still force volt via
+       the .btn skins below — not every brand token becomes lime. */
     --bg: var(--color-canvas);
     --surface: var(--color-surface);
     --surface-2: var(--color-raised);
@@ -28,6 +29,26 @@
     --text-muted: var(--color-muted);
     --text-subtle: var(--color-muted);
     --heading: var(--color-ink);
+
+    --brand-50: var(--color-raised);
+    --brand-100: var(--color-hairline);
+    --brand-300: #4a4a55;
+    --brand-400: var(--color-muted);
+    --brand-500: #c8c8d0;
+    --brand-600: var(--color-ink);
+    --brand-700: var(--color-ink);
+
+    --accent-500: var(--color-muted);
+    --accent-600: var(--color-ink);
+
+    --success-50: #0c2a1d;
+    --success-600: #6fe3ae;
+    --warning-50: #2a1e05;
+    --warning-600: #ffc55c;
+    --danger-50: #2a1010;
+    --danger-600: #ff8a8a;
+    --info-50: #0e1f38;
+    --info-500: #8fbeff;
 
     /* Flat surfaces: the brief calls for hairline borders, not shadows. */
     --shadow-sm: none;
@@ -336,6 +357,651 @@
     background: var(--color-raised);
     color: var(--color-ink);
     box-shadow: none;
+  }
+
+  /* ------------------------- App shell / sidebar ----------------------- */
+  .drop.app-shell,
+  .drop .app-content {
+    background: var(--color-canvas);
+  }
+
+  /* Authenticated pages: fill the content column instead of a tight strip. */
+  .drop .app-content .container {
+    max-width: 1480px;
+    padding-inline: 20px;
+  }
+
+  @media (min-width: 768px) {
+    .drop .app-content .container {
+      padding-inline: 32px;
+    }
+  }
+
+  .drop .app-content .container--narrow {
+    max-width: 760px;
+  }
+
+  .drop .admin-submissions-page,
+  .drop .admin-submission-detail {
+    max-width: none;
+  }
+
+  .drop .admin-submission-hackathons {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  @media (min-width: 721px) {
+    .drop .admin-submission-hackathons {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .drop .admin-submission-hackathons {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .drop .admin-submission-hackathon-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--radius-drop);
+    transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .drop .admin-submission-hackathon-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--color-volt-edge);
+    background: var(--color-raised);
+    box-shadow: none;
+  }
+
+  .drop .admin-submission-hackathon-card__media {
+    height: 200px;
+    background: linear-gradient(135deg, #141418, #1c1c22 55%, #24242c);
+  }
+
+  .drop .admin-submission-hackathon-card__media > div {
+    color: var(--color-muted);
+    background: linear-gradient(135deg, #141418, #1c1c22 55%, #24242c);
+  }
+
+  .drop .admin-submission-hackathon-card__media::after {
+    background: linear-gradient(transparent 40%, rgb(10 10 11 / 0.78));
+  }
+
+  .drop .admin-submission-hackathon-card__media > span {
+    color: var(--color-ink);
+    border-color: var(--color-hairline);
+    background: rgb(19 19 22 / 0.82);
+  }
+
+  .drop .admin-submission-hackathon-card .card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 16px;
+    grid-template-columns: none;
+    padding: 20px;
+  }
+
+  .drop .admin-submission-hackathon-card h2 {
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+  }
+
+  .drop .admin-submission-hackathon-card .btn {
+    align-self: stretch;
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+  }
+
+  .drop .admin-submission-hackathon-card__metrics {
+    margin-top: auto;
+  }
+
+  .drop .admin-submission-overview {
+    grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .drop .admin-submission-overview__search {
+    width: min(100%, 420px);
+  }
+
+  .drop .hackathon-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  @media (min-width: 721px) {
+    .drop .hackathon-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .drop .hackathon-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .drop .hackathon-card__media {
+    height: 210px;
+  }
+
+  .drop .hackathons-hero {
+    padding: 28px 32px;
+  }
+
+  .drop .themes-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  @media (min-width: 721px) {
+    .drop .themes-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .drop .themes-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .drop .requirements-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  @media (min-width: 721px) {
+    .drop .requirements-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .drop .requirements-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .drop .theme-card,
+  .drop .requirement-list-card {
+    border-radius: var(--radius-drop);
+    transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .drop .theme-card:hover,
+  .drop .requirement-list-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-volt-edge);
+    background: var(--color-raised);
+    box-shadow: none;
+  }
+
+  .drop .admin-hackathon-queue-banner {
+    height: 220px;
+    border-radius: var(--radius-drop);
+    overflow: hidden;
+    border: 1px solid var(--color-hairline);
+  }
+
+  .drop .admin-hackathon-queue-banner img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .drop .page-header .eyebrow {
+    color: var(--color-muted);
+  }
+
+  .drop .brand__mark {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+    border: 1px solid var(--color-volt-edge);
+    box-shadow: none;
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .sidebar {
+    color: var(--color-muted);
+    border-right: 1px solid var(--color-hairline);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .drop .sidebar__header {
+    border-bottom-color: var(--color-hairline);
+  }
+
+  .drop .sidebar .brand {
+    color: var(--color-ink);
+  }
+
+  .drop .sidebar .brand__name span {
+    color: var(--color-volt);
+  }
+
+  .drop .sidebar__close {
+    color: var(--color-muted);
+  }
+
+  .drop .sidebar__close:hover {
+    color: var(--color-ink);
+    background: var(--color-raised);
+  }
+
+  .drop .sidebar__workspace {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .sidebar__workspace span {
+    color: var(--color-muted);
+  }
+
+  .drop .sidebar__workspace small {
+    color: var(--color-muted);
+  }
+
+  .drop .sidebar__nav-label {
+    color: #5c5c68;
+  }
+
+  .drop .sidebar-link {
+    color: var(--color-muted);
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .sidebar-link:hover {
+    color: var(--color-ink);
+    background: var(--color-raised);
+    transform: none;
+  }
+
+  .drop .sidebar-link.is-active {
+    color: var(--color-ink);
+    background: var(--color-volt-tint);
+    box-shadow: inset 3px 0 0 var(--color-volt);
+  }
+
+  .drop .sidebar-link__icon {
+    color: var(--color-muted);
+    background: var(--color-raised);
+    border-radius: 8px;
+  }
+
+  .drop .sidebar-link.is-active .sidebar-link__icon {
+    color: var(--color-volt);
+    background: rgb(200 250 60 / 0.12);
+  }
+
+  .drop .sidebar-nav-group.is-active > summary {
+    color: var(--color-ink);
+    background: var(--color-raised);
+  }
+
+  .drop .sidebar-nav-group__chevron {
+    color: var(--color-muted);
+  }
+
+  .drop .sidebar-nav-group__items {
+    border-left-color: var(--color-hairline);
+  }
+
+  .drop .sidebar-sub-link {
+    color: var(--color-muted);
+  }
+
+  .drop .sidebar-sub-link > span {
+    background: var(--color-raised);
+  }
+
+  .drop .sidebar-sub-link:hover {
+    color: var(--color-ink);
+    background: var(--color-raised);
+  }
+
+  .drop .sidebar-sub-link.is-active {
+    color: var(--color-ink);
+    background: var(--color-volt-tint);
+  }
+
+  .drop .sidebar-sub-link.is-active > span {
+    color: var(--color-volt);
+  }
+
+  .drop .sidebar__footer {
+    border-top-color: var(--color-hairline);
+    background: transparent;
+  }
+
+  .drop .sidebar-profile:hover,
+  .drop .sidebar-profile-menu[open] .sidebar-profile {
+    background: var(--color-raised);
+  }
+
+  .drop .sidebar-profile strong {
+    color: var(--color-ink);
+  }
+
+  .drop .sidebar-profile__chevron {
+    color: var(--color-muted);
+  }
+
+  .drop .sidebar-profile-menu__popover {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+    box-shadow: none;
+  }
+
+  .drop .sidebar-profile-menu__heading {
+    border-bottom-color: var(--color-hairline);
+  }
+
+  .drop .sidebar-profile-menu__heading small {
+    color: var(--color-muted);
+  }
+
+  .drop .sidebar-profile-menu__heading strong {
+    color: var(--color-ink);
+  }
+
+  .drop .sidebar-utility {
+    color: var(--color-muted);
+  }
+
+  .drop .sidebar-utility:hover {
+    color: var(--color-ink);
+    background: var(--color-surface);
+  }
+
+  .drop .sidebar-utility--danger:hover {
+    color: #ff8a8a;
+    background: #2a1010;
+  }
+
+  .drop .mobile-sidebar-bar {
+    border-bottom-color: var(--color-hairline);
+    background: rgb(10 10 11 / 0.92);
+    backdrop-filter: blur(12px);
+  }
+
+  .drop .mobile-sidebar-bar .brand {
+    color: var(--color-ink);
+  }
+
+  .drop .mobile-sidebar-toggle {
+    color: var(--color-ink);
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+  }
+
+  .drop .sidebar-backdrop {
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  .drop .footer {
+    background: transparent;
+    border-top-color: var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  /* ------------------------ Shared UI primitives ----------------------- */
+  .drop .avatar {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+    border: 1px solid var(--color-volt-edge);
+  }
+
+  .drop .spinner {
+    border-color: var(--color-hairline);
+    border-top-color: var(--color-volt);
+  }
+
+  .drop .spinner--on-brand {
+    border-color: rgb(26 36 5 / 0.35);
+    border-top-color: var(--color-on-volt);
+  }
+
+  .drop .badge--brand {
+    background: var(--color-raised);
+    color: var(--color-ink);
+    border-color: var(--color-hairline);
+  }
+
+  .drop .badge--accent {
+    background: var(--color-volt-tint);
+    color: var(--color-volt);
+    border-color: var(--color-volt-edge);
+  }
+
+  .drop .badge--success {
+    background: #0c2a1d;
+    color: #6fe3ae;
+    border-color: #1c5540;
+  }
+
+  .drop .badge--warning {
+    background: #2a1e05;
+    color: #ffc55c;
+    border-color: #4a3308;
+  }
+
+  .drop .badge--danger {
+    background: #2a1010;
+    color: #ff8a8a;
+    border-color: #5a2222;
+  }
+
+  .drop .badge--info {
+    background: #0e1f38;
+    color: #8fbeff;
+    border-color: #24406b;
+  }
+
+  .drop .stat__icon,
+  .drop .empty__icon,
+  .drop .feature-card__icon,
+  .drop .section-title-with-icon > span,
+  .drop .hackathon-summary-item__icon,
+  .drop .hackathon-form-heading__icon {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+    border: 1px solid var(--color-volt-edge);
+  }
+
+  .drop .table-wrap {
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+  }
+
+  .drop .dropzone:hover,
+  .drop .dropzone--active {
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
+  }
+
+  .drop .bar__fill,
+  .drop .rec-timebar__fill {
+    background: var(--color-volt);
+  }
+
+  /* Purple light heroes → Drop surfaces */
+  .drop .hackathons-page {
+    --hackathon-ink: var(--color-ink);
+  }
+
+  .drop .hackathons-hero {
+    border-color: var(--color-hairline);
+    border-radius: var(--radius-drop);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .drop .hackathons-hero::after {
+    border-color: var(--color-hairline);
+    opacity: 0.35;
+  }
+
+  .drop .hackathons-hero__icon {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+    border: 1px solid var(--color-volt-edge);
+    box-shadow: none;
+  }
+
+  .drop .hackathons-hero .eyebrow {
+    color: var(--color-muted);
+  }
+
+  .drop .hackathon-card {
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+  }
+
+  .drop .hackathon-card:hover {
+    transform: translateY(-2px);
+    box-shadow: none;
+    border-color: var(--color-volt-edge);
+  }
+
+  .drop .hackathon-card__banner--empty {
+    background: linear-gradient(135deg, #1a1a20, #24242c);
+  }
+
+  .drop .hackathon-card__media {
+    background: var(--color-raised);
+  }
+
+  .drop .requirements-hero {
+    color: var(--color-ink);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .drop .requirements-hero .eyebrow {
+    color: var(--color-muted);
+  }
+
+  .drop .requirements-hero h1 {
+    color: var(--color-ink);
+  }
+
+  .drop .requirements-hero p {
+    color: var(--color-muted);
+  }
+
+  .drop .hackathon-detail-hero {
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .drop .hackathon-detail-hero--empty {
+    background: linear-gradient(135deg, #141418, #1c1c22);
+  }
+
+  .drop .hackathon-section-card {
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+  }
+
+  .drop .prize-card,
+  .drop .prize-card--1,
+  .drop .prize-card--2,
+  .drop .prize-card--3 {
+    background: var(--color-raised);
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+  }
+
+  .drop .prize-card svg,
+  .drop .prize-card--1 svg,
+  .drop .prize-card--3 svg {
+    color: var(--color-volt);
+  }
+
+  .drop .prize-card__place {
+    color: rgb(244 244 241 / 0.08);
+  }
+
+  .drop .prize-card__label {
+    color: var(--color-muted);
+  }
+
+  .drop .prize-card strong {
+    color: var(--color-ink);
+  }
+
+  .drop .hackathon-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 720px) {
+    .drop .hackathon-summary-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .drop .markdown-body {
+    color: var(--color-ink);
+  }
+
+  .drop .markdown-body a {
+    color: var(--color-volt);
+  }
+
+  .drop .markdown-body blockquote {
+    border-left-color: var(--color-volt-edge);
+    background: var(--color-raised);
+    color: var(--color-muted);
+  }
+
+  .drop .filter-pill--active {
+    color: var(--color-on-volt);
+    background: var(--color-volt);
+    box-shadow: none;
+  }
+
+  .drop .metric-scoring-lookup {
+    background: var(--color-surface);
+  }
+
+  .drop .metric-scoring-page {
+    max-width: none;
+  }
+
+  .drop .requirements-page,
+  .drop .requirement-form-page {
+    max-width: none;
+  }
+
+  .drop .modal-overlay {
+    background: rgb(0 0 0 / 0.62);
+  }
+
+  .drop .modal {
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .theme-card__top > span,
+  .drop .hackathon-card__themes span,
+  .drop .student-hackathon-theme-card__themes span {
+    color: var(--color-volt);
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
   }
 }
 

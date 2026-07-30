@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { adminApi } from '../../api/admin'
 import { useAsync } from '../../hooks/useAsync'
 import { queryKeys } from '../../lib/queryKeys'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Card, { CardBody } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -64,7 +65,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="container page">
+    <div className={`${WRAP_APP} py-7 md:py-10`}>
       <PageHeader
         eyebrow="Administration"
         title="Student Management"

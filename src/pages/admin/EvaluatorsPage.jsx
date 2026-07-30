@@ -4,6 +4,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateQueries } from '../../lib/queryCache'
 import { APPROVAL_STATUS } from '../../utils/constants'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -49,7 +50,7 @@ export default function EvaluatorsPage() {
   }
 
   return (
-    <div className="container page">
+    <div className={`${WRAP_APP} py-7 md:py-10`}>
       <PageHeader
         eyebrow="Administration"
         title="Evaluator Management"

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { useAsync } from '../../hooks/useAsync'
 import { formatDateTime } from '../../utils/format'
+import { WRAP_APP } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Card, { CardBody } from '../../components/ui/Card'
@@ -48,7 +49,7 @@ export default function EvaluationRequirementsPage() {
   }
 
   return (
-    <div className="container page requirements-page">
+    <div className={`${WRAP_APP} py-7 md:py-10 requirements-page`}>
       <section className="requirements-hero">
         <div>
           <div className="eyebrow">Evaluation setup</div>

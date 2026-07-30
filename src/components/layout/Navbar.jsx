@@ -24,7 +24,6 @@ const NAV_BY_ROLE = {
     { to: '/hackathons', label: 'Hackathons', icon: 'trophy' },
     { to: '/admin/themes', label: 'Themes', icon: 'sparkles' },
     { to: '/admin/evaluation-requirements', label: 'Requirements', icon: 'clipboard' },
-    { to: '/ai-scoring', label: 'AI scoring', icon: 'spark' },
     {
       label: 'User Management',
       icon: 'users',

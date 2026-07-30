@@ -50,10 +50,10 @@ export function StatusBadge({ status }) {
 }
 
 const REVIEW_STATUS = {
-  none: { label: 'Not submitted', variant: 'neutral' },
-  pending_review: { label: 'Pending admin review', variant: 'warning' },
-  changes_requested: { label: 'Changes requested', variant: 'danger' },
-  approved: { label: 'Approved', variant: 'success' },
+  none: { label: 'not submitted', variant: 'neutral' },
+  pending_review: { label: 'pending admin review', variant: 'warning' },
+  changes_requested: { label: 'changes requested', variant: 'danger' },
+  approved: { label: 'approved', variant: 'success' },
 }
 
 export function ReviewStatusBadge({ status }) {
@@ -63,7 +63,7 @@ export function ReviewStatusBadge({ status }) {
     variant: 'neutral',
   }
   return (
-    <Badge variant={config.variant} dot>
+    <Badge variant={config.variant} dot className="badge--review">
       {config.label}
     </Badge>
   )

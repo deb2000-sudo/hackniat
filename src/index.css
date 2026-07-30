@@ -1379,6 +1379,10 @@ code {
   text-align: right;
 }
 
+.admin-submissions-table .badge--review {
+  white-space: nowrap;
+}
+
 .evaluator-submissions-table td:first-child strong {
   display: block;
 }
@@ -2676,6 +2680,13 @@ code {
 .badge--danger { background: var(--danger-50); color: var(--danger-600); }
 .badge--info { background: var(--info-50); color: var(--info-500); }
 .badge--accent { background: #faf5ff; color: var(--accent-600); }
+.badge--review {
+  max-width: none;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+}
 
 /* ------------------------------ Alerts --------------------------------- */
 .alert {

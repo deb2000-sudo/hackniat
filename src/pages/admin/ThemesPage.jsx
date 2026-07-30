@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { themesApi } from '../../api/themes'
 import { useAsync } from '../../hooks/useAsync'
 import { formatDateTime } from '../../utils/format'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
@@ -82,7 +83,7 @@ export default function ThemesPage() {
   }
 
   return (
-    <div className="container page themes-page">
+    <div className={`${WRAP_APP} py-7 md:py-10 themes-page`}>
       <PageHeader
         eyebrow="Hackathon setup"
         title="Themes"

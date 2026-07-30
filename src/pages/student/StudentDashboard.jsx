@@ -6,6 +6,7 @@ import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDate, formatScore } from '../../utils/format'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
@@ -40,7 +41,7 @@ export default function StudentDashboard() {
   }, [sessions])
 
   return (
-    <div className="container page">
+    <div className={`${WRAP_APP} py-7 md:py-10`}>
       <PageHeader
         eyebrow={`Welcome, ${user?.name?.split(' ')[0] || 'there'}`}
         title="Your submissions"

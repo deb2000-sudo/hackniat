@@ -5,6 +5,7 @@ import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
 import { formatDate, formatDateTime } from '../../utils/format'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Badge, { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
@@ -142,7 +143,7 @@ export default function AdminHackathonSubmissionsPage() {
   }
 
   return (
-    <div className="container page admin-submissions-page">
+    <div className={`${WRAP_APP} py-7 md:py-10 admin-submissions-page`}>
       <PageHeader
         eyebrow="Hackathon submissions"
         title={hackathon?.name || 'Submissions'}
