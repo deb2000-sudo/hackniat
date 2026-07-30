@@ -31,6 +31,7 @@ export default function AdminSubmissionDetailPage() {
   const [publishedAtOverride, setPublishedAtOverride] = useState(undefined)
   const [reviewOverride, setReviewOverride] = useState(null)
   const [actionMessage, setActionMessage] = useState('')
+  const [showDetailReport, setShowDetailReport] = useState(false)
 
   const reportPublished = publishOverride ?? submission?.report_published ?? false
   const reviewStatus = reviewOverride?.review_status ?? submission?.review_status ?? 'none'
@@ -248,6 +249,18 @@ export default function AdminSubmissionDetailPage() {
                 <Alert variant="danger">AI evaluation failed.</Alert>
               )}
 
+              {completed && (
+                <Button
+                  type="button"
+                  variant={showDetailReport ? 'secondary' : 'ghost'}
+                  block
+                  onClick={() => setShowDetailReport((value) => !value)}
+                  leftIcon={<Icon name="file" size={17} />}
+                >
+                  {showDetailReport ? 'Hide detail report' : 'Detail report'}
+                </Button>
+              )}
+
               {completed && reviewStatus !== 'pending_review' && (
                 <div className="admin-publish-control">
                   <div>
@@ -363,6 +376,11 @@ export default function AdminSubmissionDetailPage() {
           <SubmissionReport
             submissionId={submission.id}
             embeddedAnalysis={submission?.analysis || submission?.result}
+            demoScore={
+              submission?.analysis?.overall_score ?? submission?.result?.overall_score
+            }
+            showDetailReport={showDetailReport}
+            onToggleDetailReport={() => setShowDetailReport((value) => !value)}
           />
         </div>
       )}

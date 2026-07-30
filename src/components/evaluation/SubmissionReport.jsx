@@ -1,16 +1,24 @@
+import { useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
+import {
+  computeNormalizedAnalysisScore,
+  groupReportSections,
+  parseMarkdownSections,
+} from '../../utils/analysisReport'
 import { formatDateTime } from '../../utils/format'
 import Alert from '../ui/Alert'
 import Accordion from '../ui/Accordion'
 import Badge from '../ui/Badge'
+import Button from '../ui/Button'
 import Card, { CardBody, CardHeader } from '../ui/Card'
 import Icon from '../ui/Icon'
 import { LoadingBlock } from '../ui/Spinner'
 
 function Markdown({ children }) {
+  if (!children) return null
   return (
     <div className="markdown-body">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
@@ -18,8 +26,10 @@ function Markdown({ children }) {
   )
 }
 
-function FieldScoresTable({ scores }) {
-  if (!scores?.length) return null
+function FieldScoresTable({ scores, emptyLabel = 'No scores available.' }) {
+  if (!scores?.length) {
+    return <p className="text-sm text-muted">{emptyLabel}</p>
+  }
 
   return (
     <div className="table-wrap">
@@ -58,11 +68,212 @@ function FieldScoresTable({ scores }) {
   )
 }
 
+function ScoreBreakdown({ scoreSummary }) {
+  if (!scoreSummary) return null
+
+  return (
+    <div className="analysis-score-summary">
+      <div className="analysis-score-summary__total">
+        <span>Combined AI score</span>
+        <strong>
+          {scoreSummary.roundedPercent}
+          <small>/ 100</small>
+        </strong>
+        <em>
+          {scoreSummary.earned.toFixed(1)} earned of {scoreSummary.max.toFixed(1)} max points
+        </em>
+      </div>
+      <div className="analysis-score-summary__bars" aria-hidden="true">
+        <span style={{ width: `${Math.min(100, scoreSummary.percent)}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function ReportSections({ sections }) {
+  if (!sections?.length) return null
+  return (
+    <div className="analysis-report-sections stack-md">
+      {sections.map((section) => (
+        <section key={`${section.kind}-${section.title}`} className="analysis-report-section">
+          <h4>{section.title}</h4>
+          <Markdown>{section.body}</Markdown>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function AnalysisBody({
+  report,
+  recommendation,
+  scoreSummary,
+  groups,
+  showDetailReport,
+  onToggleDetailReport,
+  collapsible,
+}) {
+  const hasAnalysisContent =
+    scoreSummary ||
+    groups.analysis.length ||
+    scoreSummary?.requirementRows?.length ||
+    scoreSummary?.demoRows?.length
+
+  const hasRecommendations =
+    Boolean(recommendation) || groups.recommendations.length > 0
+
+  const analysisInner = (
+    <div className="stack-lg">
+      <ScoreBreakdown scoreSummary={scoreSummary} />
+
+      <div className="analysis-report-block">
+        <div className="analysis-report-block__head">
+          <h4>Requirement field scores</h4>
+          <p>Scores for problem statement, solution description, and other requirement fields.</p>
+        </div>
+        <FieldScoresTable
+          scores={scoreSummary?.requirementRows || report?.field_scores}
+          emptyLabel="No requirement field scores were returned."
+        />
+      </div>
+
+      <div className="analysis-report-block">
+        <div className="analysis-report-block__head">
+          <h4>Working demo video score</h4>
+          <p>How well the recorded or uploaded demo supports the written submission.</p>
+        </div>
+        <FieldScoresTable
+          scores={scoreSummary?.demoRows}
+          emptyLabel="No working-demo score was returned for this submission."
+        />
+      </div>
+
+      <ReportSections sections={groups.analysis} />
+
+      {onToggleDetailReport && (
+        <div className="analysis-detail-toggle">
+          <Button
+            type="button"
+            variant={showDetailReport ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={onToggleDetailReport}
+            leftIcon={<Icon name="file" size={16} />}
+          >
+            {showDetailReport ? 'Hide detail report' : 'Detail report'}
+          </Button>
+          <small>Validity checklist and longer narrative sections.</small>
+        </div>
+      )}
+
+      {showDetailReport && (
+        <div className="stack-md analysis-detail-panel">
+          <div className="analysis-report-block">
+            <div className="analysis-report-block__head">
+              <h4>Validity checklist</h4>
+              <p>AI validation checks against the submission text.</p>
+            </div>
+            <Markdown>{report?.checklist || 'No checklist was returned.'}</Markdown>
+          </div>
+          <ReportSections sections={groups.detail} />
+        </div>
+      )}
+    </div>
+  )
+
+  const recommendationInner = (
+    <div className="stack-md">
+      {recommendation && (
+        <div className="evaluation-recommendation-callout">
+          <span>Recommendation</span>
+          <p>{recommendation}</p>
+        </div>
+      )}
+      {groups.recommendations.length ? (
+        <ReportSections sections={groups.recommendations} />
+      ) : !recommendation ? (
+        <p className="text-sm text-muted">No recommendations were returned.</p>
+      ) : null}
+    </div>
+  )
+
+  if (collapsible) {
+    return (
+      <div className="stack-md">
+        {hasAnalysisContent && (
+          <Accordion
+            title="AI Analysis Report"
+            description="Field scores, demo score, and the findings evaluators need first."
+            icon="chart"
+            defaultOpen
+            badge={
+              scoreSummary ? (
+                <Badge variant="success">{scoreSummary.roundedPercent}/100</Badge>
+              ) : null
+            }
+          >
+            {analysisInner}
+          </Accordion>
+        )}
+        {hasRecommendations && (
+          <Accordion
+            title="Recommendations"
+            description="Suggested improvements after reviewing the analysis."
+            icon="sparkles"
+          >
+            {recommendationInner}
+          </Accordion>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="stack-lg">
+      <div className="row-between wrap">
+        <div>
+          <div className="eyebrow" style={{ color: 'var(--brand-600)' }}>
+            Detailed analysis
+          </div>
+          <p className="text-sm text-muted" style={{ marginTop: 4 }}>
+            Analyzed {formatDateTime(report?.analyzed_at)}
+          </p>
+        </div>
+        {scoreSummary && (
+          <Badge variant="success">{scoreSummary.roundedPercent} / 100</Badge>
+        )}
+      </div>
+
+      {hasAnalysisContent && (
+        <Card>
+          <CardHeader>
+            <h3>AI Analysis Report</h3>
+            <Icon name="chart" size={20} className="text-muted" />
+          </CardHeader>
+          <CardBody>{analysisInner}</CardBody>
+        </Card>
+      )}
+
+      {hasRecommendations && (
+        <Card>
+          <CardHeader>
+            <h3>Recommendations</h3>
+            <Icon name="sparkles" size={20} className="text-muted" />
+          </CardHeader>
+          <CardBody>{recommendationInner}</CardBody>
+        </Card>
+      )}
+    </div>
+  )
+}
+
 export default function SubmissionReport({
   submissionId,
   collapsible = false,
   recommendation,
   embeddedAnalysis = null,
+  demoScore = null,
+  showDetailReport = false,
+  onToggleDetailReport,
 }) {
   const { data, loading, error, reload } = useAsync(() =>
     evaluationApi.getSubmissionReport(submissionId),
@@ -70,7 +281,26 @@ export default function SubmissionReport({
 
   const report = data || embeddedAnalysis
   const fieldScores = report?.field_scores || embeddedAnalysis?.field_scores || null
-  const hasVideoReport = Boolean(report?.report)
+
+  const sections = useMemo(
+    () => parseMarkdownSections(report?.report),
+    [report?.report],
+  )
+  const groups = useMemo(() => groupReportSections(sections), [sections])
+  const resolvedDemoScore = useMemo(() => {
+    const raw = demoScore ?? embeddedAnalysis?.overall_score ?? report?.overall_score
+    if (raw == null) return null
+    const value = Number(raw)
+    // Treat as a 0–10 demo score; ignore already-normalized 0–100 composites.
+    return Number.isFinite(value) && value <= 10 ? value : null
+  }, [demoScore, embeddedAnalysis, report])
+  const scoreSummary = useMemo(
+    () =>
+      computeNormalizedAnalysisScore(fieldScores, {
+        demoScore: resolvedDemoScore,
+      }),
+    [fieldScores, resolvedDemoScore],
+  )
 
   if (loading && !embeddedAnalysis) {
     return (
@@ -102,96 +332,15 @@ export default function SubmissionReport({
     )
   }
 
-  if (collapsible) {
-    return (
-      <div className="stack-md">
-        {fieldScores?.length ? (
-          <Accordion
-            title="Field scores"
-            description="Per-field metric scoring from the evaluation requirement prompts."
-            icon="chart"
-          >
-            <FieldScoresTable scores={fieldScores} />
-          </Accordion>
-        ) : null}
-        <Accordion
-          title="Validity checklist"
-          description="Open to inspect the AI validation checks."
-          icon="checkCircle"
-        >
-          <Markdown>{report?.checklist || 'No checklist was returned.'}</Markdown>
-        </Accordion>
-        {hasVideoReport || recommendation ? (
-          <Accordion
-            title="Recommendations"
-            description="Open to review the AI findings and suggested improvements."
-            icon="sparkles"
-          >
-            {recommendation && (
-              <div className="evaluation-recommendation-callout">
-                <span>Recommendation</span>
-                <p>{recommendation}</p>
-              </div>
-            )}
-            <Markdown>{report?.report || 'No recommendations were returned.'}</Markdown>
-          </Accordion>
-        ) : null}
-      </div>
-    )
-  }
-
   return (
-    <div className="stack-lg">
-      <div className="row-between wrap">
-        <div>
-          <div className="eyebrow" style={{ color: 'var(--brand-600)' }}>
-            Detailed analysis
-          </div>
-          <p className="text-sm text-muted" style={{ marginTop: 4 }}>
-            Analyzed {formatDateTime(report?.analyzed_at)}
-          </p>
-        </div>
-      </div>
-
-      {fieldScores?.length ? (
-        <Card>
-          <CardHeader>
-            <h3>Field scores</h3>
-            <Icon name="chart" size={20} className="text-muted" />
-          </CardHeader>
-          <CardBody>
-            <FieldScoresTable scores={fieldScores} />
-          </CardBody>
-        </Card>
-      ) : null}
-
-      <Card>
-        <CardHeader>
-          <h3>Validation checklist</h3>
-          <Icon name="clipboard" size={20} className="text-muted" />
-        </CardHeader>
-        <CardBody>
-          <Markdown>{report?.checklist || 'No checklist was returned.'}</Markdown>
-        </CardBody>
-      </Card>
-
-      {(hasVideoReport || recommendation) && (
-        <Card>
-          <CardHeader>
-            <h3>Analysis report</h3>
-            <Icon name="file" size={20} className="text-muted" />
-          </CardHeader>
-          <CardBody>
-            {recommendation && (
-              <div className="evaluation-recommendation-callout" style={{ marginBottom: 16 }}>
-                <span>Recommendation</span>
-                <p>{recommendation}</p>
-              </div>
-            )}
-            <Markdown>{report?.report || 'No report was returned.'}</Markdown>
-          </CardBody>
-        </Card>
-      )}
-    </div>
+    <AnalysisBody
+      report={report}
+      recommendation={recommendation}
+      scoreSummary={scoreSummary}
+      groups={groups}
+      showDetailReport={showDetailReport}
+      onToggleDetailReport={onToggleDetailReport}
+      collapsible={collapsible}
+    />
   )
 }

@@ -415,6 +415,20 @@
     box-shadow: none;
   }
 
+  .drop .analysis-score-summary,
+  .drop .analysis-detail-panel {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .analysis-score-summary__bars span {
+    background: var(--color-volt);
+  }
+
+  .drop .analysis-report-section + .analysis-report-section {
+    border-color: var(--color-hairline);
+  }
+
   .drop .admin-submission-hackathons {
     grid-template-columns: repeat(1, minmax(0, 1fr));
     gap: 18px;

@@ -4681,6 +4681,107 @@ code {
   line-height: 1.45;
 }
 
+.analysis-score-summary {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.analysis-score-summary__total {
+  display: grid;
+  gap: 4px;
+}
+
+.analysis-score-summary__total span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.analysis-score-summary__total strong {
+  color: var(--heading);
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.analysis-score-summary__total strong small {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.analysis-score-summary__total em {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: normal;
+}
+
+.analysis-score-summary__bars {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.analysis-score-summary__bars span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand-500, #84cc16);
+}
+
+.analysis-report-block {
+  display: grid;
+  gap: 12px;
+}
+
+.analysis-report-block__head h4,
+.analysis-report-section h4 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.analysis-report-block__head p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.analysis-report-section + .analysis-report-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.analysis-detail-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding-top: 4px;
+}
+
+.analysis-detail-toggle small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.analysis-detail-panel {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
 .field-scores-table {
   width: 100%;
   border-collapse: collapse;

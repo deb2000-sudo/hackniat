@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { resolveApiUrl } from '../../api/client'
 import { usePolling } from '../../hooks/usePolling'
+import { computeNormalizedAnalysisScore } from '../../utils/analysisReport'
 import { formatDateTime } from '../../utils/format'
 import {
   BTN_GHOST,
@@ -31,6 +32,11 @@ function EvaluatorReviewForm({
     initialScore != null ? String(initialScore) : '',
   )
   const [notes, setNotes] = useState(initialNotes || '')
+
+  useEffect(() => {
+    if (initialScore == null) return
+    setScore((current) => (current === '' ? String(initialScore) : current))
+  }, [initialScore])
 
   return (
     <form
@@ -159,10 +165,21 @@ export default function EvaluatorSubmissionDetailPage() {
   const [action, setAction] = useState('')
   const [actionError, setActionError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
+  const [showDetailReport, setShowDetailReport] = useState(false)
 
   const reviewStatus = reviewOverride?.review_status ?? submission?.review_status ?? 'none'
   const currentScore = reviewOverride?.evaluator_score ?? submission?.evaluator_score
   const currentNotes = reviewOverride?.evaluator_notes ?? submission?.evaluator_notes
+  const analysis = submission?.analysis || submission?.result
+  const aiScoreSummary = useMemo(() => {
+    const rawDemo = analysis?.overall_score ?? submission?.result?.overall_score
+    const demoScore =
+      rawDemo != null && Number(rawDemo) <= 10 ? Number(rawDemo) : null
+    return computeNormalizedAnalysisScore(
+      analysis?.field_scores || submission?.field_scores,
+      { demoScore },
+    )
+  }, [analysis, submission])
   const videoUrl = submission
     ? resolveApiUrl(
         submission.video_url ||
@@ -245,12 +262,9 @@ export default function EvaluatorSubmissionDetailPage() {
   const completed = submission?.status === 'completed'
   const failed = submission?.status === 'failed'
   const canSubmit = completed && ['none', 'changes_requested'].includes(reviewStatus)
-  const rawAnalysisScore = submission?.result?.overall_score
-  const dashboardScore = currentScore ?? (
-    rawAnalysisScore != null && rawAnalysisScore <= 10
-      ? rawAnalysisScore * 10
-      : rawAnalysisScore
-  ) ?? 0
+  const suggestedScore = aiScoreSummary?.roundedPercent ?? null
+  const dashboardScore = currentScore ?? suggestedScore ?? 0
+  const formInitialScore = currentScore ?? suggestedScore
 
   return (
     <div className={`${WRAP_APP} py-7 md:py-10 admin-submission-detail`}>
@@ -347,7 +361,10 @@ export default function EvaluatorSubmissionDetailPage() {
               submissionId={submission.id}
               collapsible
               recommendation={submission?.result?.recommendation}
-              embeddedAnalysis={submission?.analysis || submission?.result}
+              embeddedAnalysis={analysis}
+              demoScore={analysis?.overall_score ?? submission?.result?.overall_score}
+              showDetailReport={showDetailReport}
+              onToggleDetailReport={() => setShowDetailReport((value) => !value)}
             />
           )}
 
@@ -356,17 +373,21 @@ export default function EvaluatorSubmissionDetailPage() {
               <CardBody>
                 <AnimatedScoreGauge
                   value={dashboardScore}
-                  label={currentScore != null ? 'Evaluator score' : 'AI score'}
+                  label={currentScore != null ? 'Evaluator score' : 'Combined AI score'}
                 />
                 <div className="evaluator-score-card__status">
                   <span className="eyebrow">Score summary</span>
                   <h3>{Math.round(dashboardScore)} out of 100</h3>
                   <ReviewStatusBadge status={reviewStatus} />
                   <p>
-                    {reviewStatus === 'approved'
-                      ? 'Approved and visible to the student.'
-                      : reviewStatus === 'pending_review'
-                        ? 'Submitted and waiting for admin approval.'
+                    {currentScore != null
+                      ? reviewStatus === 'approved'
+                        ? 'Approved and visible to the student.'
+                        : reviewStatus === 'pending_review'
+                          ? 'Submitted and waiting for admin approval.'
+                          : 'Your submitted score.'
+                      : aiScoreSummary
+                        ? `AI combined score: ${aiScoreSummary.earned.toFixed(1)} / ${aiScoreSummary.max.toFixed(1)} points → ${aiScoreSummary.roundedPercent}/100.`
                         : 'Review the AI result and submit your score.'}
                   </p>
                 </div>
@@ -429,6 +450,24 @@ export default function EvaluatorSubmissionDetailPage() {
                   <ReviewStatusBadge status={reviewStatus} />
                 </div>
               )}
+
+              {completed && (
+                <Button
+                  type="button"
+                  variant={showDetailReport ? 'secondary' : 'ghost'}
+                  block
+                  onClick={() => setShowDetailReport((value) => !value)}
+                  leftIcon={<Icon name="file" size={17} />}
+                >
+                  {showDetailReport ? 'Hide detail report' : 'Detail report'}
+                </Button>
+              )}
+
+              {completed && suggestedScore != null && currentScore == null && (
+                <p className="text-sm text-muted">
+                  Suggested score from AI fields + demo: <strong>{suggestedScore}/100</strong>
+                </p>
+              )}
             </CardBody>
           </Card>
 
@@ -439,7 +478,7 @@ export default function EvaluatorSubmissionDetailPage() {
               </CardHeader>
               <CardBody>
                 <EvaluatorReviewForm
-                  initialScore={currentScore}
+                  initialScore={formInitialScore}
                   initialNotes={currentNotes}
                   reviewStatus={reviewStatus}
                   submitting={action === 'submitting'}
