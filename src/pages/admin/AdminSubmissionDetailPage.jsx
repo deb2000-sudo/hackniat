@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { resolveApiUrl } from '../../api/client'
 import { usePolling } from '../../hooks/usePolling'
+import { getScorecard } from '../../utils/scorecard'
 import { formatDateTime } from '../../utils/format'
 import { BTN_GHOST, EYEBROW, WRAP_APP } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
@@ -12,6 +13,8 @@ import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
 import { Textarea } from '../../components/ui/Input'
 import Spinner, { LoadingBlock } from '../../components/ui/Spinner'
+import AiMetricsPanel from '../../components/evaluation/AiMetricsPanel'
+import ScorecardBar from '../../components/evaluation/ScorecardBar'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
 
 export default function AdminSubmissionDetailPage() {
@@ -38,6 +41,10 @@ export default function AdminSubmissionDetailPage() {
   const evaluatorScore = reviewOverride?.evaluator_score ?? submission?.evaluator_score
   const evaluatorNotes = reviewOverride?.evaluator_notes ?? submission?.evaluator_notes
   const finalScore = reviewOverride?.final_score ?? submission?.final_score
+  const scorecard = useMemo(
+    () => reviewOverride?.scorecard || getScorecard(submission),
+    [reviewOverride, submission],
+  )
   const videoUrl = submission
     ? resolveApiUrl(
         submission.video_url ||
@@ -70,7 +77,11 @@ export default function AdminSubmissionDetailPage() {
         : await evaluationApi.requestEvaluatorChanges(submission.id, reviewNotes.trim())
       const nextStatus = updated.review_status ||
         (decision === 'approving' ? 'approved' : 'changes_requested')
-      setReviewOverride({ ...updated, review_status: nextStatus })
+      setReviewOverride({
+        ...updated,
+        review_status: nextStatus,
+        scorecard: updated.scorecard || getScorecard(updated) || scorecard,
+      })
       if (decision === 'approving') {
         setPublishOverride(updated.report_published ?? true)
         setPublishedAtOverride(updated.published_at ?? new Date().toISOString())
@@ -159,8 +170,37 @@ export default function AdminSubmissionDetailPage() {
         </div>
       )}
 
+      {scorecard?.metrics?.length ? (
+        <div className="mb-6">
+          <Card>
+            <CardBody>
+              <ScorecardBar
+                scorecard={scorecard}
+                title={
+                  finalScore != null
+                    ? `Final score ${finalScore}/100`
+                    : 'Evaluator scorecard'
+                }
+              />
+            </CardBody>
+          </Card>
+        </div>
+      ) : null}
+
       <div className="admin-submission-layout">
         <div className="stack-lg">
+          {scorecard?.metrics?.length ? (
+            <Card>
+              <CardHeader>
+                <h3>AI metrics</h3>
+                <Icon name="sparkles" size={19} className="text-muted" />
+              </CardHeader>
+              <CardBody>
+                <AiMetricsPanel scorecard={scorecard} />
+              </CardBody>
+            </Card>
+          ) : null}
+
           <Card>
             <CardHeader>
               <div>

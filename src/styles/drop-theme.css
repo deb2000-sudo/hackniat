@@ -429,6 +429,23 @@
     border-color: var(--color-hairline);
   }
 
+  .drop .scorecard-bar__track,
+  .drop .ai-metric-card,
+  .drop .manual-metric-card,
+  .drop .manual-boolean-list label,
+  .drop .manual-choice-row label,
+  .drop .manual-choice-row button {
+    border-color: var(--color-hairline);
+  }
+
+  .drop .scorecard-bar__track {
+    background: var(--color-raised);
+  }
+
+  .drop .manual-score-link:hover {
+    color: var(--color-volt);
+  }
+
   .drop .admin-submission-hackathons {
     grid-template-columns: repeat(1, minmax(0, 1fr));
     gap: 18px;

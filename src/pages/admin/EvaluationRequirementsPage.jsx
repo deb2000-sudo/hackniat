@@ -147,7 +147,7 @@ export default function EvaluationRequirementsPage() {
                   block
                   leftIcon={<Icon name="sparkles" size={17} />}
                 >
-                  Set AI scoring
+                  Set scoring
                 </Button>
               </CardBody>
             </Card>

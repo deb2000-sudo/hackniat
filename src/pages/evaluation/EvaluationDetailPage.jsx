@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { usePolling } from '../../hooks/usePolling'
 import { useAuth } from '../../hooks/useAuth'
+import { getScorecard } from '../../utils/scorecard'
 import { EVALUATION_STATUS, ROLE_HOME, ROLES } from '../../utils/constants'
 import PageHeader from '../../components/layout/PageHeader'
 import Button from '../../components/ui/Button'
@@ -12,6 +13,7 @@ import { LoadingBlock } from '../../components/ui/Spinner'
 import SessionMeta from '../../components/evaluation/SessionMeta'
 import SessionStatusPanel from '../../components/evaluation/SessionStatusPanel'
 import EvaluationResultView from '../../components/evaluation/EvaluationResultView'
+import ScorecardBar from '../../components/evaluation/ScorecardBar'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
 import Card, { CardBody } from '../../components/ui/Card'
 
@@ -98,9 +100,9 @@ export default function EvaluationDetailPage() {
                   <p>Approved by the hackathon administrator</p>
                 </div>
                 <div className="student-final-score__value">
-                  {session?.final_score != null ? (
+                  {session?.final_score != null || getScorecard(session)?.computed_total != null ? (
                     <strong>
-                      {session.final_score}
+                      {session?.final_score ?? getScorecard(session)?.computed_total}
                       <small>/100</small>
                     </strong>
                   ) : (
@@ -109,6 +111,14 @@ export default function EvaluationDetailPage() {
                 </div>
               </CardBody>
             </Card>
+
+            {getScorecard(session)?.metrics?.length ? (
+              <Card>
+                <CardBody>
+                  <ScorecardBar scorecard={getScorecard(session)} title="Your scorecard" />
+                </CardBody>
+              </Card>
+            ) : null}
 
             <SubmissionReport submissionId={session.id} />
           </div>

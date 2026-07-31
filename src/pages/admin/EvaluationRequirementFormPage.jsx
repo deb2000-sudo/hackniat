@@ -74,7 +74,7 @@ export default function EvaluationRequirementFormPage() {
                 variant="accent"
                 leftIcon={<Icon name="sparkles" size={18} />}
               >
-                Set AI scoring
+                Set scoring
               </Button>
               <Button as={Link} to="/admin/evaluation-requirements" variant="secondary">
                 Back to requirements

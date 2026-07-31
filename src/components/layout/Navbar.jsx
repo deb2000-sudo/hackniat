@@ -33,6 +33,7 @@ const NAV_BY_ROLE = {
         { to: '/admin/evaluators', label: 'Evaluator Management', icon: 'shield' },
       ],
     },
+    { to: '/admin/settings', label: 'Application Settings', icon: 'settings' },
   ],
 }
 

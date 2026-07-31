@@ -26,6 +26,11 @@ function normalizeSubmission(submission) {
     final_score: submission.final_score ?? null,
     auto_ai_evaluation: Boolean(submission.auto_ai_evaluation),
     show_ai_evaluation_button: Boolean(submission.show_ai_evaluation_button),
+    scorecard:
+      submission.scorecard ??
+      analysis?.scorecard ??
+      evaluation?.scorecard ??
+      null,
   }
 }
 
@@ -126,12 +131,31 @@ export const evaluationApi = {
     }
   },
 
-  /** Evaluator only: send a completed analysis and score to the admin. */
-  submitForAdminReview: async (submissionId, score, notes, options) => {
+  /**
+   * Evaluator only: submit scorecard manual metrics (preferred) or legacy final_score.
+   * Pass either a payload object `{ manual_metrics, evaluator_notes }` or
+   * legacy `(score, notes)` arguments.
+   */
+  submitForAdminReview: async (submissionId, scoreOrPayload, notes, options) => {
+    let body
+    let requestOptions = options
+    if (scoreOrPayload && typeof scoreOrPayload === 'object' && !Array.isArray(scoreOrPayload)) {
+      body = {
+        manual_metrics: scoreOrPayload.manual_metrics,
+        evaluator_notes: scoreOrPayload.evaluator_notes ?? null,
+      }
+      if (scoreOrPayload.final_score != null) body.final_score = scoreOrPayload.final_score
+      requestOptions = notes && typeof notes === 'object' ? notes : options
+    } else {
+      body = {
+        final_score: scoreOrPayload,
+        evaluator_notes: notes || null,
+      }
+    }
     const submission = await api.post(
       `/submissions/${encodeURIComponent(submissionId)}/submit-for-review`,
-      { final_score: score, evaluator_notes: notes || null },
-      options,
+      body,
+      requestOptions,
     )
     return normalizeSubmission(submission)
   },

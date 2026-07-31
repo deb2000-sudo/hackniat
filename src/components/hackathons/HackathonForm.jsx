@@ -404,7 +404,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
               }
             />
             <span>
-              <strong>Auto AI evaluation for evaluators</strong>
+              <strong>Auto AI evaluation on assign</strong>
               <small>
                 When enabled, AI analysis starts automatically after assignment. When off,
                 evaluators trigger AI Evaluation manually.

@@ -24,4 +24,15 @@ export const adminApi = {
   /** Update a user's profile (name only per the API). */
   updateUser: (userId, payload, options) =>
     api.patch(`/admin/user/${userId}`, payload, options),
+
+  /** Application settings (profile password + wipeable collections). */
+  getSettings: (options) => api.get('/admin/settings', options),
+
+  /** Change the Profile Password used for destructive admin actions. */
+  changeProfilePassword: (payload, options) =>
+    api.post('/admin/settings/change-profile-password', payload, options),
+
+  /** Wipe wipeable collections after Profile Password + confirm phrase. */
+  resetDatabase: (payload, options) =>
+    api.post('/admin/settings/reset-database', payload, options),
 }

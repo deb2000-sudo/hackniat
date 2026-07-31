@@ -50,6 +50,7 @@ const AdminHackathonSubmissionsPage = lazy(
 )
 const ThemesPage = lazy(() => import('./pages/admin/ThemesPage'))
 const AiPromptsPage = lazy(() => import('./pages/admin/AiPromptsPage'))
+const ApplicationSettingsPage = lazy(() => import('./pages/admin/ApplicationSettingsPage'))
 const ChangePasswordPage = lazy(() => import('./pages/settings/ChangePasswordPage'))
 const MetricScoringPage = lazy(() => import('./pages/MetricScoringPage'))
 
@@ -134,6 +135,7 @@ export default function App() {
                 />
                 <Route path="/admin/users" element={<UsersPage />} />
                 <Route path="/admin/evaluators" element={<EvaluatorsPage />} />
+                <Route path="/admin/settings" element={<ApplicationSettingsPage />} />
               </Route>
 
               <Route path="/404" element={<NotFoundPage />} />

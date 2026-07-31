@@ -5029,3 +5029,264 @@ code {
     width: fit-content;
   }
 }
+
+/* —— Weighted scorecard —— */
+.scorecard-bar {
+  display: grid;
+  gap: 18px;
+}
+.scorecard-bar__eyebrow {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.scorecard-bar__total {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+}
+.scorecard-bar__total strong {
+  color: var(--heading);
+  font-size: 2.4rem;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.scorecard-bar__total small {
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.scorecard-bar__subline {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+.scorecard-bar__track {
+  display: flex;
+  overflow: hidden;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.scorecard-bar__segment {
+  position: relative;
+  min-width: 4px;
+  background: color-mix(in srgb, var(--metric-color) 22%, transparent);
+}
+.scorecard-bar__segment + .scorecard-bar__segment {
+  box-shadow: inset 1px 0 0 var(--border);
+}
+.scorecard-bar__segment > span {
+  display: block;
+  height: 100%;
+  background: var(--metric-color);
+}
+.scorecard-bar__segment.is-pending {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--metric-color) 18%, transparent),
+    color-mix(in srgb, var(--metric-color) 18%, transparent) 4px,
+    color-mix(in srgb, var(--metric-color) 8%, transparent) 4px,
+    color-mix(in srgb, var(--metric-color) 8%, transparent) 8px
+  );
+}
+.scorecard-bar__legend {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 720px) {
+  .scorecard-bar__legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1100px) {
+  .scorecard-bar__legend {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.scorecard-bar__legend li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.scorecard-bar__swatch {
+  width: 12px;
+  height: 12px;
+  margin-top: 4px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+.scorecard-bar__legend-copy strong,
+.scorecard-bar__legend-copy small {
+  display: block;
+}
+.scorecard-bar__legend-copy strong {
+  color: var(--heading);
+  font-size: 0.92rem;
+}
+.scorecard-bar__legend-copy small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.ai-metric-card,
+.manual-metric-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  border-left: 4px solid var(--metric-color, var(--brand-500));
+  background: var(--surface);
+}
+.ai-metric-card header,
+.manual-metric-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ai-metric-card__mode,
+.manual-metric-card__mode {
+  display: inline-block;
+  margin-bottom: 4px;
+  color: var(--metric-color, var(--brand-600));
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ai-metric-card h3,
+.manual-metric-card h3 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 1.05rem;
+}
+.ai-metric-card header p,
+.manual-metric-card header p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.ai-metric-card__rationale {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.ai-metric-card__rationale.is-muted {
+  color: var(--text-muted);
+}
+.manual-metric-card__link {
+  margin-bottom: 14px;
+}
+.manual-metric-card__link span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.manual-score-link {
+  color: var(--heading);
+  font-weight: 600;
+  word-break: break-all;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.manual-metric-card__fieldset {
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+.manual-metric-card__fieldset legend {
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.manual-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.manual-choice-row label,
+.manual-choice-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.manual-choice-row label.is-active,
+.manual-choice-row button.is-active {
+  border-color: var(--metric-color, var(--brand-500));
+  background: color-mix(in srgb, var(--metric-color, var(--brand-500)) 16%, transparent);
+}
+.manual-choice-row input {
+  accent-color: var(--metric-color, var(--brand-500));
+}
+.manual-metric-card__structure {
+  display: grid;
+  gap: 12px;
+}
+.manual-metric-card__structure-head strong,
+.manual-metric-card__structure-head small {
+  display: block;
+}
+.manual-metric-card__structure-head small {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.manual-metric-card__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.manual-boolean-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.manual-boolean-list label {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.manual-boolean-list input {
+  margin-top: 3px;
+  accent-color: var(--metric-color, var(--brand-500));
+}
+.manual-boolean-list strong,
+.manual-boolean-list small {
+  display: block;
+}
+.manual-boolean-list small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
