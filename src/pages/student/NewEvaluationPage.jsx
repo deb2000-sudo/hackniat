@@ -14,6 +14,7 @@ import Alert from '../../components/ui/Alert'
 import Input, { Select, Textarea } from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import ScreenRecorder from '../../components/evaluation/ScreenRecorder'
+import { EYEBROW, WRAP_APP } from '../../components/drop/theme'
 
 const ALL_STEPS = [
   { id: 'requirements', label: 'Requirements', short: 'Details' },
@@ -489,13 +490,13 @@ export default function NewEvaluationPage() {
 
   if (submittedSession) {
     return (
-      <div className="container container--narrow page">
+      <div className={`${WRAP_APP} page`}>
         <Card className="student-submit-success">
           <CardBody>
             <span className="student-submit-success__icon">
               <Icon name="check" size={30} />
             </span>
-            <div className="eyebrow">Submission recorded</div>
+            <div className={EYEBROW}>Submission recorded</div>
             <h1>Thank you for submitting</h1>
             <p>
               {submittedSession.message ||
@@ -532,10 +533,10 @@ export default function NewEvaluationPage() {
   }
 
   return (
-    <div className="container submission-wizard page">
+    <div className={`${WRAP_APP} submission-wizard page`}>
       <div className="submission-wizard__intro">
         <div>
-          <div className="eyebrow">Project submission</div>
+          <div className={EYEBROW}>Project submission</div>
           <h1>{videoRequired ? 'Submit your working demo' : 'Submit your project'}</h1>
           <p>
             {videoRequired

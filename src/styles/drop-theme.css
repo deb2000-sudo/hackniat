@@ -1301,6 +1301,211 @@
     border-color: var(--color-volt-edge);
     background: var(--color-volt-tint);
   }
+
+  /* -------------------- Student submission wizard ---------------------- */
+  .drop .submission-wizard {
+    max-width: none;
+  }
+
+  .drop .submission-wizard__intro .eyebrow,
+  .drop .submission-wizard__intro .font-mono {
+    color: var(--color-muted);
+  }
+
+  .drop .submission-wizard__intro h1 {
+    color: var(--color-ink);
+  }
+
+  .drop .submission-wizard__intro p {
+    color: var(--color-muted);
+  }
+
+  .drop .submission-wizard__secure {
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+    color: var(--color-muted);
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .submission-stepper {
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+  }
+
+  .drop .submission-stepper li {
+    color: var(--color-muted);
+  }
+
+  .drop .submission-stepper li:not(:last-child)::after {
+    background: var(--color-hairline);
+  }
+
+  .drop .submission-stepper__number {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+    color: var(--color-muted);
+  }
+
+  .drop .submission-stepper li.is-active {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+  }
+
+  .drop .submission-stepper li.is-active .submission-stepper__number {
+    color: var(--color-on-volt);
+    border-color: transparent;
+    background: var(--color-volt);
+    box-shadow: none;
+  }
+
+  .drop .submission-stepper li.is-done {
+    color: var(--color-passed);
+  }
+
+  .drop .submission-stepper li.is-done .submission-stepper__number {
+    color: var(--color-canvas);
+    border-color: var(--color-passed);
+    background: var(--color-passed);
+  }
+
+  .drop .submission-panel > .card {
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .drop .submission-panel__header {
+    background: var(--color-raised);
+    border-bottom: 1px solid var(--color-hairline);
+  }
+
+  .drop .submission-panel__header h2 {
+    color: var(--color-ink);
+  }
+
+  .drop .submission-panel__header p {
+    color: var(--color-muted);
+  }
+
+  .drop .submission-panel__eyebrow {
+    color: var(--color-muted);
+  }
+
+  .drop .submission-panel__icon {
+    color: var(--color-volt);
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
+  }
+
+  .drop .submission-panel__icon.is-success {
+    color: var(--color-canvas);
+    border-color: var(--color-passed);
+    background: var(--color-passed);
+  }
+
+  .drop .submission-requirement-banner {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .submission-requirement-banner > span {
+    color: var(--color-volt);
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
+    box-shadow: none;
+  }
+
+  .drop .submission-requirement-banner strong {
+    color: var(--color-ink);
+  }
+
+  .drop .submission-requirement-banner p {
+    color: var(--color-muted);
+  }
+
+  .drop .submission-requirement-banner small {
+    color: var(--color-muted);
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+  }
+
+  .drop .submission-file-field {
+    color: var(--color-ink);
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .demo-source-options > button {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+    color: var(--color-ink);
+    box-shadow: none;
+  }
+
+  .drop .demo-source-options > button:hover:not(:disabled) {
+    border-color: var(--color-volt-edge);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .drop .demo-source-options > button.is-active {
+    color: var(--color-ink);
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
+    box-shadow: none;
+  }
+
+  .drop .demo-source-options > button > span:first-child {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+  }
+
+  .drop .demo-source-options > button.is-active > span:first-child {
+    color: var(--color-on-volt);
+    background: var(--color-volt);
+  }
+
+  .drop .demo-source-empty {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .demo-file-picker {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .demo-file-picker > span:first-child {
+    color: var(--color-volt);
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
+    box-shadow: none;
+  }
+
+  .drop .submission-video-ready {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .submission-video-ready > span:first-child {
+    color: var(--color-passed);
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+  }
+
+  .drop .submission-panel__actions {
+    color: var(--color-muted);
+  }
+
+  .drop .student-submit-success {
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
 }
 
 /* Unlayered on purpose: this must outrank utilities. */
