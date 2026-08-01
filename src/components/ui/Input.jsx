@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { forwardRef, useId, useState } from 'react'
 import Icon from './Icon'
 
 /** Labelled text input with error + hint support. */
@@ -76,7 +76,10 @@ export function PasswordInput({ label, error, hint, required = false, id, ...res
 }
 
 /** Labelled textarea. */
-export function Textarea({ label, error, hint, required = false, id, className = '', ...rest }) {
+export const Textarea = forwardRef(function Textarea(
+  { label, error, hint, required = false, id, className = '', ...rest },
+  ref,
+) {
   const generatedId = useId()
   const inputId = id || generatedId
   return (
@@ -88,6 +91,7 @@ export function Textarea({ label, error, hint, required = false, id, className =
         </label>
       )}
       <textarea
+        ref={ref}
         id={inputId}
         className={`textarea ${error ? 'textarea--error' : ''} ${className}`}
         aria-invalid={!!error}
@@ -100,7 +104,7 @@ export function Textarea({ label, error, hint, required = false, id, className =
       )}
     </div>
   )
-}
+})
 
 /** Labelled select input. */
 export function Select({ label, error, hint, required = false, id, className = '', children, ...rest }) {

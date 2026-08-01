@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { metricScoringApi } from '../api/metricScoring'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { evaluationRequirementsApi } from '../api/evaluationRequirements'
-import { ApiError } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import { ROLES } from '../utils/constants'
 import {
+  alignMetricsToRequirement,
   buildStandardScorecardPreset,
+  sortScorecardMetrics,
   sumWeights,
 } from '../utils/scorecard'
 import {
@@ -38,22 +38,70 @@ function emptySegment() {
   }
 }
 
+/** Video score uses analysis report + AI prompts analyze_video — not a scorecard prompt. */
+function isVideoMetricKey(fieldKey) {
+  const key = String(fieldKey || '').trim().toLowerCase()
+  return key === 'video_explanation' || key === 'video'
+}
+
+function isSolutionDescriptionKey(fieldKey) {
+  return String(fieldKey || '').trim().toLowerCase() === 'solution_description'
+}
+
+function normalizePlaceholders(list) {
+  if (!Array.isArray(list)) return []
+  return list
+    .map((item) => {
+      if (typeof item === 'string') {
+        const token = item.trim()
+        return token ? { token, label: token, description: '' } : null
+      }
+      const token = String(item?.token || '').trim()
+      if (!token) return null
+      return {
+        token,
+        label: String(item?.label || token).trim() || token,
+        description: String(item?.description || '').trim(),
+      }
+    })
+    .filter(Boolean)
+}
+
+/** Insert a literal placeholder token at the textarea caret (not resolved in the UI). */
+function insertTokenAtCursor(textarea, value, token, onChange) {
+  const current = String(value || '')
+  if (!textarea) {
+    onChange(current + token)
+    return
+  }
+  const start = Number.isFinite(textarea.selectionStart) ? textarea.selectionStart : current.length
+  const end = Number.isFinite(textarea.selectionEnd) ? textarea.selectionEnd : start
+  const next = `${current.slice(0, start)}${token}${current.slice(end)}`
+  onChange(next)
+  requestAnimationFrame(() => {
+    textarea.focus()
+    const caret = start + token.length
+    textarea.setSelectionRange(caret, caret)
+  })
+}
+
 function normalizeMetric(metric) {
+  const segments = Array.isArray(metric?.segments) ? metric.segments : []
   return {
-    field_key: metric.field_key || '',
-    field_label: metric.field_label || metric.field_key || '',
-    scoring_mode: metric.scoring_mode === 'manual' ? 'manual' : 'ai',
-    scoring_prompt: metric.scoring_prompt || '',
-    max_score: metric.max_score ?? 10,
-    weight: metric.weight ?? 0,
-    color: metric.color || '#2563EB',
-    segments: (metric.segments || []).map((segment) => ({
-      key: segment.key || '',
-      label: segment.label || '',
-      kind: segment.kind || 'score',
-      max_score: segment.max_score ?? 0,
-      options: segment.options || [],
-      description: segment.description || '',
+    field_key: metric?.field_key || '',
+    field_label: metric?.field_label || metric?.field_key || '',
+    scoring_mode: metric?.scoring_mode === 'manual' ? 'manual' : 'ai',
+    scoring_prompt: metric?.scoring_prompt || '',
+    max_score: metric?.max_score ?? 10,
+    weight: metric?.weight ?? 0,
+    color: metric?.color || '#2563EB',
+    segments: segments.map((segment) => ({
+      key: segment?.key || '',
+      label: segment?.label || '',
+      kind: segment?.kind || 'score',
+      max_score: segment?.max_score ?? 0,
+      options: Array.isArray(segment?.options) ? segment.options : [],
+      description: segment?.description || '',
     })),
   }
 }
@@ -75,7 +123,11 @@ function validate(name, metrics) {
     if (!Number.isFinite(Number(metric.weight)) || Number(metric.weight) < 0) {
       errors[`${prefix}.weight`] = 'Enter a valid weight.'
     }
-    if (metric.scoring_mode === 'ai' && !String(metric.scoring_prompt || '').trim()) {
+    if (
+      metric.scoring_mode === 'ai' &&
+      !isVideoMetricKey(metric.field_key) &&
+      !String(metric.scoring_prompt || '').trim()
+    ) {
       errors[`${prefix}.scoring_prompt`] = 'AI metrics need a scoring prompt.'
     }
     if (metric.scoring_mode === 'manual') {
@@ -106,6 +158,10 @@ function toPayloadMetrics(metrics) {
       color: metric.color || undefined,
     }
     if (metric.scoring_mode === 'ai') {
+      if (isVideoMetricKey(metric.field_key)) {
+        // Backend clears this; video scoring uses the analyze_video AI prompt.
+        return { ...base, scoring_prompt: null }
+      }
       return { ...base, scoring_prompt: metric.scoring_prompt.trim() }
     }
     return {
@@ -131,26 +187,22 @@ function toPayloadMetrics(metrics) {
 export default function MetricScoringPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === ROLES.ADMIN
-  const navigate = useNavigate()
-  const { evaluationRequirementId } = useParams()
-  const [searchParams] = useSearchParams()
-  const requirementId =
-    evaluationRequirementId?.trim() ||
-    searchParams.get('evaluation_requirement_id')?.trim() ||
-    ''
+  const { requirementId: requirementIdParam } = useParams()
+  const requirementId = requirementIdParam?.trim() || ''
 
-  const [requirementIdInput, setRequirementIdInput] = useState(requirementId)
   const [requirement, setRequirement] = useState(null)
   const [scoring, setScoring] = useState(null)
   const [name, setName] = useState('')
   const [metrics, setMetrics] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [promptPlaceholders, setPromptPlaceholders] = useState([])
+  const [loading, setLoading] = useState(Boolean(requirementId))
   const [loadError, setLoadError] = useState('')
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const promptRefs = useRef({})
 
   const weightTotal = useMemo(() => sumWeights(metrics), [metrics])
 
@@ -163,25 +215,34 @@ export default function MetricScoringPage() {
       setLoadError('')
       setSaveMessage('')
       try {
-        const [loadedRequirement, configurations] = await Promise.all([
-          evaluationRequirementsApi.get(requirementId, { signal: controller.signal }),
-          metricScoringApi.list(requirementId, { signal: controller.signal }),
-        ])
+        const setup = await evaluationRequirementsApi.getScoringSetup(requirementId, {
+          signal: controller.signal,
+        })
         if (!active) return
-        const existing = configurations[0] || null
+        const loadedRequirement = setup?.requirement || null
+        const existing = setup?.scoring || null
         setRequirement(loadedRequirement)
         setScoring(existing)
+        setPromptPlaceholders(normalizePlaceholders(setup?.scoring_prompt_placeholders))
         setName(
           existing?.name ||
-            `${loadedRequirement.name || loadedRequirement.title || 'Evaluation'} scorecard`,
+            `${loadedRequirement?.name || loadedRequirement?.title || 'Evaluation'} scorecard`,
         )
-        setMetrics((existing?.metrics || []).map(normalizeMetric))
+        setMetrics(
+          sortScorecardMetrics(
+            alignMetricsToRequirement(
+              (existing?.metrics || []).map(normalizeMetric),
+              loadedRequirement?.fields,
+            ),
+          ),
+        )
       } catch (error) {
         if (!active || error.name === 'AbortError') return
         setRequirement(null)
         setScoring(null)
+        setPromptPlaceholders([])
         setMetrics([])
-        setLoadError(error.message || 'Unable to load the evaluation requirement.')
+        setLoadError(error.message || 'Unable to load scoring setup.')
       } finally {
         if (active) setLoading(false)
       }
@@ -192,23 +253,17 @@ export default function MetricScoringPage() {
     }
   }, [requirementId])
 
-  const openRequirement = (event) => {
-    event.preventDefault()
-    const id = requirementIdInput.trim()
-    if (!id) {
-      setLoadError('Enter an evaluation requirement ID.')
-      return
-    }
-    navigate(`/admin/evaluation-requirements/${encodeURIComponent(id)}/ai-scoring`)
-  }
-
   const loadPreset = () => {
     if (!isAdmin || !requirementId) return
-    const preset = buildStandardScorecardPreset(requirementId)
+    const preset = buildStandardScorecardPreset(requirementId, requirement?.fields)
     setName(preset.name)
-    setMetrics(preset.metrics.map(normalizeMetric))
+    setMetrics(
+      sortScorecardMetrics(
+        alignMetricsToRequirement(preset.metrics.map(normalizeMetric), requirement?.fields),
+      ),
+    )
     setErrors({})
-    setSaveMessage('Loaded standard 15/15/20/20/30 scorecard. Review prompts, then save.')
+    setSaveMessage('Loaded standard scorecard. Review prompts, then save.')
   }
 
   const updateMetric = (index, patch) => {
@@ -264,36 +319,27 @@ export default function MetricScoringPage() {
     setSaveMessage('')
     if (Object.keys(validation).length) return
 
+    const alignedMetrics = alignMetricsToRequirement(metrics, requirement?.fields)
     const payload = {
       name: name.trim(),
-      metrics: toPayloadMetrics(metrics),
+      metrics: toPayloadMetrics(sortScorecardMetrics(alignedMetrics)),
     }
-    if (!scoring) payload.evaluation_requirement_id = requirementId
 
     setSaving(true)
     try {
-      const saved = scoring
-        ? await metricScoringApi.update(scoring.id, payload)
-        : await metricScoringApi.create(payload)
+      const saved = await evaluationRequirementsApi.putMetricScoring(requirementId, payload)
       setScoring(saved)
       setName(saved.name || payload.name)
-      setMetrics((saved.metrics || payload.metrics).map(normalizeMetric))
+      setMetrics(
+        sortScorecardMetrics(
+          alignMetricsToRequirement(
+            (saved.metrics || payload.metrics).map(normalizeMetric),
+            requirement?.fields,
+          ),
+        ),
+      )
       setSaveMessage(scoring ? 'Scorecard updated.' : 'Scorecard created.')
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
-        try {
-          const existing = (await metricScoringApi.list(requirementId))[0]
-          if (existing) {
-            setScoring(existing)
-            setName(existing.name || name)
-            setMetrics((existing.metrics || []).map(normalizeMetric))
-            setSaveMessage('A scorecard already exists. It is now open for editing.')
-            return
-          }
-        } catch {
-          // fall through
-        }
-      }
       setErrors({ form: error.message || 'Unable to save the scorecard.' })
     } finally {
       setSaving(false)
@@ -301,11 +347,11 @@ export default function MetricScoringPage() {
   }
 
   const remove = async () => {
-    if (!scoring?.id || !isAdmin) return
+    if (!scoring || !isAdmin) return
     setDeleting(true)
     setErrors({})
     try {
-      await metricScoringApi.delete(scoring.id)
+      await evaluationRequirementsApi.deleteMetricScoring(requirementId)
       setScoring(null)
       setMetrics([])
       setConfirmDelete(false)
@@ -318,16 +364,22 @@ export default function MetricScoringPage() {
     }
   }
 
+  if (!requirementId) {
+    return <Navigate to="/admin/evaluation-requirements" replace />
+  }
+
   return (
     <div className={`${WRAP_APP} py-7 md:py-10`}>
       <header className="mb-7 flex flex-col gap-4 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-3xl">
           <span className={EYEBROW}>Evaluation setup</span>
           <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
-            Set scoring
+            {requirement
+              ? `Scorecard for ${requirement.name || requirement.title}`
+              : 'Set scoring'}
           </h1>
           <p className="mt-2 text-[15px] text-muted md:text-base">
-            Configure weighted AI and manual metrics for an evaluation requirement (total weight 100).
+            Configure weighted AI and manual metrics for this requirement (total weight 100).
           </p>
         </div>
         <Button
@@ -340,47 +392,22 @@ export default function MetricScoringPage() {
         </Button>
       </header>
 
-      <section className={`${PANEL} mb-6 p-4 sm:p-5`}>
-        <form
-          className="flex flex-col gap-3 sm:flex-row sm:items-end"
-          onSubmit={openRequirement}
-        >
-          <div className="min-w-0 flex-1">
-            <Input
-              label="Evaluation requirement ID"
-              value={requirementIdInput}
-              onChange={(event) => {
-                setRequirementIdInput(event.target.value)
-                setLoadError('')
-              }}
-              placeholder="Paste the requirement ID"
-            />
-          </div>
-          <button type="submit" className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}>
-            <Icon name="search" size={17} />
-            Load requirement
-          </button>
-        </form>
-      </section>
-
-      {requirementId && loadError && (
+      {loadError && (
         <div className="mb-6">
-          <Alert variant="danger" title="Unable to load requirement">
+          <Alert variant="danger" title="Unable to load scoring setup">
             {loadError}
           </Alert>
         </div>
       )}
-      {requirementId && loading && (
-        <LoadingBlock label="Loading requirement and scorecard…" />
-      )}
+      {loading && <LoadingBlock label="Loading scorecard…" />}
 
-      {requirementId && !loading && requirement && (
+      {!loading && requirement && (
         <form className="flex flex-col gap-6 pb-28" onSubmit={save} noValidate>
           <section
             className={`${PANEL} flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5`}
           >
             <div className="min-w-0">
-              <span className={EYEBROW}>Scorecard for</span>
+              <span className={EYEBROW}>Scorecard overview</span>
               <h2 className="mt-1 truncate text-[20px] font-semibold tracking-[-0.02em] text-ink">
                 {requirement.name || requirement.title || 'Evaluation requirement'}
               </h2>
@@ -436,7 +463,7 @@ export default function MetricScoringPage() {
                   onClick={loadPreset}
                   leftIcon={<Icon name="sparkles" size={17} />}
                 >
-                  Load standard 15/15/20/20/30 scorecard
+                  Load Standard Score and Weightage
                 </Button>
               )}
             </div>
@@ -528,17 +555,73 @@ export default function MetricScoringPage() {
 
                   {metric.scoring_mode === 'ai' ? (
                     <div className="border-t border-hairline px-4 py-4 sm:px-5">
-                      <Textarea
-                        label="Scoring prompt"
-                        required
-                        rows={5}
-                        value={metric.scoring_prompt}
-                        disabled={!isAdmin}
-                        error={errors[`m${index}.scoring_prompt`]}
-                        onChange={(event) =>
-                          updateMetric(index, { scoring_prompt: event.target.value })
-                        }
-                      />
+                      {isVideoMetricKey(metric.field_key) ? (
+                        <p className="text-[13.5px] text-muted">
+                          Video scoring uses the Working Demo Video Analysis prompt under{' '}
+                          <Link
+                            to="/admin/ai-prompts"
+                            className="font-medium text-ink underline decoration-hairline underline-offset-4 hover:text-volt hover:decoration-volt"
+                          >
+                            AI prompts
+                          </Link>
+                          . No scorecard scoring prompt is required for this metric.
+                        </p>
+                      ) : (
+                        <div className="stack-sm">
+                          <Textarea
+                            ref={(node) => {
+                              if (node) promptRefs.current[index] = node
+                              else delete promptRefs.current[index]
+                            }}
+                            label="Scoring prompt"
+                            required
+                            rows={5}
+                            value={metric.scoring_prompt}
+                            disabled={!isAdmin}
+                            error={errors[`m${index}.scoring_prompt`]}
+                            hint={
+                              isSolutionDescriptionKey(metric.field_key)
+                                ? 'Insert {Problem Statement} to give the model the student’s problem.'
+                                : undefined
+                            }
+                            onChange={(event) =>
+                              updateMetric(index, { scoring_prompt: event.target.value })
+                            }
+                          />
+                          {promptPlaceholders.length > 0 && (
+                            <div>
+                              <p className="mb-1.5 text-[12px] text-muted">
+                                Insert into prompt
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {promptPlaceholders.map((placeholder) => (
+                                  <button
+                                    key={placeholder.token}
+                                    type="button"
+                                    disabled={!isAdmin}
+                                    title={
+                                      placeholder.description ||
+                                      `Insert ${placeholder.token} as literal text`
+                                    }
+                                    className={`${MONO} rounded-full border border-hairline bg-raised px-2.5 py-1 text-[11px] text-muted transition hover:border-volt hover:text-ink disabled:cursor-not-allowed disabled:opacity-50`}
+                                    onClick={() =>
+                                      insertTokenAtCursor(
+                                        promptRefs.current[index],
+                                        metric.scoring_prompt,
+                                        placeholder.token,
+                                        (next) =>
+                                          updateMetric(index, { scoring_prompt: next }),
+                                      )
+                                    }
+                                  >
+                                    {placeholder.token}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="stack-md border-t border-hairline px-4 py-4 sm:px-5">
@@ -692,22 +775,6 @@ export default function MetricScoringPage() {
             </div>
           )}
         </form>
-      )}
-
-      {(!requirementId || (!loading && !requirement && !loadError)) && (
-        <div
-          className={`${PANEL} mt-2 flex min-h-[280px] flex-col items-center justify-center border-dashed px-6 py-14 text-center`}
-        >
-          <span className="mb-4 grid size-14 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt">
-            <Icon name="chart" size={26} />
-          </span>
-          <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-ink">
-            Choose an evaluation requirement
-          </h2>
-          <p className="mt-2 max-w-[48ch] text-[14.5px] text-muted">
-            Open Set scoring from a requirement card, or paste a requirement ID above.
-          </p>
-        </div>
       )}
 
       <Modal

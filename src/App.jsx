@@ -81,7 +81,10 @@ export default function App() {
                 <Route path="/settings/change-password" element={<ChangePasswordPage />} />
                 <Route path="/hackathons" element={<HackathonsPage />} />
                 <Route path="/hackathons/:hackathonId" element={<HackathonDetailPage />} />
-                <Route path="/ai-scoring" element={<MetricScoringPage />} />
+                <Route
+                  path="/ai-scoring"
+                  element={<Navigate to="/admin/evaluation-requirements" replace />}
+                />
               </Route>
 
               <Route element={<ProtectedRoute roles={[ROLES.STUDENT]} />}>
@@ -130,7 +133,7 @@ export default function App() {
                   element={<EvaluationRequirementFormPage />}
                 />
                 <Route
-                  path="/admin/evaluation-requirements/:evaluationRequirementId/ai-scoring"
+                  path="/admin/evaluation-requirements/:requirementId/ai-scoring"
                   element={<MetricScoringPage />}
                 />
                 <Route path="/admin/users" element={<UsersPage />} />

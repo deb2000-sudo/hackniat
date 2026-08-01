@@ -7,7 +7,119 @@ export const STANDARD_SCORECARD_COLORS = {
   solution_description: '#7C3AED',
   video_explanation: '#DB2777',
   github_link: '#059669',
+  project_github_link: '#059669',
   mvp_link: '#D97706',
+}
+
+/** Canonical display/save order for standard scorecard metrics. */
+export const STANDARD_METRIC_ORDER = [
+  'problem_statement',
+  'solution_description',
+  'video_explanation',
+  'video',
+  'project_github_link',
+  'github_link',
+  'mvp_link',
+]
+
+/** Alias groups: prefer the exact key present on the linked evaluation requirement. */
+const FIELD_KEY_ALIAS_GROUPS = {
+  problem_statement: ['problem_statement'],
+  solution_description: ['solution_description'],
+  video_explanation: ['video_explanation', 'video'],
+  github: ['project_github_link', 'github_link'],
+  mvp: ['mvp_link'],
+}
+
+function normalizeFieldKey(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+/** Pick the requirement’s real field key from an alias group (fallback if none match). */
+export function resolveRequirementFieldKey(requirementFields, candidates, fallback) {
+  const list = Array.isArray(requirementFields) ? requirementFields : []
+  const wanted = (Array.isArray(candidates) ? candidates : [candidates]).map(normalizeFieldKey)
+  for (const candidate of wanted) {
+    const match = list.find((field) => normalizeFieldKey(field?.key) === candidate)
+    if (match?.key) {
+      return {
+        key: String(match.key).trim(),
+        label: String(match.label || '').trim() || null,
+      }
+    }
+  }
+  const fallbackKey = String(fallback || wanted[0] || '').trim()
+  return { key: fallbackKey, label: null }
+}
+
+/** Remap known alias keys (e.g. github_link) onto the requirement’s exact keys. */
+export function alignMetricsToRequirement(metrics, requirementFields) {
+  const github = resolveRequirementFieldKey(
+    requirementFields,
+    FIELD_KEY_ALIAS_GROUPS.github,
+    'github_link',
+  )
+  const mvp = resolveRequirementFieldKey(
+    requirementFields,
+    FIELD_KEY_ALIAS_GROUPS.mvp,
+    'mvp_link',
+  )
+  const problem = resolveRequirementFieldKey(
+    requirementFields,
+    FIELD_KEY_ALIAS_GROUPS.problem_statement,
+    'problem_statement',
+  )
+  const solution = resolveRequirementFieldKey(
+    requirementFields,
+    FIELD_KEY_ALIAS_GROUPS.solution_description,
+    'solution_description',
+  )
+
+  const remap = (metric, aliases, resolved) => {
+    const key = normalizeFieldKey(metric?.field_key)
+    if (!aliases.map(normalizeFieldKey).includes(key)) return metric
+    if (key === normalizeFieldKey(resolved.key)) {
+      return {
+        ...metric,
+        field_key: resolved.key,
+        field_label: metric.field_label || resolved.label || metric.field_label,
+      }
+    }
+    return {
+      ...metric,
+      field_key: resolved.key,
+      field_label: resolved.label || metric.field_label || resolved.key,
+    }
+  }
+
+  return (Array.isArray(metrics) ? metrics : []).map((metric) => {
+    let next = metric
+    next = remap(next, FIELD_KEY_ALIAS_GROUPS.github, github)
+    next = remap(next, FIELD_KEY_ALIAS_GROUPS.mvp, mvp)
+    next = remap(next, FIELD_KEY_ALIAS_GROUPS.problem_statement, problem)
+    next = remap(next, FIELD_KEY_ALIAS_GROUPS.solution_description, solution)
+    return next
+  })
+}
+
+/** Keep Problem Statement before Solution Description (and other standard keys in preset order). */
+export function sortScorecardMetrics(metrics) {
+  const list = Array.isArray(metrics) ? [...metrics] : []
+  const rank = (key) => {
+    const normalized = normalizeFieldKey(key)
+    // Treat github aliases as the same slot.
+    const lookup =
+      normalized === 'github_link' || normalized === 'project_github_link'
+        ? 'project_github_link'
+        : normalized
+    const index = STANDARD_METRIC_ORDER.indexOf(lookup)
+    return index === -1 ? STANDARD_METRIC_ORDER.length : index
+  }
+  return list.sort((a, b) => {
+    const diff = rank(a?.field_key) - rank(b?.field_key)
+    if (diff !== 0) return diff
+    return String(a?.field_key || '').localeCompare(String(b?.field_key || ''))
+  })
 }
 
 const DEFAULT_AI_PROMPTS = {
@@ -15,19 +127,41 @@ const DEFAULT_AI_PROMPTS = {
     'Score the problem statement from 0–15 for clarity, relevance to the theme, and evidence of real user need.',
   solution_description:
     'Score the solution description from 0–15 for feasibility, technical depth, and how well it addresses the stated problem.',
-  video_explanation:
-    'Score the demo video explanation from 0–20 using the analysis report. Reward clear walkthrough, working features shown, and alignment with the written solution.',
 }
 
-/** Standard 15/15/20/20/30 scorecard preset for admin “Load preset”. */
-export function buildStandardScorecardPreset(evaluationRequirementId) {
+/**
+ * Standard 15/15/20/20/30 scorecard preset for admin “Load preset”.
+ * Uses exact requirement field keys when provided (e.g. project_github_link).
+ */
+export function buildStandardScorecardPreset(evaluationRequirementId, requirementFields = []) {
+  const problem = resolveRequirementFieldKey(
+    requirementFields,
+    FIELD_KEY_ALIAS_GROUPS.problem_statement,
+    'problem_statement',
+  )
+  const solution = resolveRequirementFieldKey(
+    requirementFields,
+    FIELD_KEY_ALIAS_GROUPS.solution_description,
+    'solution_description',
+  )
+  const github = resolveRequirementFieldKey(
+    requirementFields,
+    FIELD_KEY_ALIAS_GROUPS.github,
+    'github_link',
+  )
+  const mvp = resolveRequirementFieldKey(
+    requirementFields,
+    FIELD_KEY_ALIAS_GROUPS.mvp,
+    'mvp_link',
+  )
+
   return {
     evaluation_requirement_id: evaluationRequirementId,
     name: 'Standard Hackathon Scorecard',
     metrics: [
       {
-        field_key: 'problem_statement',
-        field_label: 'Problem Statement',
+        field_key: problem.key,
+        field_label: problem.label || 'Problem Statement',
         scoring_mode: 'ai',
         max_score: 15,
         weight: 15,
@@ -35,8 +169,8 @@ export function buildStandardScorecardPreset(evaluationRequirementId) {
         scoring_prompt: DEFAULT_AI_PROMPTS.problem_statement,
       },
       {
-        field_key: 'solution_description',
-        field_label: 'Solution Description',
+        field_key: solution.key,
+        field_label: solution.label || 'Solution Description',
         scoring_mode: 'ai',
         max_score: 15,
         weight: 15,
@@ -50,15 +184,17 @@ export function buildStandardScorecardPreset(evaluationRequirementId) {
         max_score: 20,
         weight: 20,
         color: STANDARD_SCORECARD_COLORS.video_explanation,
-        scoring_prompt: DEFAULT_AI_PROMPTS.video_explanation,
+        // Prompt lives under AI prompts (analyze_video); backend clears scorecard prompt.
+        scoring_prompt: null,
       },
       {
-        field_key: 'github_link',
-        field_label: 'GitHub Full Stack',
+        field_key: github.key,
+        field_label: github.label || 'GitHub Full Stack',
         scoring_mode: 'manual',
         max_score: 20,
         weight: 20,
-        color: STANDARD_SCORECARD_COLORS.github_link,
+        color:
+          STANDARD_SCORECARD_COLORS[github.key] || STANDARD_SCORECARD_COLORS.github_link,
         segments: [
           {
             key: 'visibility',
@@ -78,8 +214,8 @@ export function buildStandardScorecardPreset(evaluationRequirementId) {
         ],
       },
       {
-        field_key: 'mvp_link',
-        field_label: 'MVP Features',
+        field_key: mvp.key,
+        field_label: mvp.label || 'MVP Features',
         scoring_mode: 'manual',
         max_score: 30,
         weight: 30,
