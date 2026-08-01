@@ -1200,6 +1200,91 @@
     max-width: none;
   }
 
+  .drop .requirement-field-card {
+    border-radius: var(--radius-drop);
+    box-shadow: none;
+  }
+
+  .drop .requirement-field-card__header {
+    background: var(--color-raised);
+    border-bottom: 1px solid var(--color-hairline);
+  }
+
+  .drop .requirement-field-card__number,
+  .drop .requirement-section-heading > span {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+    border: 1px solid var(--color-volt-edge);
+  }
+
+  .drop .requirement-toggle {
+    background: var(--color-raised);
+    border-color: var(--color-hairline);
+  }
+
+  .drop .requirement-toggle__track {
+    background: var(--color-hairline);
+  }
+
+  .drop .requirement-toggle__track span {
+    background: var(--color-ink);
+  }
+
+  .drop .requirement-toggle input:checked + .requirement-toggle__track {
+    background: var(--color-volt);
+  }
+
+  .drop .requirement-toggle input:checked + .requirement-toggle__track span {
+    background: var(--color-on-volt);
+  }
+
+  .drop .requirement-toggle input:focus-visible + .requirement-toggle__track {
+    outline-color: var(--color-volt-edge);
+  }
+
+  .drop .requirement-form__actions {
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+    box-shadow: none;
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .requirement-created-card__icon {
+    color: var(--color-on-volt);
+    background: var(--color-volt);
+  }
+
+  .drop .requirements-hero {
+    color: var(--color-ink);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-drop);
+    background: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .drop .requirements-hero .eyebrow {
+    color: var(--color-muted);
+  }
+
+  .drop .requirements-hero h1 {
+    color: var(--color-ink);
+  }
+
+  .drop .requirements-hero p {
+    color: var(--color-muted);
+  }
+
+  .drop .requirement-list-card__top > span {
+    color: var(--color-volt);
+    background: var(--color-volt-tint);
+    border: 1px solid var(--color-volt-edge);
+  }
+
+  .drop .icon-btn--danger:hover {
+    color: #ff8a8a;
+    background: #2a1010;
+  }
+
   .drop .modal-overlay {
     background: rgb(0 0 0 / 0.62);
   }

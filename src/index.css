@@ -413,7 +413,7 @@ code {
 /* ----------------------- Evaluation requirements ----------------------- */
 .requirements-page,
 .requirement-form-page {
-  max-width: 1040px;
+  max-width: none;
 }
 
 .requirements-hero {
@@ -607,7 +607,7 @@ code {
 }
 
 .requirement-field-card__header {
-  background: linear-gradient(90deg, var(--surface-2), #fff);
+  background: var(--surface-2);
 }
 
 .requirement-field-card__header h3 {
