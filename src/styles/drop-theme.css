@@ -1498,6 +1498,10 @@
 
   .drop .submission-panel__actions {
     color: var(--color-muted);
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+    box-shadow: none;
+    border-radius: var(--radius-drop);
   }
 
   .drop .student-submit-success {

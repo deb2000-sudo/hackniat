@@ -3892,9 +3892,8 @@ code {
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(255,255,255,.92);
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(8px);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .submission-panel__actions > span {
