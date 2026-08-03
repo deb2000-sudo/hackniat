@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { themesApi } from '../../api/themes'
 import { useAsync } from '../../hooks/useAsync'
@@ -123,6 +123,9 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   const [banner, setBanner] = useState(null)
   const [errors, setErrors] = useState({})
   const [step, setStep] = useState(0)
+  /** Always-current step for form onSubmit — avoids a race where Enter/submit
+   *  fires after a "Save and continue" click has already advanced the step. */
+  const stepRef = useRef(0)
   const {
     data: requirements,
     loading: requirementsLoading,
@@ -195,19 +198,25 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   }
 
   const moveToStep = (nextStep) => {
+    stepRef.current = nextStep
     setStep(nextStep)
     setErrors({})
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const continueToNextStep = () => {
-    const validation = validateStep(form, banner, step)
+  const continueToNextStep = (event) => {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+    const validation = validateStep(form, banner, stepRef.current)
     setErrors(validation)
     if (Object.keys(validation).length) return
-    moveToStep(Math.min(step + 1, FORM_STEPS.length - 1))
+    moveToStep(Math.min(stepRef.current + 1, FORM_STEPS.length - 1))
   }
 
-  const submitForm = () => {
+  const submitForm = (event) => {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+    if (stepRef.current < FORM_STEPS.length - 1) return
     const validation = validate(form, banner)
     setErrors(validation)
     if (Object.keys(validation).length) return
@@ -283,14 +292,12 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     onSubmit(changes)
   }
 
-  /* Enter inside a field must not create the hackathon from an earlier step. */
+  /* Enter in a field may submit the form — only advance steps, never create. */
   const handleSubmit = (event) => {
     event.preventDefault()
-    if (step < FORM_STEPS.length - 1) {
-      continueToNextStep()
-      return
+    if (stepRef.current < FORM_STEPS.length - 1) {
+      continueToNextStep(event)
     }
-    submitForm()
   }
 
   return (
@@ -659,33 +666,35 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         ) : (
           <p><Icon name="shield" size={17} /> Complete each section to continue.</p>
         )}
-        {/* Both branches stay type="button", and each gets its own `key` so
-            React always mounts a fresh node for the one being swapped in
-            rather than mutating attributes on a node it reuses — belt and
-            suspenders against this ever behaving like a submit control. */}
-        {step < FORM_STEPS.length - 1 ? (
-          <Button
-            key="wizard-next"
-            type="button"
-            variant="accent"
-            size="lg"
-            onClick={continueToNextStep}
-            rightIcon={<Icon name="arrowRight" size={17} />}
-          >
-            Save and continue
-          </Button>
-        ) : (
-          <Button
-            key="wizard-submit"
-            type="button"
-            variant="accent"
-            size="lg"
-            loading={submitting}
-            onClick={submitForm}
-          >
-            {editing ? 'Save changes' : 'Create hackathon'}
-          </Button>
-        )}
+        {/* Keep both footer buttons mounted; hide the inactive one. Swapping a
+            single button in/out let production form.submit fire after the step
+            advanced, which hit onSubmit → create on the banner step. */}
+        <Button
+          key="wizard-next"
+          type="button"
+          variant="accent"
+          size="lg"
+          className={step < FORM_STEPS.length - 1 ? '' : 'hidden'}
+          aria-hidden={step >= FORM_STEPS.length - 1}
+          tabIndex={step < FORM_STEPS.length - 1 ? 0 : -1}
+          onClick={continueToNextStep}
+          rightIcon={<Icon name="arrowRight" size={17} />}
+        >
+          Save and continue
+        </Button>
+        <Button
+          key="wizard-submit"
+          type="button"
+          variant="accent"
+          size="lg"
+          className={step >= FORM_STEPS.length - 1 ? '' : 'hidden'}
+          aria-hidden={step < FORM_STEPS.length - 1}
+          tabIndex={step >= FORM_STEPS.length - 1 ? 0 : -1}
+          loading={submitting}
+          onClick={submitForm}
+        >
+          {editing ? 'Save changes' : 'Create hackathon'}
+        </Button>
       </div>
     </form>
   )
