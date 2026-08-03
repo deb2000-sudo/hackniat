@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconClose, IconMenu } from './icons'
+import ThemeToggle from './ThemeToggle'
 
 const LINKS = [
   { href: '#hackathons', label: 'Hackathons' },
@@ -67,7 +68,7 @@ export default function DropNav() {
             Drop
           </a>
 
-          <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
+          <nav className="hidden items-center gap-5 md:flex" aria-label="Primary">
             {LINKS.map((link) => (
               <a key={link.href} href={link.href} className={LINK}>
                 {link.label}
@@ -76,18 +77,22 @@ export default function DropNav() {
             <Link to="/login" className={LINK}>
               Sign in
             </Link>
+            <ThemeToggle compact />
           </nav>
 
-          <button
-            type="button"
-            className="-mr-2 flex size-[42px] items-center justify-center rounded-lg text-ink md:hidden"
-            aria-expanded={open}
-            aria-controls="drop-mobile-nav"
-            aria-label={open ? 'Close menu' : 'Open menu'}
-            onClick={() => setOpen((value) => !value)}
-          >
-            {open ? <IconClose /> : <IconMenu />}
-          </button>
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle compact />
+            <button
+              type="button"
+              className="-mr-2 flex size-[42px] items-center justify-center rounded-lg text-ink"
+              aria-expanded={open}
+              aria-controls="drop-mobile-nav"
+              aria-label={open ? 'Close menu' : 'Open menu'}
+              onClick={() => setOpen((value) => !value)}
+            >
+              {open ? <IconClose /> : <IconMenu />}
+            </button>
+          </div>
         </div>
 
         <nav

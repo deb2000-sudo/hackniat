@@ -6,6 +6,7 @@ import { ROLES } from '../utils/constants'
 import {
   alignMetricsToRequirement,
   buildStandardScorecardPreset,
+  groupForFieldKey,
   sortScorecardMetrics,
   sumWeights,
 } from '../utils/scorecard'
@@ -45,7 +46,7 @@ function isVideoMetricKey(fieldKey) {
 }
 
 function isSolutionDescriptionKey(fieldKey) {
-  return String(fieldKey || '').trim().toLowerCase() === 'solution_description'
+  return groupForFieldKey(fieldKey) === 'solution_description'
 }
 
 function normalizePlaceholders(list) {
@@ -481,7 +482,7 @@ export default function MetricScoringPage() {
                     className="flex items-center gap-3 border-b border-hairline px-4 py-3.5 sm:px-5"
                     style={{ borderLeft: `4px solid ${metric.color || '#2563EB'}` }}
                   >
-                    <span className={`${MONO} text-volt`}>{String(index + 1).padStart(2, '0')}</span>
+                    <span className={`${MONO} text-volt-ink`}>{String(index + 1).padStart(2, '0')}</span>
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate text-[15.5px] font-semibold text-ink">
                         {metric.field_label || metric.field_key || 'Metric'}
@@ -560,7 +561,7 @@ export default function MetricScoringPage() {
                           Video scoring uses the Working Demo Video Analysis prompt under{' '}
                           <Link
                             to="/admin/ai-prompts"
-                            className="font-medium text-ink underline decoration-hairline underline-offset-4 hover:text-volt hover:decoration-volt"
+                            className="font-medium text-ink underline decoration-hairline underline-offset-4 hover:text-volt-ink hover:decoration-volt-ink"
                           >
                             AI prompts
                           </Link>

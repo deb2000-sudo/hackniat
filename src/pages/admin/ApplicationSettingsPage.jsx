@@ -107,7 +107,7 @@ function ResetSummary({ result, onDismiss, onDashboard }) {
           </div>
         </div>
         <div className="rounded-drop border border-volt-edge bg-surface px-3 py-2 text-right">
-          <div className={`${MONO} text-[22px] font-semibold text-volt`}>{totalDeleted}</div>
+          <div className={`${MONO} text-[22px] font-semibold text-volt-ink`}>{totalDeleted}</div>
           <div className="text-[11px] uppercase tracking-[0.08em] text-muted">Items removed</div>
         </div>
       </div>
@@ -143,7 +143,7 @@ function ResetSummary({ result, onDismiss, onDashboard }) {
                   key={item}
                   className="inline-flex items-center gap-1.5 rounded-drop border border-hairline bg-raised px-2.5 py-1.5 text-[12.5px] text-ink"
                 >
-                  <Icon name="shield" size={13} className="text-volt" />
+                  <Icon name="shield" size={13} className="text-volt-ink" />
                   <code className={MONO}>{item}</code>
                 </li>
               ))}

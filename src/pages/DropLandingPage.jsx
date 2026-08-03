@@ -99,7 +99,7 @@ function ReadinessClock() {
   const remaining = useCountdown(CHECK_DEADLINE)
 
   return (
-    <p className="font-mono text-[15px] text-volt tabular-nums">
+    <p className="font-mono text-[15px] text-volt-ink tabular-nums">
       {formatRemaining(remaining)} left. {reassurance(remaining)}
     </p>
   )

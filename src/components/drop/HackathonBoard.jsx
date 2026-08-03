@@ -229,7 +229,7 @@ export default function HackathonBoard() {
         <p className="mt-8">
           <Link
             to="/hackathons"
-            className="group/link inline-flex items-center gap-2 text-[15px] font-medium text-ink transition-colors hover:text-volt"
+            className="group/link inline-flex items-center gap-2 text-[15px] font-medium text-ink transition-colors hover:text-volt-ink"
           >
             See all hackathons
             <IconArrow

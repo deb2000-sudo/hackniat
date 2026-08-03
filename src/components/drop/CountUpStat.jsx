@@ -59,7 +59,7 @@ export default function CountUpStat({ value, suffix = '', label, emphasis = fals
     >
       <span
         className={`block font-mono leading-none font-medium tracking-[-0.03em] tabular-nums ${
-          emphasis ? 'text-[44px] text-volt xl:text-[56px]' : 'text-4xl text-ink xl:text-[44px]'
+          emphasis ? 'text-[44px] text-volt-ink xl:text-[56px]' : 'text-4xl text-ink xl:text-[44px]'
         }`}
       >
         {shown.toLocaleString('en-US')}

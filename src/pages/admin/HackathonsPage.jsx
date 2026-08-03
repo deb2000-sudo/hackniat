@@ -58,7 +58,7 @@ export default function HackathonsPage() {
     <div className={`${WRAP_APP} py-7 md:py-10`}>
       <header className="mb-7 flex flex-col gap-5 rounded-drop border border-hairline bg-surface p-5 sm:mb-9 sm:flex-row sm:items-end sm:justify-between sm:p-7 md:p-8">
         <div className="flex max-w-3xl items-start gap-4">
-          <span className="grid size-12 shrink-0 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt">
+          <span className="grid size-12 shrink-0 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt-ink">
             <Icon name="trophy" size={22} />
           </span>
           <div>
@@ -193,7 +193,7 @@ export default function HackathonsPage() {
                       {hackathon.themes.map((theme) => (
                         <span
                           key={theme.id}
-                          className="rounded-full border border-volt-edge bg-volt-tint px-2.5 py-1 text-[11.5px] font-medium text-volt"
+                          className="rounded-full border border-volt-edge bg-volt-tint px-2.5 py-1 text-[11.5px] font-medium text-volt-ink"
                         >
                           {theme.name}
                         </span>
@@ -210,7 +210,7 @@ export default function HackathonsPage() {
                     </div>
                     <Link
                       to={`/hackathons/${hackathon.id}`}
-                      className="inline-flex items-center gap-1.5 text-[14px] font-medium text-ink transition-colors hover:text-volt"
+                      className="inline-flex items-center gap-1.5 text-[14px] font-medium text-ink transition-colors hover:text-volt-ink"
                     >
                       Explore
                       <Icon name="arrowRight" size={15} />

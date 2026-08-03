@@ -23,36 +23,37 @@
 
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/preflight.css' layer(base);
+@import './styles/tokens.css';
 @import './index.css' layer(legacy);
 @import './styles/drop-theme.css';
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme {
-  /* ---- Drop: dark canvas ---- */
-  --color-canvas: #0a0a0b;
-  --color-surface: #131316;
-  --color-raised: #1c1c22;
-  --color-hairline: #2a2a31;
-  --color-ink: #f4f4f1;
-  --color-muted: #8a8a94;
+  /* Semantic palette — values come from tokens.css via data-theme. */
+  --color-canvas: var(--drop-canvas);
+  --color-surface: var(--drop-surface);
+  --color-raised: var(--drop-raised);
+  --color-hairline: var(--drop-hairline);
+  --color-ink: var(--drop-ink);
+  --color-muted: var(--drop-muted);
 
-  /* ---- Drop: volt lime accent ---- */
-  --color-volt: #c8fa3c;
-  --color-volt-deep: #a8d62b;
-  --color-volt-tint: #1f2a08;
-  --color-volt-edge: #3d5210;
-  --color-on-volt: #1a2405;
+  --color-volt: var(--drop-volt);
+  --color-volt-deep: var(--drop-volt-deep);
+  --color-volt-tint: var(--drop-volt-tint);
+  --color-volt-edge: var(--drop-volt-edge);
+  --color-on-volt: var(--drop-on-volt);
+  --color-volt-ink: var(--drop-volt-ink);
 
-  /* ---- Drop: states (readiness check + status badges only) ---- */
-  --color-passed: #3ddc91;
-  --color-warn: #ffb020;
-  --color-missing: #ff5c5c;
-  --color-info: #5b9eff;
+  --color-passed: var(--drop-passed);
+  --color-warn: var(--drop-warn);
+  --color-missing: var(--drop-missing);
+  --color-info: var(--drop-info);
 
-  --font-sans: 'General Sans', 'Satoshi', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Geist Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  --font-sans: var(--drop-font-sans);
+  --font-label: var(--drop-font-label);
+  --font-mono: var(--drop-font-mono);
 
-  --radius-drop: 10px;
+  --radius-drop: var(--drop-radius);
 
   /* Breakpoints are the design's own, not Tailwind's defaults:
      md  nav switches from hamburger to inline links

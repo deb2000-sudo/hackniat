@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { IconPassed } from '../drop/icons'
+import ThemeToggle from '../drop/ThemeToggle'
 import { useDropSurface } from '../drop/useDropSurface'
 import { MONO, PILL_VOLT } from '../drop/theme'
 
@@ -52,7 +53,10 @@ export default function AuthShell({ children, wide = false }) {
         <p className="text-sm text-muted">© {new Date().getFullYear()} Drop</p>
       </aside>
 
-      <div className="flex items-center justify-center px-6 py-12">
+      <div className="relative flex items-center justify-center px-6 py-12">
+        <div className="absolute top-5 right-5">
+          <ThemeToggle compact />
+        </div>
         <div className={`drop-auth-card w-full ${wide ? 'max-w-[560px]' : 'max-w-[440px]'}`}>
           {/* Wordmark for the single-column view, where the aside is hidden. */}
           <Link

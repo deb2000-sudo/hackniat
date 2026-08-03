@@ -134,7 +134,7 @@ export default function AiPromptsPage() {
                       </h2>
                       <p className="mt-1 text-[13.5px] text-muted">{meta.description}</p>
                     </div>
-                    <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt-ink">
                       <Icon name="sparkles" size={18} />
                     </span>
                   </div>

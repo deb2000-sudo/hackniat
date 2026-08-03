@@ -41,7 +41,7 @@ function statusBadge(key) {
 function SectionHeader({ icon, title, description }) {
   return (
     <div className="flex items-start gap-3 border-b border-hairline px-4 py-4 sm:px-5">
-      <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-volt">
+      <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-volt-ink">
         <Icon name={icon} size={18} />
       </span>
       <div>
@@ -200,7 +200,7 @@ export default function HackathonDetailPage() {
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:mb-8 md:gap-4">
         {summary.map((item) => (
           <div key={item.label} className={`${PANEL} flex items-center gap-3.5 p-4`}>
-            <span className="grid size-11 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-volt">
+            <span className="grid size-11 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-volt-ink">
               <Icon name={item.icon} size={20} />
             </span>
             <div className="min-w-0">
@@ -231,7 +231,7 @@ export default function HackathonDetailPage() {
                 >
                   {prize.place}
                 </span>
-                <span className="grid size-10 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt">
+                <span className="grid size-10 place-items-center rounded-drop border border-volt-edge bg-volt-tint text-volt-ink">
                   <Icon name="trophy" size={18} />
                 </span>
                 <div className={`${EYEBROW} mt-4`}>{prize.label}</div>
@@ -264,7 +264,7 @@ export default function HackathonDetailPage() {
                       />
                     ) : null}
                     <span
-                      className={`${MONO} relative z-1 grid size-11 place-items-center rounded-full border border-hairline bg-surface text-[12px] font-semibold text-volt`}
+                      className={`${MONO} relative z-1 grid size-11 place-items-center rounded-full border border-hairline bg-surface text-[12px] font-semibold text-volt-ink`}
                     >
                       {String(index + 1).padStart(2, '0')}
                     </span>
@@ -310,7 +310,7 @@ export default function HackathonDetailPage() {
                                   >
                                     {field.label}
                                     {field.is_required ? (
-                                      <strong className="ml-0.5 text-volt" aria-label="required">
+                                      <strong className="ml-0.5 text-volt-ink" aria-label="required">
                                         *
                                       </strong>
                                     ) : null}

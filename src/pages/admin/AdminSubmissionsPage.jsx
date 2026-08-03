@@ -77,7 +77,7 @@ export default function AdminSubmissionsPage() {
 
       <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center">
         <div className={`${PANEL} flex min-w-[160px] items-center gap-3 px-4 py-3.5`}>
-          <span className="grid size-10 place-items-center rounded-drop border border-hairline bg-raised text-volt">
+          <span className="grid size-10 place-items-center rounded-drop border border-hairline bg-raised text-volt-ink">
             <Icon name="trophy" size={18} />
           </span>
           <div>

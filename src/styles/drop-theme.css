@@ -32,28 +32,28 @@
 
     --brand-50: var(--color-raised);
     --brand-100: var(--color-hairline);
-    --brand-300: #4a4a55;
+    --brand-300: color-mix(in srgb, var(--color-hairline) 55%, var(--color-muted));
     --brand-400: var(--color-muted);
-    --brand-500: #c8c8d0;
+    --brand-500: color-mix(in srgb, var(--color-ink) 65%, var(--color-muted));
     --brand-600: var(--color-ink);
     --brand-700: var(--color-ink);
 
     --accent-500: var(--color-muted);
     --accent-600: var(--color-ink);
 
-    --success-50: #0c2a1d;
-    --success-600: #6fe3ae;
-    --warning-50: #2a1e05;
-    --warning-600: #ffc55c;
-    --danger-50: #2a1010;
-    --danger-600: #ff8a8a;
-    --info-50: #0e1f38;
-    --info-500: #8fbeff;
+    --success-50: var(--drop-success-soft);
+    --success-600: var(--color-passed);
+    --warning-50: var(--drop-warning-soft);
+    --warning-600: var(--color-warn);
+    --danger-50: var(--drop-danger-soft);
+    --danger-600: var(--color-missing);
+    --info-50: var(--drop-info-soft);
+    --info-500: var(--color-info);
 
-    /* Flat surfaces: the brief calls for hairline borders, not shadows. */
-    --shadow-sm: none;
-    --shadow-md: none;
-    --shadow-lg: none;
+    /* Shadows come from the active theme (flat in dark, soft in light). */
+    --shadow-sm: var(--drop-shadow-sm);
+    --shadow-md: var(--drop-shadow-md);
+    --shadow-lg: var(--drop-shadow-md);
     --shadow-brand: none;
 
     min-height: 100vh;
@@ -62,7 +62,7 @@
     font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.6;
-    color-scheme: dark;
+    color-scheme: inherit;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -98,11 +98,12 @@
     color: var(--color-muted);
   }
 
-  /* Paint the document itself so overscroll never flashes the light app
-     theme that index.css sets on <body>. Toggled by useDropSurface(). */
+  /* Paint the document itself so overscroll matches the active Drop theme.
+     Toggled by useDropSurface(). */
   body.drop-active {
     background: var(--color-canvas);
-    color-scheme: dark;
+    color: var(--color-ink);
+    color-scheme: inherit;
   }
 
   html:has(body.drop-active) {
@@ -126,14 +127,14 @@
 
   .drop .input::placeholder,
   .drop .textarea::placeholder {
-    color: #6b6b75;
+    color: color-mix(in srgb, var(--color-muted) 75%, transparent);
   }
 
   .drop .input:focus,
   .drop .textarea:focus,
   .drop .select:focus {
     border-color: var(--color-volt-edge);
-    box-shadow: 0 0 0 3px rgb(200 250 60 / 0.12);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-volt) 24%, transparent);
   }
 
   .drop .input--error,
@@ -144,7 +145,7 @@
 
   .drop .input--error:focus,
   .drop .textarea--error:focus {
-    box-shadow: 0 0 0 3px rgb(255 92 92 / 0.15);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-missing) 18%, transparent);
   }
 
   .drop .field__error {
@@ -188,8 +189,8 @@
   }
 
   .drop .btn--secondary:hover:not(:disabled) {
-    background: var(--color-surface);
-    border-color: #3a3a44;
+    background: var(--color-raised);
+    border-color: color-mix(in srgb, var(--color-muted) 50%, transparent);
   }
 
   .drop .btn--ghost {
@@ -215,27 +216,27 @@
   }
 
   .drop .alert--danger {
-    background: #2a1010;
-    border-color: #5a2222;
-    color: #ff8a8a;
+    background: var(--drop-danger-soft);
+    border-color: color-mix(in srgb, var(--color-missing) 38%, transparent);
+    color: var(--color-missing);
   }
 
   .drop .alert--success {
-    background: #0c2a1d;
-    border-color: #1c5540;
-    color: #6fe3ae;
+    background: var(--drop-success-soft);
+    border-color: color-mix(in srgb, var(--color-passed) 38%, transparent);
+    color: var(--color-passed);
   }
 
   .drop .alert--warning {
-    background: #2a1e05;
-    border-color: #4a3308;
-    color: #ffc55c;
+    background: var(--drop-warning-soft);
+    border-color: color-mix(in srgb, var(--color-warn) 38%, transparent);
+    color: var(--color-warn);
   }
 
   .drop .alert--info {
-    background: #0e1f38;
-    border-color: #24406b;
-    color: #8fbeff;
+    background: var(--drop-info-soft);
+    border-color: color-mix(in srgb, var(--color-info) 38%, transparent);
+    color: var(--color-info);
   }
 
   /* Auth heading sits between the page h1 and a section h2. */
@@ -267,7 +268,7 @@
   }
 
   .drop .register-role-trigger__icon {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
   }
 
@@ -311,13 +312,13 @@
   /* Active step takes the volt accent; completed steps use the passed state,
      which is legitimate status colour rather than decoration. */
   .drop .student-register-steps__item.is-active {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
   }
 
   .drop .student-register-steps__item.is-active .student-register-steps__mark {
     border-color: var(--color-volt-edge);
     background: var(--color-volt-tint);
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
   }
 
   .drop .student-register-steps__item.is-done {
@@ -443,7 +444,7 @@
   }
 
   .drop .manual-score-link:hover {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
   }
 
   .drop .admin-submission-hackathons {
@@ -480,12 +481,12 @@
 
   .drop .admin-submission-hackathon-card__media {
     height: 200px;
-    background: linear-gradient(135deg, #141418, #1c1c22 55%, #24242c);
+    background: linear-gradient(135deg, var(--color-surface), var(--color-raised));
   }
 
   .drop .admin-submission-hackathon-card__media > div {
     color: var(--color-muted);
-    background: linear-gradient(135deg, #141418, #1c1c22 55%, #24242c);
+    background: linear-gradient(135deg, var(--color-surface), var(--color-raised));
   }
 
   .drop .admin-submission-hackathon-card__media::after {
@@ -623,11 +624,11 @@
   }
 
   .drop .brand__mark {
-    color: var(--color-volt);
-    background: var(--color-volt-tint);
-    border: 1px solid var(--color-volt-edge);
+    color: var(--color-on-volt);
+    background: var(--color-volt);
+    border: none;
     box-shadow: none;
-    border-radius: var(--radius-drop);
+    border-radius: 50%;
   }
 
   .drop .sidebar {
@@ -646,7 +647,7 @@
   }
 
   .drop .sidebar .brand__name span {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
   }
 
   .drop .sidebar__close {
@@ -672,7 +673,7 @@
   }
 
   .drop .sidebar__nav-label {
-    color: #5c5c68;
+    color: color-mix(in srgb, var(--color-muted) 80%, transparent);
   }
 
   .drop .sidebar-link {
@@ -686,21 +687,38 @@
     transform: none;
   }
 
-  .drop .sidebar-link.is-active {
-    color: var(--color-ink);
-    background: var(--color-volt-tint);
-    box-shadow: inset 3px 0 0 var(--color-volt);
+  .drop .sidebar-link.is-active,
+  .drop .sidebar-link.is-active:hover {
+    color: var(--color-on-volt);
+    background: var(--color-volt);
+    box-shadow: none;
   }
 
+  /* The row itself carries the state; the glyph needs no tile behind it. */
   .drop .sidebar-link__icon {
-    color: var(--color-muted);
-    background: var(--color-raised);
+    color: inherit;
+    background: transparent;
     border-radius: 8px;
   }
 
-  .drop .sidebar-link.is-active .sidebar-link__icon {
-    color: var(--color-volt);
-    background: rgb(200 250 60 / 0.12);
+  /* Role pill under the sidebar avatar mirrors the active nav fill. */
+  .drop .sidebar-profile .badge {
+    color: var(--color-on-volt);
+    background: var(--color-volt);
+    border-color: transparent;
+  }
+
+  /* A solid volt fill is too loud against white — light tints instead. */
+  html[data-theme='light'] .drop .sidebar-link.is-active,
+  html[data-theme='light'] .drop .sidebar-link.is-active:hover {
+    color: var(--color-ink);
+    background: var(--color-volt-tint);
+  }
+
+  html[data-theme='light'] .drop .sidebar-profile .badge {
+    color: var(--color-ink);
+    background: var(--color-volt-tint);
+    border-color: color-mix(in srgb, var(--color-volt-edge) 45%, transparent);
   }
 
   .drop .sidebar-nav-group.is-active > summary {
@@ -735,7 +753,7 @@
   }
 
   .drop .sidebar-sub-link.is-active > span {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
   }
 
   .drop .sidebar__footer {
@@ -784,13 +802,13 @@
   }
 
   .drop .sidebar-utility--danger:hover {
-    color: #ff8a8a;
-    background: #2a1010;
+    color: var(--color-missing);
+    background: var(--drop-danger-soft);
   }
 
   .drop .mobile-sidebar-bar {
     border-bottom-color: var(--color-hairline);
-    background: rgb(10 10 11 / 0.92);
+    background: color-mix(in srgb, var(--color-canvas) 92%, transparent);
     backdrop-filter: blur(12px);
   }
 
@@ -816,18 +834,18 @@
 
   /* ------------------------ Shared UI primitives ----------------------- */
   .drop .avatar {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
     border: 1px solid var(--color-volt-edge);
   }
 
   .drop .spinner {
-    border-color: rgb(200 250 60 / 0.18);
+    border-color: color-mix(in srgb, var(--color-volt) 25%, var(--color-hairline));
     border-top-color: var(--color-volt);
   }
 
   .drop .spinner--on-brand {
-    border-color: rgb(26 36 5 / 0.28);
+    border-color: color-mix(in srgb, var(--color-on-volt) 28%, transparent);
     border-top-color: var(--color-on-volt);
   }
 
@@ -846,32 +864,32 @@
 
   .drop .badge--accent {
     background: var(--color-volt-tint);
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     border-color: var(--color-volt-edge);
   }
 
   .drop .badge--success {
-    background: #0c2a1d;
-    color: #6fe3ae;
-    border-color: #1c5540;
+    background: var(--drop-success-soft);
+    color: var(--color-passed);
+    border-color: color-mix(in srgb, var(--color-passed) 38%, transparent);
   }
 
   .drop .badge--warning {
-    background: #2a1e05;
-    color: #ffc55c;
-    border-color: #4a3308;
+    background: var(--drop-warning-soft);
+    color: var(--color-warn);
+    border-color: color-mix(in srgb, var(--color-warn) 38%, transparent);
   }
 
   .drop .badge--danger {
-    background: #2a1010;
-    color: #ff8a8a;
-    border-color: #5a2222;
+    background: var(--drop-danger-soft);
+    color: var(--color-missing);
+    border-color: color-mix(in srgb, var(--color-missing) 38%, transparent);
   }
 
   .drop .badge--info {
-    background: #0e1f38;
-    color: #8fbeff;
-    border-color: #24406b;
+    background: var(--drop-info-soft);
+    color: var(--color-info);
+    border-color: color-mix(in srgb, var(--color-info) 38%, transparent);
   }
 
   .drop .stat__icon,
@@ -880,7 +898,7 @@
   .drop .section-title-with-icon > span,
   .drop .hackathon-summary-item__icon,
   .drop .hackathon-form-heading__icon {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
     border: 1px solid var(--color-volt-edge);
   }
@@ -919,7 +937,7 @@
   }
 
   .drop .hackathons-hero__icon {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
     border: 1px solid var(--color-volt-edge);
     box-shadow: none;
@@ -941,7 +959,7 @@
   }
 
   .drop .hackathon-card__banner--empty {
-    background: linear-gradient(135deg, #1a1a20, #24242c);
+    background: linear-gradient(135deg, var(--color-surface), var(--color-raised));
   }
 
   .drop .hackathon-card__media {
@@ -976,7 +994,7 @@
   }
 
   .drop .hackathon-detail-hero--empty {
-    background: linear-gradient(135deg, #141418, #1c1c22);
+    background: linear-gradient(135deg, var(--color-surface), var(--color-raised));
   }
 
   .drop .hackathon-section-card {
@@ -996,11 +1014,11 @@
   .drop .prize-card svg,
   .drop .prize-card--1 svg,
   .drop .prize-card--3 svg {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
   }
 
   .drop .prize-card__place {
-    color: rgb(244 244 241 / 0.08);
+    color: color-mix(in srgb, var(--color-ink) 8%, transparent);
   }
 
   .drop .prize-card__label {
@@ -1026,7 +1044,7 @@
   }
 
   .drop .markdown-body a {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
   }
 
   .drop .markdown-body blockquote {
@@ -1087,7 +1105,7 @@
   }
 
   .drop .hackathon-form-stepper li.is-active button {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
   }
 
   .drop .hackathon-form-stepper li.is-active button > span {
@@ -1111,7 +1129,7 @@
   }
 
   .drop .hackathon-wizard-status > span {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
     border: 1px solid var(--color-volt-edge);
   }
@@ -1126,7 +1144,7 @@
   }
 
   .drop .hackathon-form-actions {
-    background: rgb(19 19 22 / 0.94);
+    background: color-mix(in srgb, var(--color-surface) 94%, transparent);
     border-color: var(--color-hairline);
     border-radius: var(--radius-drop);
     box-shadow: none;
@@ -1157,13 +1175,13 @@
   }
 
   .drop .selected-file-row {
-    background: #0c2a1d;
-    border-color: #1c5540;
+    background: var(--drop-success-soft);
+    border-color: color-mix(in srgb, var(--color-passed) 38%, transparent);
   }
 
   .drop .selected-file-row > span,
   .drop .selected-file-row small {
-    color: #6fe3ae;
+    color: var(--color-passed);
   }
 
   .drop .selected-file-row strong {
@@ -1212,7 +1230,7 @@
 
   .drop .requirement-field-card__number,
   .drop .requirement-section-heading > span {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
     border: 1px solid var(--color-volt-edge);
   }
@@ -1275,14 +1293,14 @@
   }
 
   .drop .requirement-list-card__top > span {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
     border: 1px solid var(--color-volt-edge);
   }
 
   .drop .icon-btn--danger:hover {
-    color: #ff8a8a;
-    background: #2a1010;
+    color: var(--color-missing);
+    background: var(--drop-danger-soft);
   }
 
   .drop .modal-overlay {
@@ -1297,7 +1315,7 @@
   .drop .theme-card__top > span,
   .drop .hackathon-card__themes span,
   .drop .student-hackathon-theme-card__themes span {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     border-color: var(--color-volt-edge);
     background: var(--color-volt-tint);
   }
@@ -1349,7 +1367,7 @@
   }
 
   .drop .submission-stepper li.is-active {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
   }
 
@@ -1395,7 +1413,7 @@
   }
 
   .drop .submission-panel__icon {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     border-color: var(--color-volt-edge);
     background: var(--color-volt-tint);
   }
@@ -1412,7 +1430,7 @@
   }
 
   .drop .submission-requirement-banner > span {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     border-color: var(--color-volt-edge);
     background: var(--color-volt-tint);
     box-shadow: none;
@@ -1459,7 +1477,7 @@
   }
 
   .drop .demo-source-options > button > span:first-child {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     background: var(--color-volt-tint);
   }
 
@@ -1479,7 +1497,7 @@
   }
 
   .drop .demo-file-picker > span:first-child {
-    color: var(--color-volt);
+    color: var(--color-volt-ink);
     border-color: var(--color-volt-edge);
     background: var(--color-volt-tint);
     box-shadow: none;
@@ -1509,6 +1527,12 @@
     border-radius: var(--radius-drop);
     background: var(--color-surface);
     box-shadow: none;
+  }
+
+  /* Light theme: keep volt CTAs readable (black label on lime). */
+  html[data-theme='light'] .drop .btn--accent,
+  html[data-theme='light'] .drop .btn--primary {
+    color: var(--color-on-volt);
   }
 }
 

@@ -6,6 +6,7 @@ import { ROLES } from '../../utils/constants'
 import Avatar from '../ui/Avatar'
 import Icon from '../ui/Icon'
 import { RoleBadge } from '../ui/Badge'
+import ThemeToggle from '../drop/ThemeToggle'
 
 const NAV_BY_ROLE = {
   [ROLES.STUDENT]: [
@@ -157,6 +158,9 @@ export default function Navbar() {
         </nav>
 
         <div className="sidebar__footer">
+          <div className="mb-2 px-1">
+            <ThemeToggle className="w-full" />
+          </div>
           <details className="sidebar-profile-menu">
             <summary className="sidebar-profile">
               <Avatar name={user.name} size="sm" />
