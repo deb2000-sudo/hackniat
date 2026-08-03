@@ -110,6 +110,13 @@ function validateStep(form, banner, step) {
 }
 
 export default function HackathonForm({ initialValue, onSubmit, submitting, submitError }) {
+  // Opt out of the React Compiler for this component. The footer's
+  // "Save and continue" / "Create hackathon" button occupies the same JSX
+  // position across a step change, and this component has enough
+  // conditional state (5 steps, dynamic validation) that a memoization
+  // mismatch here would let a stale render of that button survive into the
+  // next step — silently submitting the form instead of just advancing.
+  'use no memo'
   const editing = !!initialValue
   const initialForm = useMemo(() => createInitialForm(initialValue), [initialValue])
   const [form, setForm] = useState(initialForm)
@@ -652,11 +659,13 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         ) : (
           <p><Icon name="shield" size={17} /> Complete each section to continue.</p>
         )}
-        {/* Both branches stay type="button". React reuses this DOM node across
-            the step change, so a submit type here would let the click that
-            advanced to the last step also submit the form. */}
+        {/* Both branches stay type="button", and each gets its own `key` so
+            React always mounts a fresh node for the one being swapped in
+            rather than mutating attributes on a node it reuses — belt and
+            suspenders against this ever behaving like a submit control. */}
         {step < FORM_STEPS.length - 1 ? (
           <Button
+            key="wizard-next"
             type="button"
             variant="accent"
             size="lg"
@@ -667,6 +676,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
           </Button>
         ) : (
           <Button
+            key="wizard-submit"
             type="button"
             variant="accent"
             size="lg"
