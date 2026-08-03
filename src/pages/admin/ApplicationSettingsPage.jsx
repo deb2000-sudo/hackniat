@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { adminApi } from '../../api/admin'
 import { WRAP_APP, EYEBROW, PANEL, MONO } from '../../components/drop/theme'
@@ -19,6 +19,154 @@ const PROFILE_FORM = {
 const RESET_FORM = {
   profile_password: '',
   confirm_phrase: '',
+}
+
+const RESET_COUNT_META = {
+  hackathons: { label: 'Hackathons', icon: 'trophy', hint: 'Events and schedules' },
+  themes: { label: 'Themes', icon: 'sparkles', hint: 'Challenge themes' },
+  evaluation_requirements: {
+    label: 'Requirements',
+    icon: 'clipboard',
+    hint: 'Submission field sets',
+  },
+  ai_evaluation_metric_scoring: {
+    label: 'Scorecards',
+    icon: 'chart',
+    hint: 'Metric scoring configs',
+  },
+  ai_evaluation_prompts: {
+    label: 'AI prompts',
+    icon: 'spark',
+    hint: 'Checklist & video templates',
+  },
+  ai_evaluation_prompt: {
+    label: 'Legacy AI prompts',
+    icon: 'spark',
+    hint: 'Old singular collection',
+  },
+  submissions: { label: 'Submissions', icon: 'video', hint: 'Student entries' },
+  analysis: { label: 'Analysis', icon: 'file', hint: 'AI evaluation reports' },
+  users_non_admin: {
+    label: 'Non-admin users',
+    icon: 'users',
+    hint: 'Students & evaluators',
+  },
+  firebase_auth_non_admin: {
+    label: 'Firebase Auth',
+    icon: 'shield',
+    hint: 'Non-admin auth accounts',
+  },
+  gcs_evaluation_bucket: {
+    label: 'Cloud storage objects',
+    icon: 'upload',
+    hint: 'Videos & banners (bucket kept)',
+  },
+}
+
+function formatCollectionLabel(name) {
+  return (
+    RESET_COUNT_META[name]?.label ||
+    String(name || '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+  )
+}
+
+function ResetSummary({ result, onDismiss, onDashboard }) {
+  const deletedEntries = useMemo(() => {
+    const counts = result?.deleted_counts || {}
+    return Object.entries(counts)
+      .map(([key, count]) => ({
+        key,
+        count: Number(count) || 0,
+        label: formatCollectionLabel(key),
+        icon: RESET_COUNT_META[key]?.icon || 'trash',
+        hint: RESET_COUNT_META[key]?.hint || key,
+      }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+  }, [result])
+
+  const totalDeleted = deletedEntries.reduce((sum, item) => sum + item.count, 0)
+  const preserved = Array.isArray(result?.preserved) ? result.preserved : []
+
+  return (
+    <div className={`${PANEL} overflow-hidden border-volt-edge bg-surface`}>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-volt-edge bg-volt-tint px-5 py-4">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-volt-edge bg-volt text-on-volt">
+            <Icon name="check" size={18} />
+          </span>
+          <div>
+            <h3 className="text-[16px] font-semibold tracking-[-0.02em] text-ink">
+              Database reset complete
+            </h3>
+            <p className="mt-1 max-w-2xl text-[13.5px] text-muted">
+              {result?.message ||
+                'Wipeable application data was cleared. Admin accounts and the Profile Password were preserved.'}
+            </p>
+          </div>
+        </div>
+        <div className="rounded-drop border border-volt-edge bg-surface px-3 py-2 text-right">
+          <div className={`${MONO} text-[22px] font-semibold text-volt`}>{totalDeleted}</div>
+          <div className="text-[11px] uppercase tracking-[0.08em] text-muted">Items removed</div>
+        </div>
+      </div>
+
+      <div className="stack-md p-5">
+        <div>
+          <span className={EYEBROW}>Removed</span>
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+            {deletedEntries.map((item) => (
+              <div
+                key={item.key}
+                className="flex items-center gap-3 rounded-drop border border-hairline bg-surface px-3.5 py-3"
+              >
+                <span className="grid size-9 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-muted">
+                  <Icon name={item.icon} size={16} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13.5px] font-medium text-ink">{item.label}</div>
+                  <div className="truncate text-[12px] text-muted">{item.hint}</div>
+                </div>
+                <strong className={`${MONO} text-[18px] text-ink`}>{item.count}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {preserved.length > 0 && (
+          <div>
+            <span className={EYEBROW}>Preserved</span>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {preserved.map((item) => (
+                <li
+                  key={item}
+                  className="inline-flex items-center gap-1.5 rounded-drop border border-hairline bg-raised px-2.5 py-1.5 text-[12.5px] text-ink"
+                >
+                  <Icon name="shield" size={13} className="text-volt" />
+                  <code className={MONO}>{item}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button
+            size="sm"
+            variant="accent"
+            onClick={onDashboard}
+            rightIcon={<Icon name="arrowRight" size={15} />}
+          >
+            Go to dashboard
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onDismiss}>
+            Dismiss summary
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ApplicationSettingsPage() {
@@ -136,12 +284,12 @@ export default function ApplicationSettingsPage() {
 
   return (
     <div className={`${WRAP_APP} py-7 md:py-10`}>
-      <header className="mb-7 max-w-3xl sm:mb-9">
+      <header className="mb-7 sm:mb-9">
         <span className={EYEBROW}>Admin</span>
         <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
           Application Settings
         </h1>
-        <p className="mt-2 text-[15px] text-muted md:text-base">
+        <p className="mt-2 max-w-3xl text-[15px] text-muted md:text-base">
           Manage the Profile Password used for destructive actions and reset wipeable data.
         </p>
       </header>
@@ -175,8 +323,18 @@ export default function ApplicationSettingsPage() {
         </div>
       )}
 
-      <div className="stack-lg max-w-3xl">
-        <Card>
+      {resetResult && (
+        <div className="mb-6">
+          <ResetSummary
+            result={resetResult}
+            onDismiss={() => setResetResult(null)}
+            onDashboard={() => navigate('/admin')}
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2 xl:gap-6">
+        <Card className="min-w-0">
           <CardHeader>
             <div>
               <h3>Profile Password</h3>
@@ -240,7 +398,7 @@ export default function ApplicationSettingsPage() {
           </CardBody>
         </Card>
 
-        <section className={`${PANEL} overflow-hidden border-[#5a2222] bg-[#1a0f0f]`}>
+        <section className={`${PANEL} min-w-0 overflow-hidden border-[#5a2222] bg-[#1a0f0f]`}>
           <div className="flex items-start gap-3 border-b border-[#5a2222] px-5 py-4">
             <span className="grid size-10 place-items-center rounded-drop border border-[#5a2222] bg-[#2a1010] text-[#ff8a8a]">
               <Icon name="alert" size={18} />
@@ -259,45 +417,16 @@ export default function ApplicationSettingsPage() {
           <div className="stack-md p-5">
             {resetError && <Alert variant="danger">{resetError}</Alert>}
 
-            {resetResult && (
-              <Alert variant="success" title={resetResult.message || 'Database reset complete'}>
-                <div className="stack-sm mt-2">
-                  {resetResult.deleted_counts && (
-                    <ul className="stack-sm">
-                      {Object.entries(resetResult.deleted_counts).map(([name, count]) => (
-                        <li key={name}>
-                          <code className={MONO}>{name}</code>: {count}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {resetResult.preserved?.length ? (
-                    <p className="text-sm">
-                      Preserved: {resetResult.preserved.join(', ')}
-                    </p>
-                  ) : null}
-                  <div className="alert-action">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => navigate('/admin')}
-                    >
-                      Go to dashboard
-                    </Button>
-                  </div>
-                </div>
-              </Alert>
-            )}
-
             <div>
-              <span className={`${EYEBROW} mb-2`}>Wipeable collections</span>
-              <ul className="mt-2 flex flex-wrap gap-2">
+              <span className={`${EYEBROW} mb-2`}>What gets wiped</span>
+              <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {(settings?.wipeable_collections || []).map((name) => (
                   <li
                     key={name}
-                    className="rounded-drop border border-[#5a2222] bg-[#2a1010] px-2.5 py-1.5 text-[12.5px] text-[#ffb4b4]"
+                    className="flex items-center gap-2 rounded-drop border border-[#5a2222] bg-[#2a1010] px-3 py-2 text-[12.5px] text-[#ffb4b4]"
                   >
-                    <code className={MONO}>{name}</code>
+                    <Icon name="trash" size={13} />
+                    <code className={`${MONO} truncate`}>{name}</code>
                   </li>
                 ))}
               </ul>
