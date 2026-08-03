@@ -118,8 +118,8 @@ export default function HackathonsPage() {
               className={[
                 'shrink-0 rounded-full border px-4 py-[9px] text-sm whitespace-nowrap transition-colors',
                 filter === item.key
-                  ? 'border-[#3A3A44] bg-raised text-ink'
-                  : 'border-hairline text-muted hover:border-[#3A3A44] hover:text-ink',
+                  ? 'border-muted/50 bg-raised text-ink'
+                  : 'border-hairline text-muted hover:border-muted/50 hover:text-ink',
               ].join(' ')}
               aria-pressed={filter === item.key}
               onClick={() => setFilter(item.key)}
@@ -149,7 +149,7 @@ export default function HackathonsPage() {
                       alt={`${hackathon.name} banner`}
                     />
                   ) : (
-                    <div className="grid size-full place-items-center bg-linear-to-br from-[#141418] via-[#1c1c22] to-[#24242c] text-muted">
+                    <div className="grid size-full place-items-center bg-linear-to-br from-surface to-raised text-muted">
                       <Icon name="sparkles" size={40} />
                     </div>
                   )}

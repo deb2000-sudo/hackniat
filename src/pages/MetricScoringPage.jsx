@@ -751,7 +751,7 @@ export default function MetricScoringPage() {
                   {scoring ? (
                     <button
                       type="button"
-                      className={`${BTN_GHOST} w-full border-transparent text-[#ff8a8a] hover:border-[#5a2222] hover:bg-[#2a1010] sm:w-auto`}
+                      className={`${BTN_GHOST} w-full border-transparent text-missing hover:border-missing/30 hover:bg-danger-soft sm:w-auto`}
                       onClick={() => setConfirmDelete(true)}
                     >
                       <Icon name="trash" size={17} />

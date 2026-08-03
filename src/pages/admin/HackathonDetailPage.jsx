@@ -141,7 +141,7 @@ export default function HackathonDetailPage() {
             alt=""
           />
         ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-[#141418] via-[#1c1c22] to-[#24242c]" />
+          <div className="absolute inset-0 bg-linear-to-br from-surface to-raised" />
         )}
         <div className="absolute inset-0 bg-linear-to-r from-canvas via-canvas/80 to-canvas/25" />
         <div className="absolute inset-0 bg-linear-to-t from-canvas via-transparent to-canvas/40" />
@@ -163,7 +163,7 @@ export default function HackathonDetailPage() {
                 </Link>
                 <button
                   type="button"
-                  className={`${BTN_GHOST} w-full border-transparent bg-surface/80 text-[#ff8a8a] backdrop-blur-sm hover:border-[#5a2222] hover:bg-[#2a1010] sm:w-auto`}
+                  className={`${BTN_GHOST} w-full border-transparent bg-surface/80 text-missing backdrop-blur-sm hover:border-missing/30 hover:bg-danger-soft sm:w-auto`}
                   onClick={() => setConfirmDelete(true)}
                 >
                   <Icon name="trash" size={16} />

@@ -398,9 +398,9 @@ export default function ApplicationSettingsPage() {
           </CardBody>
         </Card>
 
-        <section className={`${PANEL} min-w-0 overflow-hidden border-[#5a2222] bg-[#1a0f0f]`}>
-          <div className="flex items-start gap-3 border-b border-[#5a2222] px-5 py-4">
-            <span className="grid size-10 place-items-center rounded-drop border border-[#5a2222] bg-[#2a1010] text-[#ff8a8a]">
+        <section className={`${PANEL} min-w-0 overflow-hidden border-missing/30`}>
+          <div className="flex items-start gap-3 border-b border-missing/20 bg-danger-soft px-4 py-4 sm:px-5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-missing/30 bg-surface text-missing">
               <Icon name="alert" size={18} />
             </span>
             <div>
@@ -418,15 +418,17 @@ export default function ApplicationSettingsPage() {
             {resetError && <Alert variant="danger">{resetError}</Alert>}
 
             <div>
-              <span className={`${EYEBROW} mb-2`}>What gets wiped</span>
-              <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <span className={EYEBROW}>What gets wiped</span>
+              {/* Pills wrap to content — a fixed grid left long collection names
+                  truncated beside mostly-empty cells. */}
+              <ul className="mt-3 flex flex-wrap gap-2">
                 {(settings?.wipeable_collections || []).map((name) => (
                   <li
                     key={name}
-                    className="flex items-center gap-2 rounded-drop border border-[#5a2222] bg-[#2a1010] px-3 py-2 text-[12.5px] text-[#ffb4b4]"
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-missing/25 bg-danger-soft py-1.5 pr-3 pl-2.5 text-[12px] text-missing"
                   >
-                    <Icon name="trash" size={13} />
-                    <code className={`${MONO} truncate`}>{name}</code>
+                    <Icon name="trash" size={12} className="shrink-0 opacity-70" />
+                    <span className={`${MONO} truncate`}>{name}</span>
                   </li>
                 ))}
               </ul>

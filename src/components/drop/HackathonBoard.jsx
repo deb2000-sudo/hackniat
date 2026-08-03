@@ -203,8 +203,8 @@ export default function HackathonBoard() {
               className={[
                 'shrink-0 rounded-full border px-4 py-[9px] text-sm whitespace-nowrap transition-colors',
                 filter === option.id
-                  ? 'border-[#3A3A44] bg-raised text-ink'
-                  : 'border-hairline text-muted hover:border-[#3A3A44] hover:text-ink',
+                  ? 'border-muted/50 bg-raised text-ink'
+                  : 'border-hairline text-muted hover:border-muted/50 hover:text-ink',
               ].join(' ')}
               aria-pressed={filter === option.id}
               onClick={() => setFilter(option.id)}

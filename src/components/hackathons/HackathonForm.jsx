@@ -200,12 +200,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     moveToStep(Math.min(step + 1, FORM_STEPS.length - 1))
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    if (step < FORM_STEPS.length - 1) {
-      continueToNextStep()
-      return
-    }
+  const submitForm = () => {
     const validation = validate(form, banner)
     setErrors(validation)
     if (Object.keys(validation).length) return
@@ -279,6 +274,16 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
       return
     }
     onSubmit(changes)
+  }
+
+  /* Enter inside a field must not create the hackathon from an earlier step. */
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    if (step < FORM_STEPS.length - 1) {
+      continueToNextStep()
+      return
+    }
+    submitForm()
   }
 
   return (
@@ -647,8 +652,12 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         ) : (
           <p><Icon name="shield" size={17} /> Complete each section to continue.</p>
         )}
+        {/* Both branches stay type="button". React reuses this DOM node across
+            the step change, so a submit type here would let the click that
+            advanced to the last step also submit the form. */}
         {step < FORM_STEPS.length - 1 ? (
           <Button
+            type="button"
             variant="accent"
             size="lg"
             onClick={continueToNextStep}
@@ -657,7 +666,13 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
             Save and continue
           </Button>
         ) : (
-          <Button type="submit" variant="accent" size="lg" loading={submitting}>
+          <Button
+            type="button"
+            variant="accent"
+            size="lg"
+            loading={submitting}
+            onClick={submitForm}
+          >
             {editing ? 'Save changes' : 'Create hackathon'}
           </Button>
         )}

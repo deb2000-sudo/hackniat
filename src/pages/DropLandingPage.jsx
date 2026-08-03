@@ -201,10 +201,10 @@ export default function DropLandingPage() {
                       className="grid grid-cols-[28px_minmax(0,1fr)] gap-4 font-mono text-[13px] leading-[1.85] whitespace-pre-wrap"
                     >
                       {/* Decorative gutter, kept above 3:1 all the same. */}
-                      <span className="text-right text-[#62626E] select-none" aria-hidden="true">
+                      <span className="text-right text-muted/80 select-none" aria-hidden="true">
                         {index + 1}
                       </span>
-                      <span className={line.heading ? 'font-semibold text-ink' : 'text-[#B4B4BC]'}>
+                      <span className={line.heading ? 'font-semibold text-ink' : 'text-ink/75'}>
                         {line.text}
                       </span>
                     </div>
@@ -214,7 +214,7 @@ export default function DropLandingPage() {
                 <dl className="border-t border-hairline">
                   <div className="flex items-center justify-between gap-4 px-4 py-[13px] text-[13.5px]">
                     <dt className="text-muted">MVP link</dt>
-                    <dd className="overflow-hidden font-mono text-[12.5px] text-ellipsis whitespace-nowrap text-[#B4B4BC]">
+                    <dd className="overflow-hidden font-mono text-[12.5px] text-ellipsis whitespace-nowrap text-ink/75">
                       drop-mvp-a91.vercel.app
                     </dd>
                   </div>

@@ -133,7 +133,7 @@ export default function AdminSubmissionsPage() {
                       className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
                   ) : (
-                    <div className="grid size-full place-items-center bg-linear-to-br from-[#141418] via-[#1c1c22] to-[#24242c] text-muted">
+                    <div className="grid size-full place-items-center bg-linear-to-br from-surface to-raised text-muted">
                       <Icon name="trophy" size={34} />
                     </div>
                   )}

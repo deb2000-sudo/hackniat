@@ -49,6 +49,12 @@
   --color-missing: var(--drop-missing);
   --color-info: var(--drop-info);
 
+  /* Tinted fills behind status text — dark washes, light pastels. */
+  --color-success-soft: var(--drop-success-soft);
+  --color-warning-soft: var(--drop-warning-soft);
+  --color-danger-soft: var(--drop-danger-soft);
+  --color-info-soft: var(--drop-info-soft);
+
   --font-sans: var(--drop-font-sans);
   --font-label: var(--drop-font-label);
   --font-mono: var(--drop-font-mono);
