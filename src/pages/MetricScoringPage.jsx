@@ -15,7 +15,6 @@ import {
   BADGE_CLOSED,
   BADGE_CLOSING,
   BADGE_OPEN,
-  BTN_GHOST,
   EYEBROW,
   MONO,
   PANEL,
@@ -24,7 +23,7 @@ import {
 import Alert from '../components/ui/Alert'
 import Button from '../components/ui/Button'
 import Icon from '../components/ui/Icon'
-import Input, { Select, Textarea } from '../components/ui/Input'
+import Input, { ColorInput, Select, Textarea } from '../components/ui/Input'
 import Modal from '../components/ui/Modal'
 import { LoadingBlock } from '../components/ui/Spinner'
 
@@ -403,7 +402,7 @@ export default function MetricScoringPage() {
       {loading && <LoadingBlock label="Loading scorecard…" />}
 
       {!loading && requirement && (
-        <form className="flex flex-col gap-6 pb-28" onSubmit={save} noValidate>
+        <form className="flex flex-col gap-6 pb-10" onSubmit={save} noValidate>
           <section
             className={`${PANEL} flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5`}
           >
@@ -525,9 +524,8 @@ export default function MetricScoringPage() {
                       <option value="ai">AI</option>
                       <option value="manual">Manual</option>
                     </Select>
-                    <Input
+                    <ColorInput
                       label="Color"
-                      type="color"
                       value={metric.color || '#2563EB'}
                       disabled={!isAdmin}
                       onChange={(event) => updateMetric(index, { color: event.target.value })}
@@ -743,35 +741,34 @@ export default function MetricScoringPage() {
           )}
 
           {isAdmin && (
-            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 md:left-[264px]">
-              <div className="pointer-events-auto mx-auto w-full max-w-[1480px] px-5 pb-4 md:px-8">
-                <div
-                  className={`${PANEL} flex flex-col-reverse gap-3 bg-surface/95 p-3 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:p-3.5`}
-                >
-                  {scoring ? (
-                    <button
-                      type="button"
-                      className={`${BTN_GHOST} w-full border-transparent text-missing hover:border-missing/30 hover:bg-danger-soft sm:w-auto`}
-                      onClick={() => setConfirmDelete(true)}
-                    >
-                      <Icon name="trash" size={17} />
-                      Delete scorecard
-                    </button>
-                  ) : (
-                    <span className="hidden text-[13px] text-muted sm:inline">
-                      Weights must total 100 before saving.
-                    </span>
-                  )}
-                  <Button
-                    type="submit"
-                    variant="accent"
-                    loading={saving}
-                    leftIcon={<Icon name="check" size={18} />}
-                    className="w-full sm:w-auto sm:min-w-[200px]"
+            <div className="scorecard-form-actions" role="region" aria-label="Scorecard actions">
+              <div className="scorecard-form-actions__start">
+                {scoring ? (
+                  <button
+                    type="button"
+                    className="scorecard-form-actions__delete"
+                    onClick={() => setConfirmDelete(true)}
                   >
-                    {scoring ? 'Save scorecard' : 'Create scorecard'}
-                  </Button>
-                </div>
+                    <Icon name="trash" size={17} />
+                    Delete scorecard
+                  </button>
+                ) : (
+                  <p className="scorecard-form-actions__hint">
+                    <Icon name="info" size={17} />
+                    Weights must total 100 before saving.
+                  </p>
+                )}
+              </div>
+              <div className="scorecard-form-actions__end">
+                <Button
+                  type="submit"
+                  variant="accent"
+                  loading={saving}
+                  leftIcon={<Icon name="check" size={18} />}
+                  className="w-full sm:w-auto"
+                >
+                  {scoring ? 'Save scorecard' : 'Create scorecard'}
+                </Button>
               </div>
             </div>
           )}

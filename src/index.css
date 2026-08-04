@@ -4823,6 +4823,66 @@ code {
 .hackathon-form-actions { position: sticky; bottom: 16px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.92); box-shadow: 0 12px 38px rgba(15,23,42,.13); backdrop-filter: blur(12px); }
 .hackathon-form-actions p { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: .78rem; }
 .hackathon-form-actions p svg { color: var(--success-600); }
+.scorecard-form-actions {
+  position: sticky;
+  bottom: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 36px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.94);
+  box-shadow:
+    0 1px 0 rgba(15,23,42,.04),
+    0 8px 24px rgba(15,23,42,.08),
+    0 20px 48px rgba(15,23,42,.12);
+  backdrop-filter: blur(14px);
+}
+.scorecard-form-actions__start { display: flex; min-width: 0; flex: 1; align-items: center; }
+.scorecard-form-actions__end { display: flex; flex-shrink: 0; justify-content: flex-end; }
+.scorecard-form-actions__hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: .8125rem;
+  line-height: 1.45;
+}
+.scorecard-form-actions__hint svg { flex-shrink: 0; color: var(--text-muted); opacity: .85; }
+.scorecard-form-actions .scorecard-form-actions__delete {
+  display: inline-flex;
+  min-height: 44px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--danger-600, #dc2626);
+  font-size: .9375rem;
+  font-weight: 500;
+  transition: background-color .15s, border-color .15s;
+}
+.scorecard-form-actions .scorecard-form-actions__delete:hover {
+  border-color: color-mix(in srgb, var(--danger-600, #dc2626) 28%, transparent);
+  background: color-mix(in srgb, var(--danger-600, #dc2626) 8%, transparent);
+}
+@media (min-width: 640px) {
+  .scorecard-form-actions {
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 18px 14px 20px;
+  }
+  .scorecard-form-actions .scorecard-form-actions__delete { width: auto; justify-content: flex-start; padding-inline: 12px; }
+  .scorecard-form-actions__end .btn { min-width: 200px; }
+}
 
 .prize-card { position: relative; overflow: hidden; padding: 28px 14px 24px; border-radius: 16px; background: linear-gradient(145deg,#fff,#f8fafc); }
 .prize-card svg { color: #64748b; }
