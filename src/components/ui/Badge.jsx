@@ -40,17 +40,24 @@ const EVAL_VARIANT = {
   [EVALUATION_STATUS.FAILED]: 'danger',
 }
 
+const EVAL_LABELS = {
+  [EVALUATION_STATUS.UPLOADED]: 'Uploaded',
+  [EVALUATION_STATUS.PROCESSING]: 'AI Analysis In Progress',
+  [EVALUATION_STATUS.COMPLETED]: 'AI Analysis Completed',
+  [EVALUATION_STATUS.FAILED]: 'AI Analysis Failed',
+}
+
 export function StatusBadge({ status }) {
   if (!status) return null
   return (
     <Badge variant={EVAL_VARIANT[status] || 'neutral'} dot>
-      {status}
+      {EVAL_LABELS[status] || status}
     </Badge>
   )
 }
 
 const REVIEW_STATUS = {
-  none: { label: 'not submitted', variant: 'neutral' },
+  none: { label: 'Manual Analysis Pending', variant: 'warning' },
   pending_review: { label: 'pending admin review', variant: 'warning' },
   changes_requested: { label: 'changes requested', variant: 'danger' },
   approved: { label: 'approved', variant: 'success' },

@@ -146,6 +146,12 @@ export const evaluationApi = {
         evaluator_notes: scoreOrPayload.evaluator_notes ?? null,
       }
       if (scoreOrPayload.final_score != null) body.final_score = scoreOrPayload.final_score
+      if (scoreOrPayload.override_ai_scores != null) {
+        body.override_ai_scores = Boolean(scoreOrPayload.override_ai_scores)
+      }
+      if (Array.isArray(scoreOrPayload.ai_overrides) && scoreOrPayload.ai_overrides.length) {
+        body.ai_overrides = scoreOrPayload.ai_overrides
+      }
       requestOptions = notes && typeof notes === 'object' ? notes : options
     } else {
       body = {

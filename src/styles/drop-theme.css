@@ -430,7 +430,7 @@
     border-color: var(--color-hairline);
   }
 
-  .drop .scorecard-bar__track,
+  .drop .scorecard-ring__track,
   .drop .ai-metric-card,
   .drop .manual-metric-card,
   .drop .manual-boolean-list label,
@@ -439,8 +439,8 @@
     border-color: var(--color-hairline);
   }
 
-  .drop .scorecard-bar__track {
-    background: var(--color-raised);
+  .drop .scorecard-ring__track {
+    stroke: var(--color-raised);
   }
 
   .drop .manual-score-link:hover {

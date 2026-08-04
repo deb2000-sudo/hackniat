@@ -289,7 +289,8 @@ export function weightedContribution(score, maxScore, weight) {
 }
 
 /** Recompute a scorecard total from a local manual draft (evaluator live preview). */
-export function previewScorecard(scorecard, draftByFieldKey = {}) {
+export function previewScorecard(scorecard, draftByFieldKey = {}, previewOptions = {}) {
+  const { overrideAi = false, aiOverrideByFieldKey = {} } = previewOptions
   if (!scorecard?.metrics?.length) {
     return {
       metrics: [],
@@ -320,6 +321,16 @@ export function previewScorecard(scorecard, draftByFieldKey = {}) {
     }
 
     if (metric.scoring_mode === 'ai') {
+      if (overrideAi) {
+        const rawOverride = aiOverrideByFieldKey[metric.field_key]
+        if (rawOverride != null && rawOverride !== '') {
+          const overrideScore = Number(rawOverride)
+          if (Number.isFinite(overrideScore)) {
+            score = overrideScore
+            source = 'evaluator_override'
+          }
+        }
+      }
       if (score == null && !metric.skipped) complete = false
       const weighted = weightedContribution(score, metric.max_score, metric.weight)
       if (weighted != null) {
@@ -472,6 +483,28 @@ export function computeManualMetricScore(metric, draft = {}) {
     score: answered === defs.length ? total : null,
     segments,
   }
+}
+
+/** Seed evaluator AI override draft from existing scorecard AI scores. */
+export function aiOverridesFromScorecard(scorecard) {
+  const overrides = {}
+  for (const metric of scorecard?.metrics || []) {
+    if (metric.scoring_mode === 'ai' && metric.score != null) {
+      overrides[metric.field_key] = metric.score
+    }
+  }
+  return overrides
+}
+
+/** Build API ai_overrides payload when evaluator overrides AI metric scores. */
+export function buildAiOverridesPayload(scorecard, aiOverrideByFieldKey = {}) {
+  return (scorecard?.metrics || [])
+    .filter((metric) => metric.scoring_mode === 'ai')
+    .map((metric) => ({
+      field_key: metric.field_key,
+      score: Number(aiOverrideByFieldKey[metric.field_key]),
+    }))
+    .filter((item) => Number.isFinite(item.score))
 }
 
 /** Build API manual_metrics payload from draft + metric defs. */

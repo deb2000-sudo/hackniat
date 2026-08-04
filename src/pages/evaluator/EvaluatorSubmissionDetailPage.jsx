@@ -8,6 +8,8 @@ import { resolveApiUrl } from '../../api/client'
 import { useAsync } from '../../hooks/useAsync'
 import { usePolling } from '../../hooks/usePolling'
 import {
+  aiOverridesFromScorecard,
+  buildAiOverridesPayload,
   buildManualMetricsPayload,
   draftFromScorecard,
   getScorecard,
@@ -23,15 +25,15 @@ import {
 } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
 import Accordion from '../../components/ui/Accordion'
-import { AiModeBadge, ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
+import Badge, { AiModeBadge, ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
-import { Textarea } from '../../components/ui/Input'
 import Spinner, { LoadingBlock } from '../../components/ui/Spinner'
 import AiMetricsPanel from '../../components/evaluation/AiMetricsPanel'
 import ManualScoreForms from '../../components/evaluation/ManualScoreForms'
 import ScorecardBar from '../../components/evaluation/ScorecardBar'
+import SubmitForReviewCard from '../../components/evaluation/SubmitForReviewCard'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
 
 export default function EvaluatorSubmissionDetailPage() {
@@ -56,6 +58,8 @@ export default function EvaluatorSubmissionDetailPage() {
   const [showDetailReport, setShowDetailReport] = useState(false)
   const [notes, setNotes] = useState('')
   const [draftByFieldKey, setDraftByFieldKey] = useState({})
+  const [overrideEnabled, setOverrideEnabled] = useState(false)
+  const [aiOverrideByFieldKey, setAiOverrideByFieldKey] = useState({})
 
   const reviewStatus = reviewOverride?.review_status ?? submission?.review_status ?? 'none'
   const scorecardBase = useMemo(
@@ -68,14 +72,21 @@ export default function EvaluatorSubmissionDetailPage() {
     setDraftByFieldKey((current) =>
       Object.keys(current).length ? current : draftFromScorecard(scorecardBase),
     )
+    setAiOverrideByFieldKey((current) =>
+      Object.keys(current).length ? current : aiOverridesFromScorecard(scorecardBase),
+    )
     if (!notes && (submission?.evaluator_notes || reviewOverride?.evaluator_notes)) {
       setNotes(submission?.evaluator_notes || reviewOverride?.evaluator_notes || '')
     }
   }, [scorecardBase, submission, reviewOverride, notes])
 
   const preview = useMemo(
-    () => previewScorecard(scorecardBase, draftByFieldKey),
-    [scorecardBase, draftByFieldKey],
+    () =>
+      previewScorecard(scorecardBase, draftByFieldKey, {
+        overrideAi: overrideEnabled,
+        aiOverrideByFieldKey,
+      }),
+    [scorecardBase, draftByFieldKey, overrideEnabled, aiOverrideByFieldKey],
   )
   const manualComplete = useMemo(
     () => isManualScoringComplete(scorecardBase, draftByFieldKey),
@@ -116,6 +127,10 @@ export default function EvaluatorSubmissionDetailPage() {
       const updated = await evaluationApi.submitForAdminReview(submission.id, {
         manual_metrics: buildManualMetricsPayload(scorecardBase, draftByFieldKey),
         evaluator_notes: notes.trim() || null,
+        override_ai_scores: overrideEnabled,
+        ai_overrides: overrideEnabled
+          ? buildAiOverridesPayload(scorecardBase, aiOverrideByFieldKey)
+          : undefined,
       })
       setReviewOverride({
         ...updated,
@@ -187,7 +202,6 @@ export default function EvaluatorSubmissionDetailPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             <StatusBadge status={submission?.status} />
             <ReviewStatusBadge status={reviewStatus} />
-            <AiModeBadge auto={submission?.auto_ai_evaluation} />
           </div>
         </div>
         <Link
@@ -233,8 +247,9 @@ export default function EvaluatorSubmissionDetailPage() {
         <div className="mb-6">
           <Accordion
             title="Evaluator guidelines"
-            description="Review criteria for this hackathon."
+            description="Follow these when reviewing submissions for this hackathon."
             icon="shield"
+            defaultOpen={false}
           >
             <div className="markdown-body hackathon-guidelines text-ink">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
@@ -243,26 +258,34 @@ export default function EvaluatorSubmissionDetailPage() {
         </div>
       ) : null}
 
-      {preview?.metrics?.length ? (
-        <div className="mb-6">
-          <Card>
-            <CardBody>
-              <ScorecardBar
-                scorecard={preview}
-                title={readOnlyReview ? 'Submitted scorecard' : 'Live scorecard preview'}
-              />
-            </CardBody>
-          </Card>
-        </div>
-      ) : null}
-
       <div className="admin-submission-layout">
         <div className="stack-lg min-w-0">
+          {preview?.metrics?.length ? (
+            <Card className="scorecard-preview-card">
+              <CardBody>
+                <ScorecardBar
+                  scorecard={preview}
+                  title={readOnlyReview ? 'Submitted scorecard' : 'Live scorecard preview'}
+                />
+              </CardBody>
+            </Card>
+          ) : null}
+
           <Accordion
-            title="Project details"
+            title="Submission details"
             description="Problem statement, solution description, links, and working demo."
             icon="clipboard"
-            badge={<StatusBadge status={submission?.status} />}
+            badge={
+              completed ? (
+                <Badge variant="success" dot>
+                  Completed
+                </Badge>
+              ) : (
+                <Badge variant="neutral" dot>
+                  Pending
+                </Badge>
+              )
+            }
           >
             <div className="stack-lg">
               <div className="admin-response-block">
@@ -322,7 +345,17 @@ export default function EvaluatorSubmissionDetailPage() {
               title="AI metrics"
               description="Read-only scores filled by AI evaluation."
               icon="sparkles"
-              badge={<StatusBadge status={submission?.status} />}
+              badge={
+                completed ? (
+                  <Badge variant="success" dot>
+                    Completed
+                  </Badge>
+                ) : (
+                  <Badge variant="info" dot>
+                    In progress
+                  </Badge>
+                )
+              }
             >
               {processing ? (
                 <div className="admin-analysis-processing">
@@ -342,13 +375,18 @@ export default function EvaluatorSubmissionDetailPage() {
             <Accordion
               title="Manual metrics"
               description="Score GitHub and MVP features. Total updates live above."
-              icon="clipboard"
+              icon="edit"
+              className={!manualComplete && canEditManual ? 'evaluation-accordion--manual-pending' : ''}
               badge={
-                preview?.manual_total != null ? (
-                  <span className="text-[12px] font-medium tabular-nums">
-                    {Math.round(preview.manual_total * 10) / 10} pts manual
-                  </span>
-                ) : null
+                manualComplete ? (
+                  <Badge variant="success" dot>
+                    Completed
+                  </Badge>
+                ) : (
+                  <Badge variant="neutral" dot>
+                    Pending
+                  </Badge>
+                )
               }
             >
               <ManualScoreForms
@@ -439,55 +477,26 @@ export default function EvaluatorSubmissionDetailPage() {
           </Card>
 
           {completed && (
-            <Card>
-              <CardHeader>
-                <h3>{readOnlyReview ? 'Review status' : 'Submit for review'}</h3>
-              </CardHeader>
-              <CardBody className="stack-md">
-                <div className="row-between">
-                  <span className="text-sm text-muted">Preview total</span>
-                  <strong>
-                    {preview?.computed_total != null ? preview.computed_total : '—'} / 100
-                  </strong>
-                </div>
-                <ReviewStatusBadge status={reviewStatus} />
-                {canEditManual && (
-                  <>
-                    <Textarea
-                      label="Notes for admin"
-                      hint="Optional"
-                      rows={3}
-                      maxLength={2000}
-                      value={notes}
-                      onChange={(event) => setNotes(event.target.value)}
-                    />
-                    <Button
-                      variant="success"
-                      block
-                      disabled={!canSubmit}
-                      loading={action === 'submitting'}
-                      onClick={submitForReview}
-                      leftIcon={<Icon name="check" size={17} />}
-                    >
-                      {reviewStatus === 'changes_requested'
-                        ? 'Resubmit for review'
-                        : 'Submit for review'}
-                    </Button>
-                    {!manualComplete && (
-                      <p className="text-sm text-muted">
-                        Finish GitHub and MVP scoring to enable submit.
-                      </p>
-                    )}
-                  </>
-                )}
-                {reviewStatus === 'approved' && (
-                  <p className="text-sm text-muted">
-                    Approved final score:{' '}
-                    <strong>{submission?.final_score ?? preview?.computed_total ?? '—'}/100</strong>
-                  </p>
-                )}
-              </CardBody>
-            </Card>
+            <SubmitForReviewCard
+              preview={preview}
+              scorecardBase={scorecardBase}
+              readOnlyReview={readOnlyReview}
+              reviewStatus={reviewStatus}
+              canEditManual={canEditManual}
+              canSubmit={canSubmit}
+              manualComplete={manualComplete}
+              overrideEnabled={overrideEnabled}
+              onOverrideEnabledChange={setOverrideEnabled}
+              aiOverrideByFieldKey={aiOverrideByFieldKey}
+              onAiOverrideChange={(fieldKey, value) =>
+                setAiOverrideByFieldKey((current) => ({ ...current, [fieldKey]: value }))
+              }
+              notes={notes}
+              onNotesChange={setNotes}
+              onSubmit={submitForReview}
+              submitting={action === 'submitting'}
+              finalScore={submission?.final_score}
+            />
           )}
         </aside>
       </div>

@@ -6,8 +6,9 @@ import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
 import { formatDateTime } from '../../utils/format'
-import { PANEL, WRAP_APP } from '../../components/drop/theme'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
+import Accordion from '../../components/ui/Accordion'
 import Alert from '../../components/ui/Alert'
 import { AiQueueBadge, ReviewStatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -78,19 +79,18 @@ export default function EvaluatorHackathonSubmissionsPage() {
       )}
 
       {evaluatorGuidelines ? (
-        <section className={`${PANEL} mb-6`}>
-          <div className="border-b border-hairline px-4 py-4 sm:px-5">
-            <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-ink">
-              Evaluator guidelines
-            </h2>
-            <p className="mt-0.5 text-[13px] text-muted">
-              Follow these when reviewing submissions for this hackathon.
-            </p>
-          </div>
-          <div className="markdown-body hackathon-guidelines p-4 text-ink sm:p-5">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
-          </div>
-        </section>
+        <div className="mb-6">
+          <Accordion
+            title="Evaluator guidelines"
+            description="Follow these when reviewing submissions for this hackathon."
+            icon="shield"
+            defaultOpen={false}
+          >
+            <div className="markdown-body hackathon-guidelines text-ink">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
+            </div>
+          </Accordion>
+        </div>
       ) : null}
 
       <div className="admin-submissions-toolbar">
@@ -109,7 +109,7 @@ export default function EvaluatorHackathonSubmissionsPage() {
           onChange={(event) => setReviewStatus(event.target.value)}
         >
           <option value="all">All review statuses</option>
-          <option value="none">Not submitted</option>
+          <option value="none">Manual Analysis Pending</option>
           <option value="pending_review">pending admin review</option>
           <option value="changes_requested">Changes requested</option>
           <option value="approved">Approved</option>

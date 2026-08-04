@@ -49,10 +49,16 @@ export default function AdminHackathonSubmissionsPage() {
 
   const hackathon = data?.hackathon
   const evaluators = data?.evaluators || []
-  const visibleIds = submissions.map((submission) => submission.id)
+
+  const isUnassigned = (submission) => !submission?.assigned_evaluator_id
+  const selectableVisibleIds = useMemo(
+    () => submissions.filter(isUnassigned).map((submission) => submission.id),
+    [submissions],
+  )
   const allVisibleSelected =
-    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id))
-  const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id))
+    selectableVisibleIds.length > 0 &&
+    selectableVisibleIds.every((id) => selectedIds.has(id))
+  const someVisibleSelected = selectableVisibleIds.some((id) => selectedIds.has(id))
 
   const patchSubmission = (updated) => {
     if (!updated?.id) return
@@ -65,6 +71,8 @@ export default function AdminHackathonSubmissionsPage() {
   }
 
   const toggleSelected = (submissionId) => {
+    const submission = submissions.find((item) => item.id === submissionId)
+    if (submission && !isUnassigned(submission)) return
     setSelectedIds((current) => {
       const next = new Set(current)
       if (next.has(submissionId)) next.delete(submissionId)
@@ -76,8 +84,8 @@ export default function AdminHackathonSubmissionsPage() {
   const toggleAllVisible = () => {
     setSelectedIds((current) => {
       const next = new Set(current)
-      if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id))
-      else visibleIds.forEach((id) => next.add(id))
+      if (allVisibleSelected) selectableVisibleIds.forEach((id) => next.delete(id))
+      else selectableVisibleIds.forEach((id) => next.add(id))
       return next
     })
   }
@@ -92,6 +100,12 @@ export default function AdminHackathonSubmissionsPage() {
         evaluatorId || null,
       )
       patchSubmission(updated)
+      setSelectedIds((current) => {
+        if (!current.has(submissionId)) return current
+        const next = new Set(current)
+        next.delete(submissionId)
+        return next
+      })
       if (!evaluatorId) {
         setActionMessage('Submission is now unassigned.')
       } else if (updated.status === 'processing' || updated.auto_ai_evaluation) {
@@ -111,14 +125,18 @@ export default function AdminHackathonSubmissionsPage() {
   }
 
   const onDivideEqually = async () => {
-    if (!selectedIds.size) return
+    const idsToAssign = [...selectedIds].filter((id) => {
+      const submission = data?.submissions?.find((item) => item.id === id)
+      return submission && isUnassigned(submission)
+    })
+    if (!idsToAssign.length) return
     setBulkAssigning(true)
     setActionError('')
     setActionMessage('')
     try {
       const result = await evaluationApi.assignHackathonSubmissionsEqually(
         hackathonId,
-        [...selectedIds],
+        idsToAssign,
       )
       const updatedSubmissions = Array.isArray(result?.submissions)
         ? result.submissions
@@ -148,6 +166,15 @@ export default function AdminHackathonSubmissionsPage() {
       setBulkAssigning(false)
     }
   }
+
+  const selectedUnassignedCount = useMemo(
+    () =>
+      [...selectedIds].filter((id) => {
+        const submission = data?.submissions?.find((item) => item.id === id)
+        return submission && isUnassigned(submission)
+      }).length,
+    [selectedIds, data?.submissions],
+  )
 
   return (
     <div className={`${WRAP_APP} py-7 md:py-10 admin-submissions-page`}>
@@ -222,12 +249,14 @@ export default function AdminHackathonSubmissionsPage() {
           <Button
             variant="secondary"
             onClick={onDivideEqually}
-            disabled={!selectedIds.size || !evaluators.length}
+            disabled={!selectedUnassignedCount || !evaluators.length}
             loading={bulkAssigning}
             leftIcon={<Icon name="users" size={17} />}
           >
             Divide equally
-            {selectedIds.size > 0 && <span className="admin-selection-count">{selectedIds.size}</span>}
+            {selectedUnassignedCount > 0 && (
+              <span className="admin-selection-count">{selectedUnassignedCount}</span>
+            )}
           </Button>
         </div>
       </div>
@@ -242,8 +271,9 @@ export default function AdminHackathonSubmissionsPage() {
                 <th className="admin-select-column">
                   <input
                     type="checkbox"
-                    aria-label="Select all visible submissions"
+                    aria-label="Select all unassigned visible submissions"
                     checked={allVisibleSelected}
+                    disabled={!selectableVisibleIds.length}
                     ref={(input) => {
                       if (input) input.indeterminate = someVisibleSelected && !allVisibleSelected
                     }}
@@ -261,7 +291,9 @@ export default function AdminHackathonSubmissionsPage() {
               </tr>
             </thead>
             <tbody>
-              {submissions.map((submission) => (
+              {submissions.map((submission) => {
+                const canSelect = isUnassigned(submission)
+                return (
                 <tr
                   key={submission.id}
                   className={selectedIds.has(submission.id) ? 'is-selected' : ''}
@@ -271,6 +303,12 @@ export default function AdminHackathonSubmissionsPage() {
                       type="checkbox"
                       aria-label={`Select ${submission.team_name || 'submission'}`}
                       checked={selectedIds.has(submission.id)}
+                      disabled={!canSelect || bulkAssigning}
+                      title={
+                        canSelect
+                          ? undefined
+                          : 'Already assigned to an evaluator'
+                      }
                       onChange={() => toggleSelected(submission.id)}
                     />
                   </td>
@@ -314,7 +352,8 @@ export default function AdminHackathonSubmissionsPage() {
                     </Button>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

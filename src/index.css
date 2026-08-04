@@ -1698,6 +1698,158 @@ code {
   font-size: 1.35rem;
 }
 
+.evaluation-accordion--manual-pending {
+  border-color: color-mix(in srgb, var(--warning-500) 42%, var(--border));
+  background: color-mix(in srgb, var(--warning-50) 55%, var(--surface));
+}
+
+.evaluation-accordion--manual-pending > summary:hover {
+  background: color-mix(in srgb, var(--warning-50) 75%, var(--surface));
+}
+
+.evaluation-accordion--manual-pending[open] {
+  border-color: color-mix(in srgb, var(--warning-500) 50%, var(--border));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--warning-500) 12%, transparent);
+}
+
+.evaluation-accordion--manual-pending .evaluation-accordion__icon {
+  color: var(--warning-600);
+  background: var(--warning-50);
+}
+
+.scorecard-preview-card .card__body {
+  padding: 22px 24px;
+}
+
+.submit-for-review-card .card__header h3 {
+  font-size: 1.05rem;
+}
+
+.submit-for-review-card__total {
+  display: grid;
+  gap: 4px;
+}
+
+.submit-for-review-card__total-label {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.submit-for-review-card__total strong {
+  color: var(--heading);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.submit-for-review-card__total strong small {
+  color: var(--heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.submit-for-review-card__override {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.submit-for-review-card__override-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.submit-for-review-card__override-toggle > input {
+  position: absolute;
+  opacity: 0;
+}
+
+.submit-for-review-card__override-track {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 38px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  transition: background 0.16s ease;
+}
+
+.submit-for-review-card__override-track span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.16s ease;
+}
+
+.submit-for-review-card__override-toggle input:checked + .submit-for-review-card__override-track {
+  background: var(--brand-600);
+}
+
+.submit-for-review-card__override-toggle input:checked + .submit-for-review-card__override-track span {
+  transform: translateX(16px);
+}
+
+.submit-for-review-card__override-toggle strong {
+  color: var(--heading);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.submit-for-review-card__override-fields {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.submit-for-review-card__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.submit-for-review-card__summary > div {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.submit-for-review-card__summary span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.submit-for-review-card__summary strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.submit-for-review-card__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .evaluator-review-sidebar {
   position: sticky;
   top: 20px;
@@ -2675,8 +2827,8 @@ code {
 .badge__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .badge--neutral { background: var(--surface-2); color: var(--text-muted); border-color: var(--border); }
 .badge--brand { background: var(--brand-50); color: var(--brand-700); }
-.badge--success { background: var(--success-50); color: var(--success-600); }
-.badge--warning { background: var(--warning-50); color: var(--warning-600); }
+.badge--success { background: var(--success-50); color: var(--success-600); border-color: color-mix(in srgb, var(--success-500) 35%, transparent); }
+.badge--warning { background: var(--warning-50); color: var(--warning-600); border-color: color-mix(in srgb, var(--warning-500) 35%, transparent); }
 .badge--danger { background: var(--danger-50); color: var(--danger-600); }
 .badge--info { background: var(--info-50); color: var(--info-500); }
 .badge--accent { background: #faf5ff; color: var(--accent-600); }
@@ -5155,71 +5307,114 @@ code {
 /* —— Weighted scorecard —— */
 .scorecard-bar {
   display: grid;
-  gap: 18px;
+  gap: 20px;
+}
+.scorecard-bar__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+}
+.scorecard-bar__header {
+  flex: 1 1 240px;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+.scorecard-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 220px;
+  height: 220px;
+  margin-inline: auto;
+}
+.scorecard-ring svg {
+  display: block;
+}
+.scorecard-ring__track {
+  stroke: var(--surface-2);
+}
+.scorecard-ring__fill {
+  animation: scorecard-ring-draw 0.9s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  animation-delay: var(--ring-delay, 0s);
+}
+@keyframes scorecard-ring-draw {
+  to {
+    stroke-dasharray: var(--ring-fill-target) var(--ring-gap-target);
+  }
+}
+.scorecard-ring__center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
 }
 .scorecard-bar__eyebrow {
   display: block;
   color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 .scorecard-bar__total {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-top: 6px;
+  margin-top: 0;
 }
-.scorecard-bar__total strong {
+.scorecard-bar__score-uniform {
   color: var(--heading);
-  font-size: 2.4rem;
-  letter-spacing: -0.04em;
-  line-height: 1;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
 }
-.scorecard-bar__total small {
-  color: var(--text-muted);
-  font-size: 1rem;
-  font-weight: 600;
+.scorecard-bar__score-uniform--ring {
+  font-size: 1.65rem;
 }
-.scorecard-bar__subline {
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: 0.88rem;
-}
-.scorecard-bar__track {
+.scorecard-bar__chips {
   display: flex;
-  overflow: hidden;
-  height: 18px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+.scorecard-bar__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
   border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.scorecard-bar__chip--ai {
+  background: var(--info-50);
+  color: var(--info-500);
+  border-color: color-mix(in srgb, var(--info-500) 28%, transparent);
+}
+.scorecard-bar__chip--manual {
   background: var(--surface-2);
-  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-color: var(--border);
 }
-.scorecard-bar__segment {
-  position: relative;
-  min-width: 4px;
-  background: color-mix(in srgb, var(--metric-color) 22%, transparent);
+.scorecard-bar__divider {
+  height: 1px;
+  background: var(--border);
 }
-.scorecard-bar__segment + .scorecard-bar__segment {
-  box-shadow: inset 1px 0 0 var(--border);
-}
-.scorecard-bar__segment > span {
-  display: block;
-  height: 100%;
-  background: var(--metric-color);
-}
-.scorecard-bar__segment.is-pending {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    color-mix(in srgb, var(--metric-color) 18%, transparent),
-    color-mix(in srgb, var(--metric-color) 18%, transparent) 4px,
-    color-mix(in srgb, var(--metric-color) 8%, transparent) 4px,
-    color-mix(in srgb, var(--metric-color) 8%, transparent) 8px
-  );
+@media (min-width: 768px) {
+  .scorecard-bar__top {
+    flex-wrap: nowrap;
+  }
+  .scorecard-ring {
+    margin-inline: 0;
+  }
 }
 .scorecard-bar__legend {
   display: grid;
-  gap: 10px;
+  gap: 14px 20px;
   margin: 0;
   padding: 0;
   list-style: none;
