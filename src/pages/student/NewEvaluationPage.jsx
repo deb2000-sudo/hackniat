@@ -114,13 +114,6 @@ const CORE_REQUIREMENT_KEYS = new Set([
 const MVP_FIELD_KEYS = ['mvp_link']
 const GITHUB_FIELD_KEYS = ['project_github_link', 'github_link']
 
-function requirementHasField(requirement, candidates) {
-  const keys = new Set(
-    (requirement?.fields || []).map((field) => String(field?.key || '').trim().toLowerCase()),
-  )
-  return candidates.some((key) => keys.has(key))
-}
-
 function firstAnswer(serialized, candidates) {
   for (const key of candidates) {
     const value = String(serialized?.[key] || '').trim()
@@ -266,8 +259,6 @@ export default function NewEvaluationPage() {
   const [selectedRequirementId, setSelectedRequirementId] = useState('')
   const [answers, setAnswers] = useState({})
   const [answerErrors, setAnswerErrors] = useState({})
-  const [mvpLink, setMvpLink] = useState('')
-  const [githubLink, setGithubLink] = useState('')
   const [file, setFile] = useState(null)
   const [videoSource, setVideoSource] = useState(null)
   const [demoPreviewUrl, setDemoPreviewUrl] = useState('')
@@ -306,9 +297,6 @@ export default function NewEvaluationPage() {
     [activeHackathon, selectedThemeId],
   )
   const videoRequired = isVideoRequired(activeHackathon)
-  // Legacy optional link inputs only when the requirement does not already collect them.
-  const showOptionalMvpLink = !requirementHasField(activeRequirement, MVP_FIELD_KEYS)
-  const showOptionalGithubLink = !requirementHasField(activeRequirement, GITHUB_FIELD_KEYS)
   const steps = useMemo(
     () =>
       videoRequired
@@ -365,17 +353,6 @@ export default function NewEvaluationPage() {
     setError('')
   }
 
-  const validateOptionalUrl = (value, label) => {
-    if (!String(value || '').trim()) return undefined
-    try {
-      const url = new URL(String(value).trim())
-      if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported protocol')
-      return undefined
-    } catch {
-      return `Enter a complete ${label} URL beginning with http:// or https://.`
-    }
-  }
-
   const completeRequirements = () => {
     if (!activeRequirement) {
       setError('No evaluation requirement is available for this submission.')
@@ -390,14 +367,6 @@ export default function NewEvaluationPage() {
       return
     }
     const validation = validateRequirement(activeRequirement, answers)
-    if (showOptionalMvpLink) {
-      const mvpError = validateOptionalUrl(mvpLink, 'MVP')
-      if (mvpError) validation.mvp_link = mvpError
-    }
-    if (showOptionalGithubLink) {
-      const githubError = validateOptionalUrl(githubLink, 'GitHub')
-      if (githubError) validation.github_link = githubError
-    }
     setAnswerErrors(validation)
     if (Object.keys(validation).length) {
       setError('Complete the required fields before continuing.')
@@ -499,10 +468,6 @@ export default function NewEvaluationPage() {
       const legacy = buildLegacyDetails(activeRequirement, answers)
       const submitted = await evaluationApi.createSubmission(file, {
         ...legacy,
-        mvp_link:
-          (showOptionalMvpLink ? mvpLink.trim() : '') || legacy.mvp_link || null,
-        github_link:
-          (showOptionalGithubLink ? githubLink.trim() : '') || legacy.github_link || null,
         hackathon_id: activeHackathon.id,
         theme_id: activeTheme.id,
         video_source: file ? videoSource : null,
@@ -708,41 +673,6 @@ export default function NewEvaluationPage() {
                     />
                   ))}
                 </div>
-
-                {(showOptionalMvpLink || showOptionalGithubLink) && (
-                  <div className="grid grid-2">
-                    {showOptionalMvpLink && (
-                      <Input
-                        label="MVP link"
-                        type="url"
-                        placeholder="https://"
-                        value={mvpLink}
-                        error={answerErrors.mvp_link}
-                        hint="Optional link to a live MVP or deployed demo."
-                        disabled={busy || !!submittedSession}
-                        onChange={(event) => {
-                          setMvpLink(event.target.value)
-                          setAnswerErrors((current) => ({ ...current, mvp_link: undefined }))
-                        }}
-                      />
-                    )}
-                    {showOptionalGithubLink && (
-                      <Input
-                        label="GitHub link"
-                        type="url"
-                        placeholder="https://github.com/…"
-                        value={githubLink}
-                        error={answerErrors.github_link}
-                        hint="Optional repository URL for your project."
-                        disabled={busy || !!submittedSession}
-                        onChange={(event) => {
-                          setGithubLink(event.target.value)
-                          setAnswerErrors((current) => ({ ...current, github_link: undefined }))
-                        }}
-                      />
-                    )}
-                  </div>
-                )}
 
                 {!videoRequired && (
                   <Alert variant="info" title="Video not required">
