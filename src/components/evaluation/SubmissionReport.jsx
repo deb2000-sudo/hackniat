@@ -204,7 +204,6 @@ function AnalysisBody({
             title="AI Analysis Report"
             description="Field scores, demo score, and the findings evaluators need first."
             icon="chart"
-            defaultOpen
             badge={
               scoreSummary ? (
                 <Badge variant="success">{scoreSummary.roundedPercent}/100</Badge>

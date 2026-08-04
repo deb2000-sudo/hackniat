@@ -90,6 +90,37 @@ export function isGithubFieldKey(fieldKey) {
   return groupForFieldKey(fieldKey) === 'github'
 }
 
+export function isMvpFieldKey(fieldKey) {
+  return groupForFieldKey(fieldKey) === 'mvp'
+}
+
+/** Resolve a student link from legacy columns or dynamic field_answers. */
+export function submissionLinkForGroup(submission, groupName) {
+  if (!submission) return null
+  const direct =
+    groupName === 'github'
+      ? submission.github_link
+      : groupName === 'mvp'
+        ? submission.mvp_link
+        : null
+  if (String(direct || '').trim()) return String(direct).trim()
+
+  const answers = submission.field_answers || {}
+  const group = FIELD_GROUPS[groupName]
+  if (!group) return null
+
+  for (const alias of group.aliases) {
+    const value = String(answers[alias] || '').trim()
+    if (value) return value
+  }
+  for (const [key, value] of Object.entries(answers)) {
+    if (groupForFieldKey(key) === groupName && String(value || '').trim()) {
+      return String(value).trim()
+    }
+  }
+  return null
+}
+
 /** Pick the requirement’s real field key for a group (fallback if it has none). */
 export function resolveRequirementFieldKey(requirementFields, groupName) {
   const group = FIELD_GROUPS[groupName]
@@ -277,13 +308,12 @@ export function previewScorecard(scorecard, draftByFieldKey = {}) {
   let complete = true
 
   const metrics = scorecard.metrics.map((metric) => {
-    const draft = draftByFieldKey[metric.field_key]
     let score = metric.score
     let source = metric.source || (metric.score != null ? metric.scoring_mode : 'pending')
     let segments = metric.segments
 
-    if (metric.scoring_mode === 'manual' && draft) {
-      const computed = computeManualMetricScore(metric, draft)
+    if (metric.scoring_mode === 'manual') {
+      const computed = computeManualMetricScore(metric, draftByFieldKey[metric.field_key] || {})
       score = computed.score
       segments = computed.segments
       source = score != null ? 'evaluator' : 'pending'

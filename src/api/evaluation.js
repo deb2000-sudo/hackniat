@@ -1,4 +1,5 @@
 import { api } from './client'
+import { uploadVideoToStorage } from '../utils/videoUpload'
 
 function normalizeSubmission(submission) {
   if (!submission) return submission
@@ -182,7 +183,7 @@ export const evaluationApi = {
 
   /** Upload a video (optional) via signed URL, then finalize the submission. */
   createSubmission: async (file, details, options) => {
-    const { onStageChange, ...requestOptions } = options || {}
+    const { onStageChange, onUploadProgress, ...requestOptions } = options || {}
     const tooLargeMessage = 'Video is too large for direct upload — please retry.'
 
     const baseBody = {
@@ -208,45 +209,31 @@ export const evaluationApi = {
         return normalizeSubmission(submission)
       }
 
-      const contentType = file.type || undefined
+      const contentType = file.type || 'video/mp4'
 
       onStageChange?.('preparing')
+      onUploadProgress?.(0)
       const prep = await api.post(
         '/submissions/upload-url',
         {
           filename: file.name,
           content_type: contentType,
+          content_length: file.size,
           video_source: details.video_source,
         },
         requestOptions,
       )
 
-      if (!prep?.upload_url || !prep?.video_path) {
-        throw new Error('The server did not return a valid secure video upload URL.')
-      }
-
       onStageChange?.('uploading')
-      let uploadResponse
       try {
-        uploadResponse = await fetch(prep.upload_url, {
-          method: 'PUT',
-          headers: { 'Content-Type': prep.content_type },
-          body: file,
+        await uploadVideoToStorage(file, prep, {
           signal: requestOptions.signal,
+          onProgress: onUploadProgress,
         })
       } catch (uploadError) {
         if (uploadError.name === 'AbortError') throw uploadError
-        throw new Error(
-          'Direct video upload failed. Please retry. If it continues, verify the storage CORS configuration.',
-          { cause: uploadError },
-        )
-      }
-
-      if (!uploadResponse.ok) {
-        if (uploadResponse.status === 413) throw new Error(tooLargeMessage)
-        throw new Error(
-          `The video upload was rejected by storage (${uploadResponse.status}). Please retry.`,
-        )
+        if (uploadError.status === 413) throw new Error(tooLargeMessage, { cause: uploadError })
+        throw uploadError
       }
 
       onStageChange?.('finalizing')

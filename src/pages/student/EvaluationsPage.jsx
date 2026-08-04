@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
 import { queryKeys } from '../../lib/queryKeys'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
-import Card, { CardBody } from '../../components/ui/Card'
+import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import EmptyState from '../../components/ui/EmptyState'
 import Icon from '../../components/ui/Icon'
 import StatCard from '../../components/ui/StatCard'
@@ -29,7 +30,7 @@ export default function EvaluationsPage() {
   )
 
   return (
-    <div className="container page">
+    <div className={`${WRAP_APP} student-evaluations-page py-7 md:py-10`}>
       <PageHeader
         eyebrow="Evaluations"
         title="Your evaluations"
@@ -47,35 +48,41 @@ export default function EvaluationsPage() {
       />
 
       {error && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="mb-6">
           <Alert variant="danger" title="Unable to load evaluations">
             {error.message}
           </Alert>
         </div>
       )}
 
-      <div className="grid grid-3" style={{ marginBottom: 28 }}>
+      <div className="mb-8 grid grid-3 gap-4">
         <StatCard icon="video" value={evaluations.length} label="Submitted" />
         <StatCard icon="clock" value={stats.pending} label="Results pending" />
         <StatCard icon="checkCircle" value={stats.published} label="Reports published" />
       </div>
 
-      <div className="row-between" style={{ marginBottom: 14 }}>
-        <h3>Evaluation history</h3>
-      </div>
-
-      {loading && !data ? (
-        <LoadingBlock label="Loading evaluations…" />
-      ) : evaluations.length ? (
-        <SessionTable
-          sessions={evaluations}
-          detailPath={(submission) => `/student/evaluations/${submission.id}`}
-          actionLabel="View status"
-          publicationGated
-        />
-      ) : (
-        <Card>
-          <CardBody>
+      <Card className="student-evaluations-history">
+        <CardHeader>
+          <div>
+            <h2 className="text-[18px] font-semibold tracking-[-0.02em] text-ink">
+              Evaluation history
+            </h2>
+            <p className="mt-1 text-[13.5px] text-muted">
+              Open a submission to check status or view a published report.
+            </p>
+          </div>
+        </CardHeader>
+        <CardBody className="student-evaluations-history__body">
+          {loading && !data ? (
+            <LoadingBlock label="Loading evaluations…" />
+          ) : evaluations.length ? (
+            <SessionTable
+              sessions={evaluations}
+              detailPath={(submission) => `/student/evaluations/${submission.id}`}
+              actionLabel="View status"
+              publicationGated
+            />
+          ) : (
             <EmptyState
               icon="chart"
               title="No evaluations yet"
@@ -91,9 +98,9 @@ export default function EvaluationsPage() {
                 </Button>
               }
             />
-          </CardBody>
-        </Card>
-      )}
+          )}
+        </CardBody>
+      </Card>
     </div>
   )
 }

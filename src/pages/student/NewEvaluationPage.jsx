@@ -264,6 +264,7 @@ export default function NewEvaluationPage() {
   const [demoPreviewUrl, setDemoPreviewUrl] = useState('')
   const [step, setStep] = useState(0)
   const [phase, setPhase] = useState('idle')
+  const [uploadPercent, setUploadPercent] = useState(0)
   const [submittedSession, setSubmittedSession] = useState(null)
   const [error, setError] = useState('')
   const previewUrlRef = useRef('')
@@ -464,6 +465,7 @@ export default function NewEvaluationPage() {
     }
     setError('')
     try {
+      setUploadPercent(0)
       setPhase(file ? 'preparing' : 'finalizing')
       const legacy = buildLegacyDetails(activeRequirement, answers)
       const submitted = await evaluationApi.createSubmission(file, {
@@ -475,6 +477,7 @@ export default function NewEvaluationPage() {
         field_answers: legacy.field_answers,
       }, {
         onStageChange: setPhase,
+        onUploadProgress: setUploadPercent,
       })
       invalidateQueries(queryKeys.submissionsMine)
       setSubmittedSession(submitted)
@@ -482,6 +485,7 @@ export default function NewEvaluationPage() {
       setError(submitError.message || 'Your submission could not be recorded. Please try again.')
     } finally {
       setPhase('idle')
+      setUploadPercent(0)
     }
   }
 
@@ -976,7 +980,9 @@ export default function NewEvaluationPage() {
 
             {busy && (
               <Alert variant="info" title={UPLOAD_PHASE[phase]?.label}>
-                {UPLOAD_PHASE[phase]?.detail}
+                {phase === 'uploading'
+                  ? `${UPLOAD_PHASE.uploading.detail} (${uploadPercent}%)`
+                  : UPLOAD_PHASE[phase]?.detail}
               </Alert>
             )}
           </CardBody>
@@ -990,12 +996,16 @@ export default function NewEvaluationPage() {
           <Button
             variant="accent"
             size="lg"
-            loading={busy}
+            loading={busy && phase !== 'uploading'}
             disabled={busy}
             onClick={handleSubmit}
             rightIcon={!busy && <Icon name="check" size={18} />}
           >
-            {busy ? UPLOAD_PHASE[phase]?.label || 'Submitting…' : 'Submit your project'}
+            {busy && phase === 'uploading'
+              ? `Uploading… ${uploadPercent}%`
+              : busy
+                ? UPLOAD_PHASE[phase]?.label || 'Submitting…'
+                : 'Submit your project'}
           </Button>
         </div>
       </section>

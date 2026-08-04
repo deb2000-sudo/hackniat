@@ -4407,6 +4407,33 @@ code {
   font-size: .82rem;
 }
 
+.student-evaluations-history .card__header {
+  padding-bottom: 14px;
+}
+
+.student-evaluations-history__body {
+  padding: 0;
+}
+
+.student-evaluations-history__body .table-wrap {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.student-evaluations-history__body .empty-state {
+  padding: 36px 24px 40px;
+}
+
+.student-submission-video-page .student-submission-video-card {
+  width: 100%;
+}
+
+.student-submission-video-page .recorder-stage {
+  width: 100%;
+  max-height: min(72vh, 820px);
+}
+
 .student-theme-hackathons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5339,6 +5366,13 @@ code {
 .manual-metric-card__structure {
   display: grid;
   gap: 12px;
+}
+.manual-metric-card__structure.is-disabled {
+  opacity: 0.58;
+}
+.manual-metric-card__structure.is-disabled .manual-choice-row,
+.manual-metric-card__structure.is-disabled .field {
+  pointer-events: none;
 }
 .manual-metric-card__structure-head strong,
 .manual-metric-card__structure-head small {

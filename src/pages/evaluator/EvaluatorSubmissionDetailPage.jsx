@@ -13,6 +13,7 @@ import {
   getScorecard,
   isManualScoringComplete,
   previewScorecard,
+  submissionLinkForGroup,
 } from '../../utils/scorecard'
 import { formatDateTime } from '../../utils/format'
 import {
@@ -163,6 +164,8 @@ export default function EvaluatorSubmissionDetailPage() {
   const canEditManual =
     completed && ['none', 'changes_requested'].includes(reviewStatus) && !processing
   const canSubmit = canEditManual && manualComplete
+  const githubLink = submissionLinkForGroup(submission, 'github')
+  const mvpLink = submissionLinkForGroup(submission, 'mvp')
 
   return (
     <div className={`${WRAP_APP} py-7 md:py-10 admin-submission-detail`}>
@@ -232,7 +235,6 @@ export default function EvaluatorSubmissionDetailPage() {
             title="Evaluator guidelines"
             description="Review criteria for this hackathon."
             icon="shield"
-            defaultOpen
           >
             <div className="markdown-body hackathon-guidelines text-ink">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
@@ -275,9 +277,9 @@ export default function EvaluatorSubmissionDetailPage() {
                 <div className="admin-response-block">
                   <span>GitHub</span>
                   <p>
-                    {submission?.github_link ? (
-                      <a href={submission.github_link} target="_blank" rel="noreferrer">
-                        {submission.github_link}
+                    {githubLink ? (
+                      <a href={githubLink} target="_blank" rel="noreferrer">
+                        {githubLink}
                       </a>
                     ) : (
                       'Not provided.'
@@ -287,9 +289,9 @@ export default function EvaluatorSubmissionDetailPage() {
                 <div className="admin-response-block">
                   <span>MVP</span>
                   <p>
-                    {submission?.mvp_link ? (
-                      <a href={submission.mvp_link} target="_blank" rel="noreferrer">
-                        {submission.mvp_link}
+                    {mvpLink ? (
+                      <a href={mvpLink} target="_blank" rel="noreferrer">
+                        {mvpLink}
                       </a>
                     ) : (
                       'Not provided.'
@@ -316,55 +318,50 @@ export default function EvaluatorSubmissionDetailPage() {
           </Accordion>
 
           {(completed || processing) && (
-            <Card>
-              <CardHeader>
-                <div>
-                  <h3>AI metrics</h3>
-                  <p className="text-sm text-muted">
-                    Read-only scores filled by AI evaluation.
-                  </p>
-                </div>
-                <Icon name="sparkles" size={19} className="text-muted" />
-              </CardHeader>
-              <CardBody>
-                {processing ? (
-                  <div className="admin-analysis-processing">
-                    <Spinner />
-                    <div>
-                      <strong>AI evaluating…</strong>
-                      <small>Scorecard updates automatically when complete.</small>
-                    </div>
+            <Accordion
+              title="AI metrics"
+              description="Read-only scores filled by AI evaluation."
+              icon="sparkles"
+              badge={<StatusBadge status={submission?.status} />}
+            >
+              {processing ? (
+                <div className="admin-analysis-processing">
+                  <Spinner />
+                  <div>
+                    <strong>AI evaluating…</strong>
+                    <small>Scorecard updates automatically when complete.</small>
                   </div>
-                ) : (
-                  <AiMetricsPanel scorecard={preview} />
-                )}
-              </CardBody>
-            </Card>
+                </div>
+              ) : (
+                <AiMetricsPanel scorecard={preview} />
+              )}
+            </Accordion>
           )}
 
           {completed && scorecardBase && (
-            <Card>
-              <CardHeader>
-                <div>
-                  <h3>Manual metrics</h3>
-                  <p className="text-sm text-muted">
-                    Score GitHub and MVP features. Total updates live above.
-                  </p>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <ManualScoreForms
-                  scorecard={preview}
-                  draftByFieldKey={draftByFieldKey}
-                  githubLink={submission?.github_link}
-                  mvpLink={submission?.mvp_link}
-                  disabled={!canEditManual || action === 'submitting'}
-                  onDraftChange={(fieldKey, next) =>
-                    setDraftByFieldKey((current) => ({ ...current, [fieldKey]: next }))
-                  }
-                />
-              </CardBody>
-            </Card>
+            <Accordion
+              title="Manual metrics"
+              description="Score GitHub and MVP features. Total updates live above."
+              icon="clipboard"
+              badge={
+                preview?.manual_total != null ? (
+                  <span className="text-[12px] font-medium tabular-nums">
+                    {Math.round(preview.manual_total * 10) / 10} pts manual
+                  </span>
+                ) : null
+              }
+            >
+              <ManualScoreForms
+                scorecard={preview}
+                draftByFieldKey={draftByFieldKey}
+                githubLink={githubLink}
+                mvpLink={mvpLink}
+                disabled={!canEditManual || action === 'submitting'}
+                onDraftChange={(fieldKey, next) =>
+                  setDraftByFieldKey((current) => ({ ...current, [fieldKey]: next }))
+                }
+              />
+            </Accordion>
           )}
 
           {completed && (

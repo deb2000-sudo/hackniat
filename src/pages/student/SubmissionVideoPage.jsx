@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { resolveApiUrl } from '../../api/client'
 import { useAsync } from '../../hooks/useAsync'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Card, { CardBody } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -137,7 +138,7 @@ export default function SubmissionVideoPage() {
   }
 
   return (
-    <div className="container container--narrow page">
+    <div className={`${WRAP_APP} student-submission-video-page py-7 md:py-10`}>
       <PageHeader
         eyebrow="Submitted video"
         title={session?.team_name || session?.title || session?.source_filename || 'Submission recording'}
@@ -145,11 +146,11 @@ export default function SubmissionVideoPage() {
         actions={
           <Button
             as={Link}
-            to="/student"
+            to="/student/evaluations"
             variant="secondary"
             leftIcon={<Icon name="arrowLeft" size={18} />}
           >
-            Back to submissions
+            Back to evaluations
           </Button>
         }
       />
@@ -182,7 +183,7 @@ export default function SubmissionVideoPage() {
               </div>
             )}
           </Alert>
-          <Card>
+          <Card className="student-submission-video-card">
             <CardBody className="stack-md">
             {playbackError && (
               <Alert variant="danger" title="Video playback failed">
