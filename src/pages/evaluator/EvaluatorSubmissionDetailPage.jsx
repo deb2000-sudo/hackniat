@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { evaluationApi } from '../../api/evaluation'
+import { hackathonsApi } from '../../api/hackathons'
 import { resolveApiUrl } from '../../api/client'
+import { useAsync } from '../../hooks/useAsync'
 import { usePolling } from '../../hooks/usePolling'
 import {
   buildManualMetricsPayload,
@@ -39,6 +43,11 @@ export default function EvaluatorSubmissionDetailPage() {
     isDone: (item) => ['completed', 'failed'].includes(item?.status),
     interval: 3000,
   })
+  const { data: hackathon } = useAsync(
+    () => hackathonsApi.get(submission.hackathon_id),
+    { enabled: Boolean(submission?.hackathon_id) },
+  )
+  const evaluatorGuidelines = String(hackathon?.evaluator_guidelines || '').trim()
   const [reviewOverride, setReviewOverride] = useState(null)
   const [action, setAction] = useState('')
   const [actionError, setActionError] = useState('')
@@ -216,6 +225,21 @@ export default function EvaluatorSubmissionDetailPage() {
           </Alert>
         </div>
       )}
+
+      {evaluatorGuidelines ? (
+        <div className="mb-6">
+          <Accordion
+            title="Evaluator guidelines"
+            description="Review criteria for this hackathon."
+            icon="shield"
+            defaultOpen
+          >
+            <div className="markdown-body hackathon-guidelines text-ink">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
+            </div>
+          </Accordion>
+        </div>
+      ) : null}
 
       {preview?.metrics?.length ? (
         <div className="mb-6">

@@ -57,6 +57,7 @@ export default function HackathonDetailPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isAdmin = user?.role === ROLES.ADMIN
+  const isEvaluator = user?.role === ROLES.EVALUATOR
   const { data: hackathon, loading, error } = useAsync(() => hackathonsApi.get(hackathonId))
   const { data: requirements } = useAsync(() => evaluationRequirementsApi.list())
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -101,6 +102,10 @@ export default function HackathonDetailPage() {
 
   const status = getHackathonStatus(hackathon)
   const duration = getHackathonDuration(hackathon.start_date, hackathon.end_date)
+  const showEvaluatorGuidelines =
+    (isAdmin || isEvaluator) && String(hackathon.evaluator_guidelines || '').trim()
+  const missingEvaluatorGuidelines =
+    isAdmin && !String(hackathon.evaluator_guidelines || '').trim()
   const summary = [
     {
       icon: 'calendar',
@@ -344,6 +349,30 @@ export default function HackathonDetailPage() {
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{hackathon.guidelines}</ReactMarkdown>
           </div>
         </section>
+
+        {missingEvaluatorGuidelines && (
+          <Alert variant="warning" title="Evaluator guidelines not configured">
+            Add evaluator guidelines so reviewers know how to score submissions.{' '}
+            <Link to={`/admin/hackathons/${hackathon.id}/edit`} className="font-medium underline">
+              Edit hackathon
+            </Link>
+          </Alert>
+        )}
+
+        {showEvaluatorGuidelines && (
+          <section className={PANEL}>
+            <SectionHeader
+              icon="shield"
+              title="Evaluator guidelines"
+              description="Review criteria and expectations for assigned evaluators"
+            />
+            <div className="markdown-body hackathon-guidelines p-4 text-ink sm:p-5">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {hackathon.evaluator_guidelines}
+              </ReactMarkdown>
+            </div>
+          </section>
+        )}
       </div>
 
       {isAdmin && (

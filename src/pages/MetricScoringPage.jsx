@@ -205,6 +205,8 @@ export default function MetricScoringPage() {
   const promptRefs = useRef({})
 
   const weightTotal = useMemo(() => sumWeights(metrics), [metrics])
+  const saveFeedback = errors.form || errors.weights || saveMessage
+  const saveFeedbackVariant = errors.form || errors.weights ? 'danger' : 'success'
 
   useEffect(() => {
     if (!requirementId) return undefined
@@ -402,7 +404,13 @@ export default function MetricScoringPage() {
       {loading && <LoadingBlock label="Loading scorecard…" />}
 
       {!loading && requirement && (
-        <form className="flex flex-col gap-6 pb-10" onSubmit={save} noValidate>
+        <>
+        <form
+          id="scorecard-form"
+          className="flex flex-col gap-6 pb-36 md:pb-40"
+          onSubmit={save}
+          noValidate
+        >
           <section
             className={`${PANEL} flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5`}
           >
@@ -435,10 +443,6 @@ export default function MetricScoringPage() {
             <Alert variant="info">
               This is a read-only view. An administrator can update the scorecard.
             </Alert>
-          )}
-          {saveMessage && <Alert variant="success">{saveMessage}</Alert>}
-          {(errors.form || errors.weights) && (
-            <Alert variant="danger">{errors.form || errors.weights}</Alert>
           )}
 
           <section className={`${PANEL} p-4 sm:p-5`}>
@@ -740,7 +744,15 @@ export default function MetricScoringPage() {
             </div>
           )}
 
-          {isAdmin && (
+        </form>
+
+        {isAdmin && (
+          <div className="scorecard-bottom-dock" aria-live="polite">
+            {saveFeedback && (
+              <Alert variant={saveFeedbackVariant} className="scorecard-feedback-banner">
+                {saveFeedback}
+              </Alert>
+            )}
             <div className="scorecard-form-actions" role="region" aria-label="Scorecard actions">
               <div className="scorecard-form-actions__start">
                 {scoring ? (
@@ -762,6 +774,7 @@ export default function MetricScoringPage() {
               <div className="scorecard-form-actions__end">
                 <Button
                   type="submit"
+                  form="scorecard-form"
                   variant="accent"
                   loading={saving}
                   leftIcon={<Icon name="check" size={18} />}
@@ -771,8 +784,9 @@ export default function MetricScoringPage() {
                 </Button>
               </div>
             </div>
-          )}
-        </form>
+          </div>
+        )}
+        </>
       )}
 
       <Modal

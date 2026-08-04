@@ -68,7 +68,7 @@ export default function HackathonFormPage() {
           <p className="mt-2 text-[15px] text-muted md:text-base">
             {editing
               ? 'Only changed fields and a newly selected banner will be sent.'
-              : 'Configure the event, prizes, timeline, guidelines, and optional banner.'}
+              : 'Configure the event, prizes, timeline, participation and evaluator guidelines, and optional banner.'}
           </p>
         </div>
         <Link

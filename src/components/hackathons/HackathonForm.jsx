@@ -21,6 +21,7 @@ const EMPTY_FORM = {
   end_date: '',
   hackathon_url: '',
   guidelines: '',
+  evaluator_guidelines: '',
   working_demo_video_required: true,
   auto_ai_evaluation: false,
   prizes: EMPTY_PRIZES,
@@ -30,6 +31,7 @@ const EMPTY_FORM = {
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const SCALAR_FIELDS = ['name', 'description', 'start_date', 'end_date', 'guidelines']
+const PATCH_SCALAR_FIELDS = [...SCALAR_FIELDS, 'evaluator_guidelines']
 const FORM_STEPS = [
   { label: 'Event details', icon: 'calendar' },
   { label: 'Prizes', icon: 'gift' },
@@ -37,9 +39,26 @@ const FORM_STEPS = [
   { label: 'Timeline', icon: 'clock' },
   { label: 'Banner', icon: 'image' },
 ]
+const REQUIRED_ROUNDS = 2
+
+function emptyRound() {
+  return {
+    title: '',
+    description: '',
+    start_date: '',
+    end_date: '',
+    evaluation_requirement_id: '',
+  }
+}
 
 function createInitialForm(initialValue) {
-  if (!initialValue) return { ...EMPTY_FORM, prizes: { ...EMPTY_PRIZES }, timeline: [] }
+  if (!initialValue) {
+    return {
+      ...EMPTY_FORM,
+      prizes: { ...EMPTY_PRIZES },
+      timeline: [emptyRound(), emptyRound()],
+    }
+  }
   return {
     name: initialValue.name || '',
     description: initialValue.description || '',
@@ -47,25 +66,56 @@ function createInitialForm(initialValue) {
     end_date: initialValue.end_date || '',
     hackathon_url: initialValue.hackathon_url || '',
     guidelines: initialValue.guidelines || '',
+    evaluator_guidelines: initialValue.evaluator_guidelines || '',
     working_demo_video_required: initialValue.working_demo_video_required !== false,
     auto_ai_evaluation: initialValue.auto_ai_evaluation === true,
     prizes: { ...EMPTY_PRIZES, ...(initialValue.prizes || {}) },
     theme_ids: initialValue.theme_ids || initialValue.themes?.map((theme) => theme.id) || [],
-    timeline: (initialValue.timeline || []).map((round) => ({
-      title: round.title || '',
-      description: round.description || '',
-      start_date: round.start_date || '',
-      end_date: round.end_date || '',
-      evaluation_requirement_id: round.evaluation_requirement_id || '',
-    })),
+    timeline: clampTimelineDates(
+      (initialValue.timeline || []).map((round) => ({
+        title: round.title || '',
+        description: round.description || '',
+        start_date: round.start_date || '',
+        end_date: round.end_date || '',
+        evaluation_requirement_id: round.evaluation_requirement_id || '',
+      })),
+      initialValue.start_date || '',
+      initialValue.end_date || '',
+    ),
   }
 }
 
-function validate(form, banner) {
+function clampDate(value, min, max) {
+  if (!value) return value
+  if (min && value < min) return min
+  if (max && value > max) return max
+  return value
+}
+
+function normalizeRoundDates(round, hackathonStart, hackathonEnd) {
+  if (!hackathonStart || !hackathonEnd) return round
+  let start_date = round.start_date
+  let end_date = round.end_date
+  if (start_date) start_date = clampDate(start_date, hackathonStart, hackathonEnd)
+  if (end_date) end_date = clampDate(end_date, hackathonStart, hackathonEnd)
+  if (start_date && end_date && end_date < start_date) end_date = start_date
+  return { ...round, start_date, end_date }
+}
+
+function clampTimelineDates(timeline, hackathonStart, hackathonEnd) {
+  return timeline.map((round) => normalizeRoundDates(round, hackathonStart, hackathonEnd))
+}
+
+function validate(form, banner, { editing = false, initialForm = null } = {}) {
   const errors = {}
   SCALAR_FIELDS.forEach((field) => {
     if (!String(form[field] || '').trim()) errors[field] = 'This field is required'
   })
+  const needsEvaluatorGuidelines =
+    !editing || !String(initialForm?.evaluator_guidelines || '').trim()
+  if (needsEvaluatorGuidelines && !String(form.evaluator_guidelines || '').trim()) {
+    errors.evaluator_guidelines = 'This field is required'
+  }
   if (form.start_date && form.end_date && form.end_date < form.start_date) {
     errors.end_date = 'End date must be on or after the start date'
   }
@@ -88,6 +138,24 @@ function validate(form, banner) {
     if (round.start_date && round.end_date && round.end_date < round.start_date) {
       errors[`timeline.${index}.end_date`] = 'Round end date must be on or after its start date'
     }
+    if (form.start_date && form.end_date) {
+      if (round.start_date && round.start_date < form.start_date) {
+        errors[`timeline.${index}.start_date`] =
+          'Round start must be on or after the hackathon start date'
+      }
+      if (round.start_date && round.start_date > form.end_date) {
+        errors[`timeline.${index}.start_date`] =
+          'Round start must be on or before the hackathon end date'
+      }
+      if (round.end_date && round.end_date > form.end_date) {
+        errors[`timeline.${index}.end_date`] =
+          'Round end must be on or before the hackathon end date'
+      }
+      if (round.end_date && round.end_date < form.start_date) {
+        errors[`timeline.${index}.end_date`] =
+          'Round end must be on or after the hackathon start date'
+      }
+    }
   })
 
   if (banner && !IMAGE_TYPES.includes(banner.type)) {
@@ -96,11 +164,11 @@ function validate(form, banner) {
   return errors
 }
 
-function validateStep(form, banner, step) {
-  const allErrors = validate(form, banner)
+function validateStep(form, banner, step, options = {}) {
+  const allErrors = validate(form, banner, options)
   return Object.fromEntries(
     Object.entries(allErrors).filter(([key]) => {
-      if (step === 0) return SCALAR_FIELDS.includes(key)
+      if (step === 0) return SCALAR_FIELDS.includes(key) || key === 'evaluator_guidelines'
       if (step === 1) return key.startsWith('prizes.')
       if (step === 2) return key === 'theme_ids'
       if (step === 3) return key.startsWith('timeline.')
@@ -119,6 +187,9 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   'use no memo'
   const editing = !!initialValue
   const initialForm = useMemo(() => createInitialForm(initialValue), [initialValue])
+  const validationOptions = useMemo(() => ({ editing, initialForm }), [editing, initialForm])
+  const missingEvaluatorGuidelines =
+    editing && !String(initialForm.evaluator_guidelines || '').trim()
   const [form, setForm] = useState(initialForm)
   const [banner, setBanner] = useState(null)
   const [errors, setErrors] = useState({})
@@ -138,7 +209,13 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   } = useAsync(() => themesApi.list())
 
   const update = (key) => (event) => {
-    setForm((current) => ({ ...current, [key]: event.target.value }))
+    setForm((current) => {
+      const next = { ...current, [key]: event.target.value }
+      if (key === 'start_date' || key === 'end_date') {
+        next.timeline = clampTimelineDates(next.timeline, next.start_date, next.end_date)
+      }
+      return next
+    })
     setErrors((current) => ({ ...current, [key]: undefined, form: undefined }))
   }
 
@@ -153,25 +230,21 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   const addRound = () => {
     setForm((current) => ({
       ...current,
-      timeline: [
-        ...current.timeline,
-        {
-          title: '',
-          description: '',
-          start_date: '',
-          end_date: '',
-          evaluation_requirement_id: '',
-        },
-      ],
+      timeline: [...current.timeline, emptyRound()],
     }))
   }
 
   const updateRound = (index, key) => (event) => {
     setForm((current) => ({
       ...current,
-      timeline: current.timeline.map((round, roundIndex) =>
-        roundIndex === index ? { ...round, [key]: event.target.value } : round,
-      ),
+      timeline: current.timeline.map((round, roundIndex) => {
+        if (roundIndex !== index) return round
+        return normalizeRoundDates(
+          { ...round, [key]: event.target.value },
+          current.start_date,
+          current.end_date,
+        )
+      }),
     }))
     setErrors((current) => ({
       ...current,
@@ -181,11 +254,14 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   }
 
   const removeRound = (index) => {
+    if (!editing && index < REQUIRED_ROUNDS) return
     setForm((current) => ({
       ...current,
       timeline: current.timeline.filter((_, roundIndex) => roundIndex !== index),
     }))
   }
+
+  const canRemoveRound = (index) => editing || index >= REQUIRED_ROUNDS
 
   const toggleTheme = (themeId) => {
     setForm((current) => ({
@@ -207,7 +283,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   const continueToNextStep = (event) => {
     event?.preventDefault?.()
     event?.stopPropagation?.()
-    const validation = validateStep(form, banner, stepRef.current)
+    const validation = validateStep(form, banner, stepRef.current, validationOptions)
     setErrors(validation)
     if (Object.keys(validation).length) return
     moveToStep(Math.min(stepRef.current + 1, FORM_STEPS.length - 1))
@@ -217,7 +293,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     event?.preventDefault?.()
     event?.stopPropagation?.()
     if (stepRef.current < FORM_STEPS.length - 1) return
-    const validation = validate(form, banner)
+    const validation = validate(form, banner, validationOptions)
     setErrors(validation)
     if (Object.keys(validation).length) return
 
@@ -227,6 +303,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
       description: form.description.trim(),
       hackathon_url: form.hackathon_url.trim(),
       guidelines: form.guidelines.trim(),
+      evaluator_guidelines: form.evaluator_guidelines.trim(),
       working_demo_video_required: form.working_demo_video_required ? 'true' : 'false',
       auto_ai_evaluation: form.auto_ai_evaluation ? 'true' : 'false',
       prizes: Object.fromEntries(
@@ -252,7 +329,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     }
 
     const changes = {}
-    SCALAR_FIELDS.forEach((field) => {
+    PATCH_SCALAR_FIELDS.forEach((field) => {
       if (cleaned[field] !== initialForm[field]) changes[field] = cleaned[field]
     })
     if (JSON.stringify(cleaned.prizes) !== JSON.stringify(initialForm.prizes)) {
@@ -308,7 +385,8 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
 
       <ol className="hackathon-form-stepper" aria-label="Hackathon creation progress">
         {FORM_STEPS.map((item, index) => {
-          const completed = index < step && !Object.keys(validateStep(form, banner, index)).length
+          const completed =
+            index < step && !Object.keys(validateStep(form, banner, index, validationOptions)).length
           return (
             <li
               className={`${index === step ? 'is-active' : ''} ${completed ? 'is-complete' : ''}`}
@@ -347,6 +425,12 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
           <span className="hackathon-form-heading__icon"><Icon name="calendar" size={20} /></span>
         </CardHeader>
         <CardBody className="stack-md">
+          {missingEvaluatorGuidelines && (
+            <Alert variant="warning" title="Evaluator guidelines missing">
+              This hackathon was saved before evaluator guidelines existed. Add them below and
+              save once so evaluators can review submissions with the right context.
+            </Alert>
+          )}
           <Input
             label="Name"
             required
@@ -383,13 +467,23 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
             />
           </div>
           <Textarea
-            label="Guidelines"
-            hint="Markdown formatting is supported on the detail page."
+            label="Participation guidelines"
+            hint="Shown to students. Markdown formatting is supported on the detail page."
             required
             maxLength={10000}
             value={form.guidelines}
             onChange={update('guidelines')}
             error={errors.guidelines}
+            style={{ minHeight: 180 }}
+          />
+          <Textarea
+            label="Evaluator guidelines"
+            hint="Shown to evaluators when they review submissions."
+            required={!editing || missingEvaluatorGuidelines}
+            maxLength={10000}
+            value={form.evaluator_guidelines}
+            onChange={update('evaluator_guidelines')}
+            error={errors.evaluator_guidelines}
             style={{ minHeight: 180 }}
           />
           <label className="hackathon-video-toggle">
@@ -511,7 +605,14 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
             <span className="hackathon-form-heading__number">04</span>
             <div>
               <h3>Competition timeline</h3>
-              <p>Optional — add each round or milestone in chronological order.</p>
+              <p>
+                {editing
+                  ? 'Add each round or milestone in chronological order.'
+                  : 'Configure two competition rounds (required).'}
+                {form.start_date && form.end_date
+                  ? ` Round dates must fall between ${form.start_date} and ${form.end_date}.`
+                  : ' Set hackathon dates in step 1 first.'}
+              </p>
             </div>
           </div>
           <Button
@@ -529,14 +630,16 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
               <div className="timeline-round-editor" key={index}>
                 <div className="row-between">
                   <strong>Round {index + 1}</strong>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => removeRound(index)}
-                    aria-label={`Remove round ${index + 1}`}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
+                  {canRemoveRound(index) ? (
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => removeRound(index)}
+                      aria-label={`Remove round ${index + 1}`}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  ) : null}
                 </div>
                 <Input
                   label="Title"
@@ -556,16 +659,38 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
                   <Input
                     label="Start date"
                     type="date"
+                    min={form.start_date || undefined}
+                    max={
+                      round.end_date && form.end_date
+                        ? round.end_date < form.end_date
+                          ? round.end_date
+                          : form.end_date
+                        : form.end_date || undefined
+                    }
                     value={round.start_date}
                     onChange={updateRound(index, 'start_date')}
+                    error={errors[`timeline.${index}.start_date`]}
+                    disabled={!form.start_date || !form.end_date}
+                    hint={
+                      form.start_date && form.end_date
+                        ? `Within ${form.start_date} – ${form.end_date}`
+                        : 'Complete step 1 dates first'
+                    }
                   />
                   <Input
                     label="End date"
                     type="date"
-                    min={round.start_date || undefined}
+                    min={round.start_date || form.start_date || undefined}
+                    max={form.end_date || undefined}
                     value={round.end_date}
                     onChange={updateRound(index, 'end_date')}
                     error={errors[`timeline.${index}.end_date`]}
+                    disabled={!form.start_date || !form.end_date}
+                    hint={
+                      form.start_date && form.end_date
+                        ? `Within ${form.start_date} – ${form.end_date}`
+                        : 'Complete step 1 dates first'
+                    }
                   />
                 </div>
                 <Select

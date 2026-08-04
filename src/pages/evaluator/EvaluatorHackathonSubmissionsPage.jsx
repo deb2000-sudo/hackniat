@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { evaluationApi } from '../../api/evaluation'
+import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
 import { formatDateTime } from '../../utils/format'
-import { WRAP_APP } from '../../components/drop/theme'
+import { PANEL, WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Alert from '../../components/ui/Alert'
 import { AiQueueBadge, ReviewStatusBadge } from '../../components/ui/Badge'
@@ -19,6 +22,7 @@ export default function EvaluatorHackathonSubmissionsPage() {
   const { data, loading, error, reload } = useAsync(() =>
     evaluationApi.listEvaluatorHackathonSubmissions(hackathonId),
   )
+  const { data: hackathon } = useAsync(() => hackathonsApi.get(hackathonId))
   const [query, setQuery] = useState('')
   const [reviewStatus, setReviewStatus] = useState('all')
 
@@ -36,7 +40,8 @@ export default function EvaluatorHackathonSubmissionsPage() {
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }, [data, query, reviewStatus])
 
-  const hackathonName = data?.[0]?.hackathon_name || 'Assigned submissions'
+  const hackathonName = hackathon?.name || data?.[0]?.hackathon_name || 'Assigned submissions'
+  const evaluatorGuidelines = String(hackathon?.evaluator_guidelines || '').trim()
 
   return (
     <div className={`${WRAP_APP} py-7 md:py-10 admin-submissions-page`}>
@@ -71,6 +76,22 @@ export default function EvaluatorHackathonSubmissionsPage() {
           {error.message}
         </Alert>
       )}
+
+      {evaluatorGuidelines ? (
+        <section className={`${PANEL} mb-6`}>
+          <div className="border-b border-hairline px-4 py-4 sm:px-5">
+            <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-ink">
+              Evaluator guidelines
+            </h2>
+            <p className="mt-0.5 text-[13px] text-muted">
+              Follow these when reviewing submissions for this hackathon.
+            </p>
+          </div>
+          <div className="markdown-body hackathon-guidelines p-4 text-ink sm:p-5">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
+          </div>
+        </section>
+      ) : null}
 
       <div className="admin-submissions-toolbar">
         <div className="admin-submissions-search">

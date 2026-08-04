@@ -4823,16 +4823,45 @@ code {
 .hackathon-form-actions { position: sticky; bottom: 16px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.92); box-shadow: 0 12px 38px rgba(15,23,42,.13); backdrop-filter: blur(12px); }
 .hackathon-form-actions p { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: .78rem; }
 .hackathon-form-actions p svg { color: var(--success-600); }
+.scorecard-bottom-dock {
+  pointer-events: none;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 20px 16px;
+}
+.scorecard-bottom-dock > * {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 1480px;
+  margin-inline: auto;
+}
+.scorecard-feedback-banner {
+  animation: scorecard-banner-in .22s ease;
+}
+.scorecard-feedback-banner.alert {
+  margin: 0;
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgba(15,23,42,.04),
+    0 8px 24px rgba(15,23,42,.1),
+    0 16px 40px rgba(15,23,42,.12);
+  backdrop-filter: blur(14px);
+}
+@keyframes scorecard-banner-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .scorecard-form-actions {
-  position: sticky;
-  bottom: 20px;
-  z-index: 10;
   display: flex;
   flex-direction: column-reverse;
   align-items: stretch;
   justify-content: space-between;
   gap: 14px;
-  margin-top: 36px;
   padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -4882,6 +4911,12 @@ code {
   }
   .scorecard-form-actions .scorecard-form-actions__delete { width: auto; justify-content: flex-start; padding-inline: 12px; }
   .scorecard-form-actions__end .btn { min-width: 200px; }
+}
+@media (min-width: 901px) {
+  .scorecard-bottom-dock {
+    left: 264px;
+    padding-inline: 32px;
+  }
 }
 
 .prize-card { position: relative; overflow: hidden; padding: 28px 14px 24px; border-radius: 16px; background: linear-gradient(145deg,#fff,#f8fafc); }
