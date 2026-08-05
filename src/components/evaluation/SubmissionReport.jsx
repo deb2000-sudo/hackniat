@@ -15,6 +15,7 @@ import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import Card, { CardBody, CardHeader } from '../ui/Card'
 import Icon from '../ui/Icon'
+import Modal from '../ui/Modal'
 import { LoadingBlock } from '../ui/Spinner'
 
 function Markdown({ children }) {
@@ -104,6 +105,22 @@ function ReportSections({ sections }) {
   )
 }
 
+function AnalysisDetailContent({ report, groups }) {
+  return (
+    <div className="stack-md analysis-detail-panel">
+      <ReportSections sections={groups.analysis} />
+      <div className="analysis-report-block">
+        <div className="analysis-report-block__head">
+          <h4>Validity checklist</h4>
+          <p>AI validation checks against the submission text.</p>
+        </div>
+        <Markdown>{report?.checklist || 'No checklist was returned.'}</Markdown>
+      </div>
+      <ReportSections sections={groups.detail} />
+    </div>
+  )
+}
+
 function AnalysisBody({
   report,
   recommendation,
@@ -112,12 +129,20 @@ function AnalysisBody({
   showDetailReport,
   onToggleDetailReport,
   collapsible,
+  scoresOnly = false,
+  detailModalOpen = false,
+  onDetailModalClose,
 }) {
   const hasAnalysisContent =
     scoreSummary ||
     groups.analysis.length ||
     scoreSummary?.requirementRows?.length ||
     scoreSummary?.demoRows?.length
+
+  const hasDetailContent =
+    groups.analysis.length > 0 ||
+    Boolean(report?.checklist) ||
+    groups.detail.length > 0
 
   const hasRecommendations =
     Boolean(recommendation) || groups.recommendations.length > 0
@@ -148,34 +173,38 @@ function AnalysisBody({
         />
       </div>
 
-      <ReportSections sections={groups.analysis} />
+      {!scoresOnly && (
+        <>
+          <ReportSections sections={groups.analysis} />
 
-      {onToggleDetailReport && (
-        <div className="analysis-detail-toggle">
-          <Button
-            type="button"
-            variant={showDetailReport ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={onToggleDetailReport}
-            leftIcon={<Icon name="file" size={16} />}
-          >
-            {showDetailReport ? 'Hide detail report' : 'Detail report'}
-          </Button>
-          <small>Validity checklist and longer narrative sections.</small>
-        </div>
-      )}
-
-      {showDetailReport && (
-        <div className="stack-md analysis-detail-panel">
-          <div className="analysis-report-block">
-            <div className="analysis-report-block__head">
-              <h4>Validity checklist</h4>
-              <p>AI validation checks against the submission text.</p>
+          {onToggleDetailReport && (
+            <div className="analysis-detail-toggle">
+              <Button
+                type="button"
+                variant={showDetailReport ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={onToggleDetailReport}
+                leftIcon={<Icon name="file" size={16} />}
+              >
+                {showDetailReport ? 'Hide detail report' : 'Detail report'}
+              </Button>
+              <small>Validity checklist and longer narrative sections.</small>
             </div>
-            <Markdown>{report?.checklist || 'No checklist was returned.'}</Markdown>
-          </div>
-          <ReportSections sections={groups.detail} />
-        </div>
+          )}
+
+          {showDetailReport && (
+            <div className="stack-md analysis-detail-panel">
+              <div className="analysis-report-block">
+                <div className="analysis-report-block__head">
+                  <h4>Validity checklist</h4>
+                  <p>AI validation checks against the submission text.</p>
+                </div>
+                <Markdown>{report?.checklist || 'No checklist was returned.'}</Markdown>
+              </div>
+              <ReportSections sections={groups.detail} />
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -198,31 +227,48 @@ function AnalysisBody({
 
   if (collapsible) {
     return (
-      <div className="stack-md">
-        {hasAnalysisContent && (
-          <Accordion
-            title="AI Analysis Report"
-            description="Field scores, demo score, and the findings evaluators need first."
-            icon="chart"
-            badge={
-              scoreSummary ? (
-                <Badge variant="success">{scoreSummary.roundedPercent}/100</Badge>
-              ) : null
-            }
+      <>
+        <div className="stack-md">
+          {hasAnalysisContent && (
+            <Accordion
+              title="AI Analysis Report"
+              description="Field scores, demo score, and the findings evaluators need first."
+              icon="chart"
+              badge={
+                scoreSummary ? (
+                  <Badge variant="success">{scoreSummary.roundedPercent}/100</Badge>
+                ) : null
+              }
+            >
+              {analysisInner}
+            </Accordion>
+          )}
+          {hasRecommendations && (
+            <Accordion
+              title="Recommendations"
+              description="Suggested improvements after reviewing the analysis."
+              icon="sparkles"
+            >
+              {recommendationInner}
+            </Accordion>
+          )}
+        </div>
+
+        {scoresOnly && onDetailModalClose ? (
+          <Modal
+            open={detailModalOpen}
+            onClose={onDetailModalClose}
+            title="Detail report"
+            className="modal--analysis-detail"
           >
-            {analysisInner}
-          </Accordion>
-        )}
-        {hasRecommendations && (
-          <Accordion
-            title="Recommendations"
-            description="Suggested improvements after reviewing the analysis."
-            icon="sparkles"
-          >
-            {recommendationInner}
-          </Accordion>
-        )}
-      </div>
+            {hasDetailContent ? (
+              <AnalysisDetailContent report={report} groups={groups} />
+            ) : (
+              <p className="text-sm text-muted">No detailed analysis sections were returned.</p>
+            )}
+          </Modal>
+        ) : null}
+      </>
     )
   }
 
@@ -273,6 +319,9 @@ export default function SubmissionReport({
   demoScore = null,
   showDetailReport = false,
   onToggleDetailReport,
+  scoresOnly = false,
+  detailModalOpen = false,
+  onDetailModalClose,
 }) {
   const { data, loading, error, reload } = useAsync(() =>
     evaluationApi.getSubmissionReport(submissionId),
@@ -340,6 +389,9 @@ export default function SubmissionReport({
       showDetailReport={showDetailReport}
       onToggleDetailReport={onToggleDetailReport}
       collapsible={collapsible}
+      scoresOnly={scoresOnly}
+      detailModalOpen={detailModalOpen}
+      onDetailModalClose={onDetailModalClose}
     />
   )
 }

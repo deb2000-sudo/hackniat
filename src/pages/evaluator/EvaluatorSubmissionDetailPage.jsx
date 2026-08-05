@@ -408,8 +408,9 @@ export default function EvaluatorSubmissionDetailPage() {
               collapsible
               recommendation={submission?.result?.recommendation}
               embeddedAnalysis={submission?.analysis || submission?.result}
-              showDetailReport={showDetailReport}
-              onToggleDetailReport={() => setShowDetailReport((value) => !value)}
+              scoresOnly
+              detailModalOpen={showDetailReport}
+              onDetailModalClose={() => setShowDetailReport(false)}
             />
           )}
         </div>
@@ -465,12 +466,13 @@ export default function EvaluatorSubmissionDetailPage() {
               {completed && (
                 <Button
                   type="button"
-                  variant={showDetailReport ? 'secondary' : 'ghost'}
+                  variant="secondary"
                   block
-                  onClick={() => setShowDetailReport((value) => !value)}
+                  className="detail-report-btn"
+                  onClick={() => setShowDetailReport(true)}
                   leftIcon={<Icon name="file" size={17} />}
                 >
-                  {showDetailReport ? 'Hide detail report' : 'Detail report'}
+                  Detail report
                 </Button>
               )}
             </CardBody>

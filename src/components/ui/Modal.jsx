@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import Icon from './Icon'
 
-export default function Modal({ open, onClose, title, children, footer }) {
+export default function Modal({ open, onClose, title, children, footer, className = '' }) {
   useEffect(() => {
     if (!open) return
     const onKey = (e) => {
@@ -20,7 +20,7 @@ export default function Modal({ open, onClose, title, children, footer }) {
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
       <div
-        className="modal"
+        className={`modal ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-label={title}

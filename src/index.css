@@ -1865,6 +1865,20 @@ code {
   position: static;
 }
 
+.admin-analysis-control .detail-report-btn {
+  margin-top: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+}
+
+.admin-analysis-control .detail-report-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--brand-300);
+  color: var(--heading);
+}
+
 .workflow-tracking-card .card__header {
   align-items: flex-start;
 }
@@ -3014,6 +3028,16 @@ code {
   width: 100%; max-width: 480px;
   animation: pop 0.15s ease;
   overflow: hidden;
+}
+.modal--analysis-detail {
+  max-width: min(920px, 96vw);
+  max-height: min(88vh, 960px);
+  display: flex;
+  flex-direction: column;
+}
+.modal--analysis-detail .modal__body {
+  overflow-y: auto;
+  max-height: calc(88vh - 72px);
 }
 .modal__header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 .modal__body { padding: 24px; }

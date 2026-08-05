@@ -1,30 +1,60 @@
-/** Format an ISO date string into a readable local date + time. */
-export function formatDateTime(value) {
-  if (!value) return '—'
+/** Platform timezone — API datetimes are serialized with +05:30 (Asia/Kolkata). */
+export const APP_TIMEZONE = 'Asia/Kolkata'
+
+const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/
+
+/** Parse an API ISO datetime (with offset) or return null. */
+function parseApiInstant(value) {
+  if (value == null || value === '') return null
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleString(undefined, {
+  if (Number.isNaN(date.getTime())) return null
+  return date
+}
+
+/**
+ * Format an API datetime in IST regardless of the viewer's browser timezone.
+ * Accepts values like `2026-08-05T17:30:00+05:30`.
+ */
+export function formatDateTime(value, options = {}) {
+  const date = parseApiInstant(value)
+  if (!date) return '—'
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: APP_TIMEZONE,
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })
+    ...options,
+  }).format(date)
 }
 
-/** Format an ISO date string into a readable local date. */
+/**
+ * Format a calendar date (YYYY-MM-DD) or API datetime.
+ * Hackathon start/end dates are calendar-only — not shifted by timezone.
+ */
 export function formatDate(value) {
   if (!value) return '—'
-  const dateOnly = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  const date = dateOnly
-    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
-    : new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString(undefined, {
+  const raw = String(value)
+  const dateOnly = raw.match(DATE_ONLY)
+  if (dateOnly) {
+    const date = new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    if (Number.isNaN(date.getTime())) return '—'
+    return new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(date)
+  }
+
+  const date = parseApiInstant(value)
+  if (!date) return '—'
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: APP_TIMEZONE,
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  })
+  }).format(date)
 }
 
 /** Human-readable file size. */
