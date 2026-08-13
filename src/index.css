@@ -1879,6 +1879,49 @@ code {
   color: var(--heading);
 }
 
+.admin-review-card__meta {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.admin-review-card__overrides strong {
+  display: block;
+  color: var(--heading);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.admin-review-card__override-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-review-card__override-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.88rem;
+}
+
+.admin-review-card__override-row span {
+  color: var(--text-muted);
+}
+
+.admin-review-card__override-row strong {
+  color: var(--heading);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.admin-review-card__visibility {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
 .workflow-tracking-card .card__header {
   align-items: flex-start;
 }
