@@ -839,22 +839,8 @@
     border: 1px solid var(--color-volt-edge);
   }
 
-  .drop .spinner {
-    border-color: color-mix(in srgb, var(--color-volt) 25%, var(--color-hairline));
-    border-top-color: var(--color-volt);
-  }
-
-  .drop .spinner--on-brand {
-    border-color: color-mix(in srgb, var(--color-on-volt) 28%, transparent);
-    border-top-color: var(--color-on-volt);
-  }
-
-  .drop .drop-loader__mark {
-    border-color: var(--color-hairline);
-    background:
-      radial-gradient(circle at 50% 40%, rgb(200 250 60 / 0.1), transparent 62%),
-      var(--color-surface);
-  }
+  /* Spinner theming lives in components/ui/Spinner.module.css — it reads the
+     same volt tokens directly, so no override is needed here. */
 
   .drop .badge--brand {
     background: var(--color-raised);
@@ -1597,9 +1583,9 @@
     animation-iteration-count: 1 !important;
   }
 
-  /* Keep loading indicators gently moving under reduced motion. */
-  .drop .spinner,
-  .drop .drop-spinner__arc {
+  /* Keep loading indicators gently moving under reduced motion. The spinner
+     arc is a CSS module class, so hook it by data attribute instead. */
+  .drop [data-spinner-arc] {
     animation-duration: 1.6s !important;
     animation-iteration-count: infinite !important;
   }
