@@ -1,0 +1,56 @@
+/* Button — scoped styles for Button.jsx (migrated out of index.css).
+
+   `[data-btn]` is the hook for the page rules that size buttons inside a
+   toolbar or card (`.admin-submissions-toolbar__actions .btn`, …) and for
+   the Drop theme's button skins. Variants are hooked by
+   `[data-btn-variant='primary']` so the theme can recolour each skin
+   without depending on the hashed class name.
+
+   Callers that need button styling on a non-button element (a file-input
+   <label>, for instance) should use the exported `buttonClass()` helper
+   rather than hardcoding class names. */
+
+@layer legacy {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled, .btn[aria-disabled='true'] { opacity: 0.55; cursor: not-allowed; }
+  .btn:hover { text-decoration: none; }
+
+  .primary { background: var(--brand-600); color: #fff; box-shadow: var(--shadow-sm); }
+  .primary:hover:not(:disabled) { background: var(--brand-700); }
+
+  .accent { background: linear-gradient(135deg, var(--brand-500), var(--accent-500)); color: #fff; box-shadow: var(--shadow-brand); }
+  .accent:hover:not(:disabled) { filter: brightness(1.05); }
+
+  .secondary { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+  .secondary:hover:not(:disabled) { background: var(--surface-2); }
+
+  .ghost { background: transparent; color: var(--text-muted); }
+  .ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--heading); }
+
+  .danger { background: var(--danger-500); color: #fff; }
+  .danger:hover:not(:disabled) { background: var(--danger-600); }
+
+  .success { background: var(--success-600); color: #fff; }
+  .success:hover:not(:disabled) { filter: brightness(1.05); }
+
+  .sm { padding: 7px 12px; font-size: 0.82rem; }
+  .lg { padding: 13px 24px; font-size: 1rem; }
+  .block { width: 100%; }
+}

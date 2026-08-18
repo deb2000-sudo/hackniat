@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import Icon from './Icon'
+import styles from './Modal.module.css'
 
 export default function Modal({ open, onClose, title, children, footer, className = '' }) {
   useEffect(() => {
@@ -18,24 +19,25 @@ export default function Modal({ open, onClose, title, children, footer, classNam
   if (!open) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="presentation">
+    <div className={styles.overlay} data-modal-overlay onClick={onClose} role="presentation">
       <div
-        className={`modal ${className}`.trim()}
+        className={`${styles.modal} ${className}`.trim()}
+        data-modal
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="modal__header">
+          <div className={styles.header}>
             <h3>{title}</h3>
             <button className="icon-btn" onClick={onClose} aria-label="Close">
               <Icon name="x" size={20} />
             </button>
           </div>
         )}
-        <div className="modal__body">{children}</div>
-        {footer && <div className="modal__footer">{footer}</div>}
+        <div className={styles.body}>{children}</div>
+        {footer && <div className={styles.footer}>{footer}</div>}
       </div>
     </div>
   )

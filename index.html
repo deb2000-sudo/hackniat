@@ -28,6 +28,17 @@
         }
       })()
     </script>
+    <!-- Cascade layer order. This MUST come before any stylesheet: the first
+         @layer occurrence in the document fixes each layer's position, and a
+         later `@layer a, b, c;` cannot reorder one that already exists.
+
+         The production build can emit a component's CSS <link> ahead of the
+         entry stylesheet (shared chunks are hoisted). A *.module.css file
+         opening with `@layer legacy { ... }` would then register `legacy`
+         first, dropping it below Tailwind's preflight and utilities and
+         unstyling the whole app — in production only, since dev injects
+         app.css first. Declaring the order here makes link order irrelevant. -->
+    <style>@layer theme, base, legacy, components, utilities;</style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

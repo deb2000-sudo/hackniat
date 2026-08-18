@@ -17,6 +17,28 @@
    That ordering is what makes this migration incremental: pages move to
    utilities one at a time, and index.css shrinks as they do. Delete a legacy
    rule only once nothing references it.
+
+   ---------------------------- Component CSS ------------------------------
+
+   A component's own styles belong in a sibling `<Component>.module.css`,
+   imported by that component (see components/ui/). Three rules keep those
+   files behaving exactly like the index.css rules they replaced:
+
+   1. Wrap everything in `@layer legacy { … }`. Module files are unlayered by
+      default, which would put them ABOVE utilities and let a component
+      default beat a Tailwind class passed via `className`.
+   2. If a global rule (a page class in index.css, or a `.drop` skin in
+      drop-theme.css) reaches into the component as a descendant, give the
+      element a `data-*` hook and re-point that selector at it — hashed class
+      names are invisible to global stylesheets. Attribute and class
+      selectors share the same specificity, so nothing else shifts.
+   3. Write color-mix() fallbacks by hand. index.css is processed by the
+      Tailwind Vite plugin, which generates them; module files are not in
+      that pass.
+
+   Classes used by many unrelated components (.field, .label, .input, .table,
+   .icon-btn, the stack and grid helpers) are shared primitives — they stay
+   global in index.css rather than moving into any one component.
    ========================================================================= */
 
 @layer theme, base, legacy, components, utilities;

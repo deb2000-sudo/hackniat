@@ -1,0 +1,33 @@
+/* Alert — scoped styles for Alert.jsx (migrated out of index.css).
+
+   `[data-alert]` is the hook for the five page rules that space a top-level
+   alert inside a page shell (`.themes-page > .alert`, …) and for the Drop
+   theme, which recolours every tone. `[data-alert-variant]` replaces the
+   `.alert--*` selectors the theme targets. */
+
+@layer legacy {
+  .alert {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+  }
+
+  .icon { flex-shrink: 0; margin-top: 1px; }
+  .title { font-weight: 700; }
+
+  /* The text column. Without min-width:0 a flex item refuses to shrink below
+     its longest unbreakable token, and the settings page puts raw values in
+     here — the profile-password hint, a gs:// bucket path — which then push
+     the alert wider than the page. `anywhere` breaks those tokens instead. */
+  .body {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .info { background: var(--info-50); color: #1e40af; border-color: #bfdbfe; }
+  .success { background: var(--success-50); color: #065f46; border-color: #a7f3d0; }
+  .warning { background: var(--warning-50); color: #92400e; border-color: #fde68a; }
+  .danger { background: var(--danger-50); color: #991b1b; border-color: #fecaca; }
+}

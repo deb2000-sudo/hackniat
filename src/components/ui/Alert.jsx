@@ -1,4 +1,5 @@
 import Icon from './Icon'
+import styles from './Alert.module.css'
 
 const ICONS = {
   info: 'info',
@@ -9,10 +10,15 @@ const ICONS = {
 
 export default function Alert({ variant = 'info', title, children, className = '' }) {
   return (
-    <div className={`alert alert--${variant} ${className}`} role="alert">
-      <Icon name={ICONS[variant] || 'info'} size={20} className="alert__icon" />
-      <div>
-        {title && <div className="alert__title">{title}</div>}
+    <div
+      className={`${styles.alert} ${styles[variant] || styles.info} ${className}`}
+      data-alert
+      data-alert-variant={variant}
+      role="alert"
+    >
+      <Icon name={ICONS[variant] || 'info'} size={20} className={styles.icon} />
+      <div className={styles.body}>
+        {title && <div className={styles.title}>{title}</div>}
         {children && <div>{children}</div>}
       </div>
     </div>

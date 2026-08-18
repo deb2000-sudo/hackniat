@@ -133,7 +133,7 @@ export default function DropLandingPage() {
             id="drop-hero-title"
             className="mt-5 text-[40px] leading-[1.05] font-semibold tracking-[-0.03em] text-ink md:mt-7 md:max-w-[14ch] md:text-[56px] md:leading-[1.02] xl:text-[72px]"
           >
-            Build. Ship. Drop.
+            Build. Ship. Drop. Challzo
           </h1>
 
           <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-muted md:mt-6 md:text-[18px]">

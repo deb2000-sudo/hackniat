@@ -25,6 +25,7 @@ import {
 } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
 import Accordion from '../../components/ui/Accordion'
+import { accordionManualPending } from '../../components/ui/uiClasses'
 import Badge, { AiModeBadge, ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
@@ -376,7 +377,7 @@ export default function EvaluatorSubmissionDetailPage() {
               title="Manual metrics"
               description="Score GitHub and MVP features. Total updates live above."
               icon="edit"
-              className={!manualComplete && canEditManual ? 'evaluation-accordion--manual-pending' : ''}
+              className={!manualComplete && canEditManual ? accordionManualPending : ''}
               badge={
                 manualComplete ? (
                   <Badge variant="success" dot>

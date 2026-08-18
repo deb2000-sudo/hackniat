@@ -9,6 +9,7 @@ import { invalidateQueries } from '../../lib/queryCache'
 import { formatFileSize } from '../../utils/format'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
+import { buttonClass } from '../../components/ui/uiClasses'
 import Icon from '../../components/ui/Icon'
 import Alert from '../../components/ui/Alert'
 import Input, { Select, Textarea } from '../../components/ui/Input'
@@ -783,7 +784,7 @@ export default function NewEvaluationPage() {
                           <small>{formatFileSize(file.size)} · Uploaded from device</small>
                         </span>
                       </span>
-                      <label className="btn btn--secondary btn--sm">
+                      <label className={buttonClass({ variant: 'secondary', size: 'sm' })}>
                         <Icon name="refresh" size={16} />
                         Replace video
                         <input
@@ -800,7 +801,7 @@ export default function NewEvaluationPage() {
                     <span><Icon name="upload" size={26} /></span>
                     <strong>Choose your demo video</strong>
                     <p>Accepted video formats · Maximum {formatFileSize(maxVideoBytes)}</p>
-                    <span className="btn btn--accent">Browse videos</span>
+                    <span className={buttonClass({ variant: 'accent' })}>Browse videos</span>
                     <input
                       type="file"
                       accept={videoAccept}

@@ -1,0 +1,23 @@
+/* Avatar — scoped styles for Avatar.jsx (migrated out of index.css).
+
+   Rules stay in the `legacy` layer so Tailwind utilities passed through
+   `className` keep winning, exactly as they did when this lived in
+   index.css (app.css imports that file into layer(legacy)).
+
+   The Drop theme recolours the avatar via `.drop [data-avatar]`, so the
+   element carries that attribute as a hash-proof hook. */
+
+@layer legacy {
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: var(--radius-full);
+    display: grid; place-items: center;
+    font-size: 0.8rem; font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, var(--brand-500), var(--accent-500));
+    flex-shrink: 0;
+  }
+
+  .sm { width: 28px; height: 28px; font-size: 0.7rem; }
+  .lg { width: 56px; height: 56px; font-size: 1.1rem; }
+}

@@ -165,45 +165,45 @@
   }
 
   /* ------------------------------ Buttons ------------------------------ */
-  .drop .btn {
+  .drop [data-btn] {
     border-radius: var(--radius-drop);
   }
 
-  .drop .btn--accent,
-  .drop .btn--primary {
+  .drop [data-btn-variant='accent'],
+  .drop [data-btn-variant='primary'] {
     background: var(--color-volt);
     color: var(--color-on-volt);
     box-shadow: none;
   }
 
-  .drop .btn--accent:hover:not(:disabled),
-  .drop .btn--primary:hover:not(:disabled) {
+  .drop [data-btn-variant='accent']:hover:not(:disabled),
+  .drop [data-btn-variant='primary']:hover:not(:disabled) {
     background: var(--color-volt-deep);
     filter: none;
   }
 
-  .drop .btn--secondary {
+  .drop [data-btn-variant='secondary'] {
     background: transparent;
     border-color: var(--color-hairline);
     color: var(--color-ink);
   }
 
-  .drop .btn--secondary:hover:not(:disabled) {
+  .drop [data-btn-variant='secondary']:hover:not(:disabled) {
     background: var(--color-raised);
     border-color: color-mix(in srgb, var(--color-muted) 50%, transparent);
   }
 
-  .drop .btn--ghost {
+  .drop [data-btn-variant='ghost'] {
     color: var(--color-muted);
   }
 
-  .drop .btn--ghost:hover:not(:disabled) {
+  .drop [data-btn-variant='ghost']:hover:not(:disabled) {
     background: var(--color-surface);
     color: var(--color-ink);
   }
 
   /* ------------------------------ Surfaces ----------------------------- */
-  .drop .card {
+  .drop [data-card] {
     background: var(--color-surface);
     border-color: var(--color-hairline);
     border-radius: var(--radius-drop);
@@ -211,29 +211,29 @@
   }
 
   /* ------------------------------- Alerts ------------------------------ */
-  .drop .alert {
+  .drop [data-alert] {
     border-radius: var(--radius-drop);
   }
 
-  .drop .alert--danger {
+  .drop [data-alert-variant='danger'] {
     background: var(--drop-danger-soft);
     border-color: color-mix(in srgb, var(--color-missing) 38%, transparent);
     color: var(--color-missing);
   }
 
-  .drop .alert--success {
+  .drop [data-alert-variant='success'] {
     background: var(--drop-success-soft);
     border-color: color-mix(in srgb, var(--color-passed) 38%, transparent);
     color: var(--color-passed);
   }
 
-  .drop .alert--warning {
+  .drop [data-alert-variant='warning'] {
     background: var(--drop-warning-soft);
     border-color: color-mix(in srgb, var(--color-warn) 38%, transparent);
     color: var(--color-warn);
   }
 
-  .drop .alert--info {
+  .drop [data-alert-variant='info'] {
     background: var(--drop-info-soft);
     border-color: color-mix(in srgb, var(--color-info) 38%, transparent);
     color: var(--color-info);
@@ -406,12 +406,12 @@
     }
   }
 
-  .drop .evaluation-accordion {
+  .drop [data-accordion] {
     border-radius: var(--radius-drop);
     box-shadow: none;
   }
 
-  .drop .evaluation-accordion[open] {
+  .drop [data-accordion][open] {
     border-color: var(--color-hairline);
     box-shadow: none;
   }
@@ -499,7 +499,7 @@
     background: rgb(19 19 22 / 0.82);
   }
 
-  .drop .admin-submission-hackathon-card .card__body {
+  .drop .admin-submission-hackathon-card [data-card-body] {
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -513,7 +513,7 @@
     letter-spacing: -0.02em;
   }
 
-  .drop .admin-submission-hackathon-card .btn {
+  .drop .admin-submission-hackathon-card [data-btn] {
     align-self: stretch;
     grid-column: auto;
     grid-row: auto;
@@ -702,7 +702,7 @@
   }
 
   /* Role pill under the sidebar avatar mirrors the active nav fill. */
-  .drop .sidebar-profile .badge {
+  .drop .sidebar-profile [data-badge] {
     color: var(--color-on-volt);
     background: var(--color-volt);
     border-color: transparent;
@@ -715,7 +715,7 @@
     background: var(--color-volt-tint);
   }
 
-  html[data-theme='light'] .drop .sidebar-profile .badge {
+  html[data-theme='light'] .drop .sidebar-profile [data-badge] {
     color: var(--color-ink);
     background: var(--color-volt-tint);
     border-color: color-mix(in srgb, var(--color-volt-edge) 45%, transparent);
@@ -833,67 +833,56 @@
   }
 
   /* ------------------------ Shared UI primitives ----------------------- */
-  .drop .avatar {
+  /* Avatar/StatCard/EmptyState classes are CSS modules now — hook them by
+     data attribute so the theme survives the name hashing. Attribute and
+     class selectors carry identical specificity, so nothing else shifts. */
+  .drop [data-avatar] {
     color: var(--color-volt-ink);
     background: var(--color-volt-tint);
     border: 1px solid var(--color-volt-edge);
   }
 
-  .drop .spinner {
-    border-color: color-mix(in srgb, var(--color-volt) 25%, var(--color-hairline));
-    border-top-color: var(--color-volt);
-  }
+  /* Spinner theming lives in components/ui/Spinner.module.css — it reads the
+     same volt tokens directly, so no override is needed here. */
 
-  .drop .spinner--on-brand {
-    border-color: color-mix(in srgb, var(--color-on-volt) 28%, transparent);
-    border-top-color: var(--color-on-volt);
-  }
-
-  .drop .drop-loader__mark {
-    border-color: var(--color-hairline);
-    background:
-      radial-gradient(circle at 50% 40%, rgb(200 250 60 / 0.1), transparent 62%),
-      var(--color-surface);
-  }
-
-  .drop .badge--brand {
+  .drop [data-badge-variant='brand'] {
     background: var(--color-raised);
     color: var(--color-ink);
     border-color: var(--color-hairline);
   }
 
-  .drop .badge--accent {
+  .drop [data-badge-variant='accent'] {
     background: var(--color-volt-tint);
     color: var(--color-volt-ink);
     border-color: var(--color-volt-edge);
   }
 
-  .drop .badge--success {
+  .drop [data-badge-variant='success'] {
     background: var(--drop-success-soft);
     color: var(--color-passed);
     border-color: color-mix(in srgb, var(--color-passed) 38%, transparent);
   }
 
-  .drop .badge--warning {
+  .drop [data-badge-variant='warning'] {
     background: var(--drop-warning-soft);
     color: var(--color-warn);
     border-color: color-mix(in srgb, var(--color-warn) 38%, transparent);
   }
 
-  .drop .badge--danger {
+  .drop [data-badge-variant='danger'] {
     background: var(--drop-danger-soft);
     color: var(--color-missing);
     border-color: color-mix(in srgb, var(--color-missing) 38%, transparent);
   }
 
-  .drop .badge--info {
+  .drop [data-badge-variant='info'] {
     background: var(--drop-info-soft);
     color: var(--color-info);
     border-color: color-mix(in srgb, var(--color-info) 38%, transparent);
   }
 
-  .drop .stat__icon,
-  .drop .empty__icon,
+  .drop [data-stat-icon],
+  .drop [data-empty-icon],
   .drop .feature-card__icon,
   .drop .section-title-with-icon > span,
   .drop .hackathon-summary-item__icon,
@@ -1060,13 +1049,13 @@
     border-color: var(--color-hairline);
   }
 
-  .drop .hackathon-form-card .card__header {
+  .drop .hackathon-form-card [data-card-header] {
     background: var(--color-raised);
     border-bottom: 1px solid var(--color-hairline);
   }
 
   .drop .hackathon-form-heading h3,
-  .drop .hackathon-form-card .card__header h3 {
+  .drop .hackathon-form-card [data-card-header] h3 {
     color: var(--color-ink);
   }
 
@@ -1165,7 +1154,7 @@
     }
   }
 
-  .drop .scorecard-feedback-banner.alert {
+  .drop .scorecard-feedback-banner[data-alert] {
     border-radius: var(--radius-drop);
     background: color-mix(in srgb, var(--color-surface) 96%, transparent);
     box-shadow:
@@ -1350,11 +1339,11 @@
     background: var(--drop-danger-soft);
   }
 
-  .drop .modal-overlay {
+  .drop [data-modal-overlay] {
     background: rgb(0 0 0 / 0.62);
   }
 
-  .drop .modal {
+  .drop [data-modal] {
     border: 1px solid var(--color-hairline);
     border-radius: var(--radius-drop);
   }
@@ -1435,7 +1424,7 @@
     background: var(--color-passed);
   }
 
-  .drop .submission-panel > .card {
+  .drop .submission-panel > [data-card] {
     border: 1px solid var(--color-hairline);
     border-radius: var(--radius-drop);
     background: var(--color-surface);
@@ -1577,8 +1566,8 @@
   }
 
   /* Light theme: keep volt CTAs readable (black label on lime). */
-  html[data-theme='light'] .drop .btn--accent,
-  html[data-theme='light'] .drop .btn--primary {
+  html[data-theme='light'] .drop [data-btn-variant='accent'],
+  html[data-theme='light'] .drop [data-btn-variant='primary'] {
     color: var(--color-on-volt);
   }
 }
@@ -1597,9 +1586,9 @@
     animation-iteration-count: 1 !important;
   }
 
-  /* Keep loading indicators gently moving under reduced motion. */
-  .drop .spinner,
-  .drop .drop-spinner__arc {
+  /* Keep loading indicators gently moving under reduced motion. The spinner
+     arc is a CSS module class, so hook it by data attribute instead. */
+  .drop [data-spinner-arc] {
     animation-duration: 1.6s !important;
     animation-iteration-count: infinite !important;
   }

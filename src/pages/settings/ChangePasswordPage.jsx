@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '../../api/auth'
+import { clearCsrfToken } from '../../api/client'
 import { useAuth } from '../../hooks/useAuth'
 import PageHeader from '../../components/layout/PageHeader'
 import Card, { CardBody } from '../../components/ui/Card'
@@ -54,6 +55,7 @@ export default function ChangePasswordPage() {
     setSubmitError('')
     try {
       const response = await authApi.changePassword(form)
+      clearCsrfToken()
       setSuccess(response?.message || 'Password changed successfully. Redirecting to sign in…')
       redirectTimerRef.current = setTimeout(() => {
         setUser(null)

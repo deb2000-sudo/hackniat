@@ -1,6 +1,5 @@
 import Spinner from './Spinner'
-
-const VARIANTS = ['primary', 'accent', 'secondary', 'ghost', 'danger', 'success']
+import { BUTTON_VARIANTS as VARIANTS, buttonClass } from './uiClasses'
 
 /**
  * Reusable button. Renders a <button> by default, or any element passed via
@@ -19,14 +18,8 @@ export default function Button({
   children,
   ...rest
 }) {
-  const variantClass = VARIANTS.includes(variant) ? `btn--${variant}` : 'btn--primary'
-  const classes = [
-    'btn',
-    variantClass,
-    size ? `btn--${size}` : '',
-    block ? 'btn--block' : '',
-    className,
-  ]
+  const resolvedVariant = VARIANTS.includes(variant) ? variant : 'primary'
+  const classes = [buttonClass({ variant: resolvedVariant, size, block }), className]
     .filter(Boolean)
     .join(' ')
 
@@ -37,7 +30,13 @@ export default function Button({
       : { 'aria-disabled': isDisabled }
 
   return (
-    <Component className={classes} {...extraProps} {...rest}>
+    <Component
+      className={classes}
+      data-btn
+      data-btn-variant={resolvedVariant}
+      {...extraProps}
+      {...rest}
+    >
       {loading ? (
         <Spinner size="sm" onBrand={['primary', 'accent', 'danger', 'success'].includes(variant)} />
       ) : (

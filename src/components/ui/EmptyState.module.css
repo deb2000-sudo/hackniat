@@ -1,0 +1,22 @@
+/* EmptyState — scoped styles for EmptyState.jsx (migrated out of index.css).
+
+   `data-empty-icon` on the icon tile is the hook for the shared Drop theme
+   rule that tints every icon chip (`.drop [data-empty-icon]`).
+
+   Note: `.empty-state` elsewhere in index.css is a different class belonging
+   to the student evaluations history panel — not this component. */
+
+@layer legacy {
+  .empty {
+    text-align: center; padding: 48px 24px;
+    color: var(--text-muted);
+  }
+
+  .icon {
+    width: 56px; height: 56px; margin: 0 auto 16px;
+    border-radius: var(--radius); display: grid; place-items: center;
+    background: var(--surface-2); color: var(--text-subtle);
+  }
+
+  .empty h3 { color: var(--heading); margin-bottom: 6px; }
+}

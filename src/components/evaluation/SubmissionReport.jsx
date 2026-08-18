@@ -16,6 +16,7 @@ import Button from '../ui/Button'
 import Card, { CardBody, CardHeader } from '../ui/Card'
 import Icon from '../ui/Icon'
 import Modal from '../ui/Modal'
+import { modalAnalysisDetail } from '../ui/uiClasses'
 import { LoadingBlock } from '../ui/Spinner'
 
 function Markdown({ children }) {
@@ -259,7 +260,7 @@ function AnalysisBody({
             open={detailModalOpen}
             onClose={onDetailModalClose}
             title="Detail report"
-            className="modal--analysis-detail"
+            className={modalAnalysisDetail}
           >
             {hasDetailContent ? (
               <AnalysisDetailContent report={report} groups={groups} />

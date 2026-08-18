@@ -1,0 +1,116 @@
+/* =========================================================================
+   Spinner — scoped styles for components/ui/Spinner.jsx
+
+   Migrated out of index.css (legacy layer). The mark is a dual ring: a
+   hairline volt track plus a rotating volt arc, with an optional percentage
+   readout sitting inside the ring.
+
+   Rules sit in the `legacy` layer, matching where index.css is imported
+   (app.css: `@import './index.css' layer(legacy)`). That keeps a Tailwind
+   utility passed via `className` winning over these defaults, exactly as it
+   did before the migration.
+   ========================================================================= */
+
+@layer legacy {
+
+.spinner {
+  position: relative;
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.track,
+.arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border-style: solid;
+  border-width: 2.5px;
+  box-sizing: border-box;
+}
+
+.track {
+  border-color: rgb(200 250 60 / 0.22);
+  border-color: color-mix(in srgb, var(--color-volt, #c8fa3c) 22%, transparent);
+}
+
+.arc {
+  border-color: transparent;
+  border-top-color: var(--color-volt, #c8fa3c);
+  border-right-color: var(--color-volt, #c8fa3c);
+  animation: spinner-rotate 0.75s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+/* --------------------------------- Sizes -------------------------------- */
+.sm { width: 14px; height: 14px; }
+.sm .track,
+.sm .arc { border-width: 2px; }
+
+.md { width: 22px; height: 22px; }
+
+.lg { width: 40px; height: 40px; }
+.lg .track,
+.lg .arc { border-width: 3px; }
+
+.xl { width: 84px; height: 84px; }
+.xl .track,
+.xl .arc { border-width: 3px; }
+
+/* ------------------------------- On brand ------------------------------- */
+.onBrand .track {
+  border-color: rgb(26 36 5 / 0.24);
+  border-color: color-mix(in srgb, var(--color-on-volt, #1a2405) 24%, transparent);
+}
+.onBrand .arc {
+  border-top-color: var(--color-on-volt, #1a2405);
+  border-right-color: var(--color-on-volt, #1a2405);
+}
+
+/* ------------------------------ Percentage ------------------------------ */
+.value {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--color-text, var(--heading, inherit));
+}
+
+.sm .value,
+.md .value { font-size: 0.5rem; }
+.lg .value { font-size: 0.68rem; }
+
+.onBrand .value {
+  color: var(--color-on-volt, #1a2405);
+}
+
+/* -------------------------- Centered page loader ------------------------ */
+/* Fills whatever it is dropped into and pins the mark dead centre, so a
+   route fallback lands in the middle of the viewport rather than near the
+   top of the page. */
+.loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: min(70vh, 520px);
+  padding: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc {
+    animation-duration: 1.6s;
+  }
+}
+
+}
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}

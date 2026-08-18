@@ -1,0 +1,51 @@
+/* Modal — scoped styles for Modal.jsx (migrated out of index.css).
+
+   `[data-modal-overlay]` / `[data-modal]` are the Drop theme's hooks.
+
+   `analysisDetail` is exported for SubmissionReport, which passes it through
+   `className` to widen the dialog for the full analysis report — it styles
+   this component's own body, so it belongs here rather than in index.css.
+
+   `.icon-btn` deliberately stays global in index.css: five other components
+   use it, so it is a shared primitive rather than part of the modal.
+
+   The `fade` / `pop` keyframes moved too — nothing else referenced them. */
+
+@layer legacy {
+  .overlay {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+    display: grid; place-items: center;
+    padding: 24px;
+    animation: fade 0.15s ease;
+  }
+
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%; max-width: 480px;
+    animation: pop 0.15s ease;
+    overflow: hidden;
+  }
+
+  .analysisDetail {
+    max-width: min(920px, 96vw);
+    max-height: min(88vh, 960px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .analysisDetail .body {
+    overflow-y: auto;
+    max-height: calc(88vh - 72px);
+  }
+
+  .header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .body { padding: 24px; }
+  .footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--surface-2); }
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: none; } }

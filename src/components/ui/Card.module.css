@@ -1,0 +1,42 @@
+/* Card — scoped styles for Card.jsx (migrated out of index.css).
+
+   Card is the most reached-into component in the app: ~25 page-level rules
+   in index.css and 5 in drop-theme.css style `.card__body` / `.card__header`
+   as a descendant of a page class (`.student-final-score .card__body`, …).
+   Those page rules must stay global, so every part of the card carries a
+   data attribute as a hash-proof hook:
+
+     .card    -> [data-card]        .card__header -> [data-card-header]
+     .card__body -> [data-card-body]   .card__footer -> [data-card-footer]
+
+   Attribute and class selectors have identical specificity, so re-pointing
+   those rules changes nothing about which declaration wins. */
+
+@layer legacy {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .body { padding: 24px; }
+
+  .header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+
+  .header h3 { font-size: 1.05rem; }
+
+  .footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+
+  .hover { transition: box-shadow 0.15s ease, transform 0.15s ease; }
+  .hover:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+}

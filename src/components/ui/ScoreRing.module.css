@@ -1,0 +1,11 @@
+/* ScoreRing — scoped styles for ScoreRing.jsx (migrated out of index.css).
+
+   No Drop theme overrides target these classes: the ring strokes are set
+   inline from the score, so the theme has nothing to restyle. */
+
+@layer legacy {
+  .ring { display: grid; place-items: center; position: relative; }
+  .value { position: absolute; text-align: center; }
+  .num { font-size: 1.9rem; font-weight: 800; color: var(--heading); line-height: 1; }
+  .max { font-size: 0.8rem; color: var(--text-muted); }
+}
