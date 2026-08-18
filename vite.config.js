@@ -47,6 +47,8 @@ export default defineConfig(({ mode }) => {
       babel({ presets: [reactCompilerPreset()] }),
     ],
     server: {
+      // Firebase Phone Auth rejects localhost — bind 127.0.0.1 for local dev.
+      host: '127.0.0.1',
       port: 5173,
       proxy: Object.fromEntries(
         proxyPrefixes.map((prefix) => [prefix, apiProxy(API_TARGET)]),

@@ -17,78 +17,52 @@ export function isMobile(value) {
   return digits.length >= 10 && digits.length <= 15
 }
 
+export function isE164(value) {
+  return /^\+[1-9]\d{7,14}$/.test(String(value || '').trim())
+}
+
+export function passwordStrength(password) {
+  const value = String(password || '')
+  const hasLetter = /[A-Za-z]/.test(value)
+  const hasNumber = /\d/.test(value)
+  const longEnough = value.length >= 8
+  return {
+    hasLetter,
+    hasNumber,
+    longEnough,
+    ok: hasLetter && hasNumber && longEnough,
+  }
+}
+
+export function toE164(countryCode, national) {
+  const cc = String(countryCode || '+91').replace(/\s/g, '')
+  const digits = String(national || '').replace(/\D/g, '')
+  if (cc === '+91' && digits.length === 10) return `+91${digits}`
+  if (digits.startsWith('91') && digits.length === 12) return `+${digits}`
+  return `${cc}${digits}`
+}
+
 /**
- * Validate the student registration form.
+ * Validate the student registration form (individual, verified contact).
  * @returns {Record<string,string>} field -> error message (empty when valid)
  */
 export function validateStudentForm(form) {
-  return {
-    ...validateStudentTeamDetails(form),
-    ...validateStudentTeamLeader(form),
-    ...validateStudentTeamMembers(form),
-    ...validateStudentSecurity(form),
-  }
-}
-
-export function validateStudentTeamDetails(form) {
   const errors = {}
-  if (!required(form.team_name)) errors.team_name = 'Team name is required'
-  if (!required(form.university)) errors.university = 'University is required'
+  if (!required(form.first_name)) errors.first_name = 'First name is required'
+  if (!required(form.last_name)) errors.last_name = 'Last name is required'
+  if (!isEmail(form.email)) errors.email = 'Enter a valid email'
+  if (!required(form.university_name)) errors.university_name = 'University is required'
   if (!required(form.niat_id)) errors.niat_id = 'NIAT ID is required'
-  return errors
-}
-
-export function validateStudentTeamLeader(form) {
-  const errors = {}
-  if (!required(form.team_leader_name)) errors.team_leader_name = 'Team leader name is required'
-  if (!isEmail(form.email)) errors.email = 'Enter a valid team leader email'
-  if (!isMobile(form.mobile_no)) errors.mobile_no = 'Enter a valid mobile number (10-15 digits)'
-  return errors
-}
-
-export function validateStudentTeamMembers(form) {
-  const errors = {}
-
-  for (const number of [1, 2]) {
-    const nameKey = `team_member_${number}_name`
-    const emailKey = `team_member_${number}_email`
-    if (!required(form[nameKey])) errors[nameKey] = `Team member ${number} name is required`
-    if (!isEmail(form[emailKey])) errors[emailKey] = `Enter a valid team member ${number} email`
+  const phone = toE164(form.country_code, form.mobile_national)
+  if (!isE164(phone)) errors.mobile_national = 'Enter a valid mobile number'
+  const strength = passwordStrength(form.password)
+  if (!strength.ok) {
+    errors.password = 'Password must be at least 8 characters with a letter and a number'
   }
-
-  for (const number of [3, 4]) {
-    const nameKey = `team_member_${number}_name`
-    const emailKey = `team_member_${number}_email`
-    const hasName = required(form[nameKey])
-    const hasEmail = required(form[emailKey])
-    if (hasEmail && !hasName) errors[nameKey] = 'Enter the member name or clear the email'
-    if (hasName && !isEmail(form[emailKey])) errors[emailKey] = 'Enter a valid email or clear the name'
-  }
-
-  const emailFields = ['email', ...[1, 2, 3, 4].map((number) => `team_member_${number}_email`)]
-  const seenEmails = new Map()
-  emailFields.forEach((key) => {
-    const email = String(form[key] || '').trim().toLowerCase()
-    if (!email || !isEmail(email)) return
-    if (seenEmails.has(email)) {
-      errors[key] = 'This email is already used by another team member'
-      errors[seenEmails.get(email)] = 'This email is already used by another team member'
-    } else {
-      seenEmails.set(email, key)
-    }
-  })
-
-  return errors
-}
-
-export function validateStudentSecurity(form) {
-  const errors = {}
-  if (!minLength(form.password, 6)) errors.password = 'Password must be at least 6 characters'
   if (form.password !== form.confirm_password) errors.confirm_password = 'Passwords do not match'
   return errors
 }
 
-/** Validate the evaluator registration form. */
 export function validateEvaluatorForm(form) {
   const errors = {}
   if (!required(form.first_name)) errors.first_name = 'First name is required'
