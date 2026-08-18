@@ -103,7 +103,19 @@ export async function request(path, options = {}) {
     )
   ) {
     const csrfToken = getCookie(CSRF_COOKIE_NAME)
-    if (csrfToken) finalHeaders[CSRF_HEADER_NAME] = csrfToken
+    if (csrfToken) {
+      finalHeaders[CSRF_HEADER_NAME] = csrfToken
+    } else if (import.meta.env.DEV) {
+      // The request still goes out — a backend that does not mint CSRF must
+      // keep working — but a missing token here is the single cause of the
+      // "CSRF validation failed" 403, and it is otherwise invisible: the
+      // browser still sends the cookie, so the Network tab looks correct.
+      console.warn(
+        `[api] ${normalizedMethod} ${path}: no readable "${CSRF_COOKIE_NAME}" cookie, ` +
+          `so "${CSRF_HEADER_NAME}" was not set. If the backend requires CSRF this will 403. ` +
+          'The cookie must be readable by JS (not HttpOnly) and set on this origin.',
+      )
+    }
   }
 
   if (formData) {
@@ -134,7 +146,17 @@ export async function request(path, options = {}) {
   const data = await parseBody(res)
 
   if (!res.ok) {
-    const message = extractMessage(data, `Request failed (${res.status})`)
+    let message = extractMessage(data, `Request failed (${res.status})`)
+
+    // A CSRF 403 is nearly always the double-submit token missing rather than
+    // a real permission problem. Say so, so it is not mistaken for auth.
+    if (res.status === 403 && /csrf/i.test(String(message))) {
+      const sent = Boolean(finalHeaders[CSRF_HEADER_NAME])
+      message = sent
+        ? `${message} (sent ${CSRF_HEADER_NAME}, but it did not match the ${CSRF_COOKIE_NAME} cookie)`
+        : `${message} (no ${CSRF_HEADER_NAME} sent: the ${CSRF_COOKIE_NAME} cookie was not readable by JS)`
+    }
+
     throw new ApiError(message, { status: res.status, data })
   }
 

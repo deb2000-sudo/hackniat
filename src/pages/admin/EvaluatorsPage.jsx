@@ -11,7 +11,7 @@ import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import Alert from '../../components/ui/Alert'
 import Avatar from '../../components/ui/Avatar'
-import { ApprovalBadge } from '../../components/ui/Badge'
+import Badge, { ApprovalBadge } from '../../components/ui/Badge'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
 import { formatDate } from '../../utils/format'
@@ -81,7 +81,7 @@ export default function EvaluatorsPage() {
         <div className="stack-lg">
           <Card>
             <CardHeader>
-              <h3>Pending approvals {pending.length > 0 && <span className="badge badge--warning" style={{ marginLeft: 8 }}>{pending.length}</span>}</h3>
+              <h3>Pending approvals {pending.length > 0 && <Badge variant="warning" style={{ marginLeft: 8 }}>{pending.length}</Badge>}</h3>
             </CardHeader>
             <CardBody>
               {pending.length ? (

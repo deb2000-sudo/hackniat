@@ -1,0 +1,26 @@
+/* StatCard — scoped styles for StatCard.jsx (migrated out of index.css).
+
+   `data-stat-icon` on the icon tile is the hook for the shared Drop theme
+   rule that tints every icon chip (`.drop [data-stat-icon]`). */
+
+@layer legacy {
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    display: flex; align-items: center; gap: 16px;
+  }
+
+  .icon {
+    width: 46px; height: 46px;
+    border-radius: var(--radius);
+    display: grid; place-items: center;
+    background: var(--brand-50); color: var(--brand-600);
+    flex-shrink: 0;
+  }
+
+  .value { font-size: 1.6rem; font-weight: 800; color: var(--heading); line-height: 1; }
+  .label { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+}

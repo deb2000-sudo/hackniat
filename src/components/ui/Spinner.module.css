@@ -5,9 +5,13 @@
    hairline volt track plus a rotating volt arc, with an optional percentage
    readout sitting inside the ring.
 
-   Module files are unlayered, so these rules outrank the legacy layer and
-   Tailwind utilities — keep them scoped to the spinner and nothing else.
+   Rules sit in the `legacy` layer, matching where index.css is imported
+   (app.css: `@import './index.css' layer(legacy)`). That keeps a Tailwind
+   utility passed via `className` winning over these defaults, exactly as it
+   did before the migration.
    ========================================================================= */
+
+@layer legacy {
 
 .spinner {
   position: relative;
@@ -30,6 +34,7 @@
 }
 
 .track {
+  border-color: rgb(200 250 60 / 0.22);
   border-color: color-mix(in srgb, var(--color-volt, #c8fa3c) 22%, transparent);
 }
 
@@ -57,6 +62,7 @@
 
 /* ------------------------------- On brand ------------------------------- */
 .onBrand .track {
+  border-color: rgb(26 36 5 / 0.24);
   border-color: color-mix(in srgb, var(--color-on-volt, #1a2405) 24%, transparent);
 }
 .onBrand .arc {
@@ -97,12 +103,14 @@
   padding: 24px;
 }
 
-@keyframes spinner-rotate {
-  to { transform: rotate(360deg); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .arc {
     animation-duration: 1.6s;
   }
+}
+
+}
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
 }

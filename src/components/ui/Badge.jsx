@@ -1,9 +1,21 @@
 import { APPROVAL_STATUS, EVALUATION_STATUS, ROLES } from '../../utils/constants'
+import styles from './Badge.module.css'
 
-export default function Badge({ variant = 'neutral', dot = false, children, className = '' }) {
+export default function Badge({
+  variant = 'neutral',
+  dot = false,
+  children,
+  className = '',
+  ...rest
+}) {
   return (
-    <span className={`badge badge--${variant} ${className}`}>
-      {dot && <span className="badge__dot" />}
+    <span
+      className={`${styles.badge} ${styles[variant] || styles.neutral} ${className}`}
+      data-badge
+      data-badge-variant={variant}
+      {...rest}
+    >
+      {dot && <span className={styles.dot} />}
       {children}
     </span>
   )
@@ -70,7 +82,7 @@ export function ReviewStatusBadge({ status }) {
     variant: 'neutral',
   }
   return (
-    <Badge variant={config.variant} dot className="badge--review">
+    <Badge variant={config.variant} dot className={styles.review} data-badge-review>
       {config.label}
     </Badge>
   )

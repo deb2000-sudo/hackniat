@@ -1,4 +1,5 @@
 import { formatScore } from '../../utils/format'
+import styles from './ScoreRing.module.css'
 
 /**
  * Circular score gauge. `value` and `max` default to a 10-point scale.
@@ -15,7 +16,7 @@ export default function ScoreRing({ value = 0, max = 10, size = 120, stroke = 10
   else if (pct >= 0.35) color = 'var(--brand-500)'
 
   return (
-    <div className="score-ring" style={{ width: size, height: size }}>
+    <div className={styles.ring} style={{ width: size, height: size }}>
       <svg width={size} height={size}>
         <circle
           cx={size / 2}
@@ -39,9 +40,9 @@ export default function ScoreRing({ value = 0, max = 10, size = 120, stroke = 10
           style={{ transition: 'stroke-dashoffset 0.6s ease' }}
         />
       </svg>
-      <div className="score-ring__value">
-        <div className="score-ring__num">{formatScore(value)}</div>
-        <div className="score-ring__max">/ {max}</div>
+      <div className={styles.value}>
+        <div className={styles.num}>{formatScore(value)}</div>
+        <div className={styles.max}>/ {max}</div>
       </div>
     </div>
   )
