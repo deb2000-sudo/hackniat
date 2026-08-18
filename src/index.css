@@ -109,8 +109,11 @@ code {
 .app-shell { min-height: 100vh; }
 
 /* One source of truth for the rail width: .sidebar is position:fixed, so if
-   its width and this offset ever drift apart the content slides under it. */
-.app-shell { --sidebar-w: 264px; }
+   its width and this offset ever drift apart the content slides under it.
+   Defined on :root, not .app-shell — as an inherited custom property it would
+   resolve to nothing (and silently collapse the offset to 0) for anything
+   rendered outside the shell. */
+:root { --sidebar-w: 264px; }
 
 .app-content {
   display: flex;
