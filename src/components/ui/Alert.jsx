@@ -17,7 +17,7 @@ export default function Alert({ variant = 'info', title, children, className = '
       role="alert"
     >
       <Icon name={ICONS[variant] || 'info'} size={20} className={styles.icon} />
-      <div>
+      <div className={styles.body}>
         {title && <div className={styles.title}>{title}</div>}
         {children && <div>{children}</div>}
       </div>

@@ -17,6 +17,15 @@
   .icon { flex-shrink: 0; margin-top: 1px; }
   .title { font-weight: 700; }
 
+  /* The text column. Without min-width:0 a flex item refuses to shrink below
+     its longest unbreakable token, and the settings page puts raw values in
+     here — the profile-password hint, a gs:// bucket path — which then push
+     the alert wider than the page. `anywhere` breaks those tokens instead. */
+  .body {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   .info { background: var(--info-50); color: #1e40af; border-color: #bfdbfe; }
   .success { background: var(--success-50); color: #065f46; border-color: #a7f3d0; }
   .warning { background: var(--warning-50); color: #92400e; border-color: #fde68a; }

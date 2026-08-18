@@ -107,11 +107,22 @@ code {
 
 /* ------------------------------ Layout --------------------------------- */
 .app-shell { min-height: 100vh; }
+
+/* One source of truth for the rail width: .sidebar is position:fixed, so if
+   its width and this offset ever drift apart the content slides under it. */
+.app-shell { --sidebar-w: 264px; }
+
 .app-content {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
-  margin-left: 264px;
+  margin-left: var(--sidebar-w);
+  /* A child wide enough to scroll the page horizontally would drag the
+     content out from under its offset and behind the fixed sidebar. Keep any
+     overflow inside its own scroller (.table-wrap et al) instead. `clip`
+     rather than `hidden` so sticky positioning still works. */
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .container {
@@ -2155,7 +2166,7 @@ code {
   z-index: 60;
   inset: 0 auto 0 0;
   display: flex;
-  width: 264px;
+  width: var(--sidebar-w, 264px);
   flex-direction: column;
   color: #dbe3f3;
   border-right: 1px solid rgba(255,255,255,.08);
