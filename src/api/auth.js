@@ -14,8 +14,14 @@ export const authApi = {
   /** Register a new evaluator account (pending admin approval). */
   registerEvaluator: (payload) => api.post('/auth/register/evaluator', payload),
 
-  /** Log in; backend sets an HttpOnly session cookie on success. */
+  /** Log in; backend sets an HttpOnly session cookie and returns csrf_token. */
   login: (payload) => api.post('/auth/login', payload),
+
+  /**
+   * CSRF token for cross-origin clients (Vercel → Cloud Run).
+   * document.cookie cannot read the API-domain csrf_token cookie.
+   */
+  csrf: (options) => api.get('/auth/csrf', options),
 
   /** Clear the session cookie. */
   logout: () => api.post('/auth/logout'),

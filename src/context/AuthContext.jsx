@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 import { authApi } from '../api/auth'
-import { ApiError } from '../api/client'
+import { ApiError, clearCsrfToken } from '../api/client'
 import { clearQueryCache } from '../lib/queryCache'
 import { prefetchForRole } from '../lib/prefetch'
 
@@ -19,11 +19,17 @@ export function AuthProvider({ children }) {
   const refresh = useCallback(async () => {
     try {
       const me = await authApi.me()
+      try {
+        await authApi.csrf()
+      } catch {
+        // Session is valid; CSRF bootstrap is best-effort (login JSON still works).
+      }
       setUser(me)
       return me
     } catch (err) {
       // 401/403 simply means "not logged in".
       if (!(err instanceof ApiError)) throw err
+      clearCsrfToken()
       setUser(null)
       return null
     }
@@ -57,6 +63,7 @@ export function AuthProvider({ children }) {
     try {
       await authApi.logout()
     } finally {
+      clearCsrfToken()
       clearQueryCache()
       setUser(null)
     }
