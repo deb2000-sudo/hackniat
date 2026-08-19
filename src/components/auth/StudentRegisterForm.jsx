@@ -242,38 +242,64 @@ export default function StudentRegisterForm() {
     }
   }
 
-  const ensureSession = async () => {
+  const bindSession = async ({ email, mobile }) => {
+    const payload = {}
+    if (sessionId) payload.session_id = sessionId
+    if (email) payload.email = email
+    if (mobile) payload.mobile_number = mobile
+    const { session_id: nextId } = await authApi.registerStart(payload)
+    setSessionId(nextId)
+    if (email) setSessionEmail(email)
+    if (mobile) setSessionPhone(mobile)
+    return nextId
+  }
+
+  const ensureEmailSession = async () => {
     const email = form.email.trim().toLowerCase()
     if (!isEmail(email)) {
       setErrors((prev) => ({ ...prev, email: 'Enter a valid email' }))
-      throw new Error('Enter a valid email first — one session covers both email and mobile.')
+      throw new Error('Enter a valid email to receive a verification code.')
     }
-    if (!phoneE164.startsWith('+') || phoneE164.length < 10) {
-      setErrors((prev) => ({ ...prev, mobile_national: 'Enter a valid mobile number' }))
-      throw new Error('Add your mobile number first — one session covers both email and mobile.')
-    }
-    if (sessionId && sessionEmail === email && sessionPhone === phoneE164) {
+    if (sessionId && sessionEmail === email) {
       return sessionId
     }
-    if (sessionId && (sessionEmail !== email || sessionPhone !== phoneE164)) {
+    if (sessionId && sessionEmail && sessionEmail !== email) {
       setEmailState(IDLE)
-      setPhoneState(IDLE)
+      setEmailCode('')
     }
-    const { session_id: nextId } = await authApi.registerStart({
-      email,
-      mobile_number: phoneE164,
-    })
-    setSessionId(nextId)
-    setSessionEmail(email)
-    setSessionPhone(phoneE164)
-    return nextId
+    const mobile = isE164(phoneE164) ? phoneE164 : undefined
+    return bindSession({ email, mobile })
+  }
+
+  const ensurePhoneSession = async () => {
+    if (!isE164(phoneE164)) {
+      setErrors((prev) => ({ ...prev, mobile_national: 'Enter a valid mobile number' }))
+      throw new Error('Enter a valid mobile number to receive an SMS code.')
+    }
+    if (sessionId && sessionPhone === phoneE164) {
+      return sessionId
+    }
+    if (sessionId && sessionPhone && sessionPhone !== phoneE164) {
+      setPhoneState(IDLE)
+      setPhoneCode('')
+    }
+    const email = isEmail(form.email) ? form.email.trim().toLowerCase() : undefined
+    return bindSession({ email, mobile: phoneE164 })
+  }
+
+  const ensureFullSession = async () => {
+    const email = form.email.trim().toLowerCase()
+    if (!isEmail(email) || !isE164(phoneE164)) {
+      throw new Error('Enter a valid email and mobile number before creating your account.')
+    }
+    return bindSession({ email, mobile: phoneE164 })
   }
 
   const sendEmailOtp = async () => {
     setEmailError('')
     setEmailState(SENDING)
     try {
-      const id = await ensureSession()
+      const id = await ensureEmailSession()
       await authApi.sendEmailOtp({ session_id: id, email: form.email.trim().toLowerCase() })
       setEmailState(AWAITING)
       setEmailCooldown(60)
@@ -340,7 +366,7 @@ export default function StudentRegisterForm() {
     setPhoneError('')
     setPhoneState(SENDING)
     try {
-      await ensureSession()
+      await ensurePhoneSession()
       const auth = getFirebaseAuth()
       const verifier = await prepareRecaptcha()
       confirmationRef.current = await signInWithPhoneNumber(auth, phoneE164, verifier)
@@ -394,6 +420,7 @@ export default function StudentRegisterForm() {
     setLoading(true)
     setSubmitError('')
     try {
+      await ensureFullSession()
       const data = await authApi.registerComplete({
         session_id: sessionId,
         first_name: form.first_name.trim(),
@@ -425,8 +452,7 @@ export default function StudentRegisterForm() {
     <form className="stack-md" onSubmit={handleSubmit} noValidate>
       {submitError && <Alert variant="danger">{submitError}</Alert>}
 
-      {/* Mobile first, then email: one verification session covers the pair,
-          and the mobile is what Firebase needs before anything can be sent. */}
+      {/* Email and mobile verify independently; both required before submit. */}
       <OtpRow
         label="Mobile"
         state={phoneState}
@@ -484,7 +510,7 @@ export default function StudentRegisterForm() {
         code={emailCode}
         error={emailError}
         cooldown={emailCooldown}
-        canStart={isEmail(form.email) && isE164(phoneE164)}
+        canStart={isEmail(form.email)}
         onCodeChange={setEmailCode}
         sentTo={form.email.trim().toLowerCase()}
         onVerify={sendEmailOtp}
