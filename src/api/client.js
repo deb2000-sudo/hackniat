@@ -102,6 +102,10 @@ export class ApiError extends Error {
     this.name = 'ApiError'
     this.status = status
     this.data = data
+    this.code =
+      data?.detail && typeof data.detail === 'object' && !Array.isArray(data.detail)
+        ? data.detail.code
+        : undefined
   }
 }
 
@@ -111,6 +115,9 @@ function extractMessage(data, fallback) {
   if (typeof data === 'string') return data
   const { detail, message } = data
   if (typeof detail === 'string') return detail
+  if (detail && typeof detail === 'object' && !Array.isArray(detail) && typeof detail.message === 'string') {
+    return detail.message
+  }
   if (Array.isArray(detail)) {
     // FastAPI validation errors: [{ loc, msg, type }]
     return detail

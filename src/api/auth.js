@@ -1,15 +1,11 @@
 import { api } from './client'
 
 export const authApi = {
-  /** Register a new student account. */
-  registerStudent: (payload) =>
-    api.post('/auth/register/student', {
-      ...payload,
-      team_member_3_name: payload.team_member_3_name.trim() || null,
-      team_member_3_email: payload.team_member_3_email.trim() || null,
-      team_member_4_name: payload.team_member_4_name.trim() || null,
-      team_member_4_email: payload.team_member_4_email.trim() || null,
-    }),
+  registerStart: (payload) => api.post('/auth/register/start', payload),
+  sendEmailOtp: (payload) => api.post('/auth/email/send-otp', payload),
+  verifyEmailOtp: (payload) => api.post('/auth/email/verify-otp', payload),
+  verifyPhoneToken: (payload) => api.post('/auth/verify-phone-token', payload),
+  registerComplete: (payload) => api.post('/auth/register/complete', payload),
 
   /** Register a new evaluator account (pending admin approval). */
   registerEvaluator: (payload) => api.post('/auth/register/evaluator', payload),
