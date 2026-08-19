@@ -47,13 +47,24 @@ export const hackathonsApi = {
   enrollSolo: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/enroll/solo`, undefined, options),
 
-  /** Leader creates the team and receives the first join code. */
-  createTeam: (hackathonId, roundIndex, options) =>
-    api.post(`${roundPath(hackathonId, roundIndex)}/teams/create`, undefined, options),
+  /**
+   * Leader creates the team and receives the first join code.
+   * `teamName` is required: 1–100 characters after trimming.
+   */
+  createTeam: (hackathonId, roundIndex, teamName, options) =>
+    api.post(
+      `${roundPath(hackathonId, roundIndex)}/teams/create`,
+      { team_name: String(teamName || '').trim() },
+      options,
+    ),
 
   /** Member joins with a 6-digit code. */
   joinTeam: (hackathonId, roundIndex, code, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/teams/join`, { code }, options),
+
+  /** Admin: publish a round so students can see and enroll in it. */
+  publishRound: (hackathonId, roundIndex, options) =>
+    api.post(`${roundPath(hackathonId, roundIndex)}/publish`, undefined, options),
 
   /** Leader refreshes the join code; the previous one is invalidated. */
   refreshJoinCode: (hackathonId, roundIndex, options) =>

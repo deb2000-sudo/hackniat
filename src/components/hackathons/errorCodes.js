@@ -19,6 +19,9 @@ const MESSAGES = {
   TEAM_FULL: 'This team is full.',
   LEADER_ONLY: 'Only your team leader can submit for this hackathon.',
   NOT_ENROLLED: 'Enroll in this hackathon before submitting.',
+  ROUND_ENDED: 'This round has already ended, so it can no longer be published.',
+  ALREADY_PUBLISHED: 'This round is already published.',
+  TEAM_NAME_REQUIRED: 'Enter a team name.',
 }
 
 /** Human-readable text for a participation failure. */

@@ -5,9 +5,11 @@ import Alert from '../ui/Alert'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import Spinner, { LoadingBlock } from '../ui/Spinner'
+import Input from '../ui/Input'
 import OtpInput from '../auth/OtpInput'
 import JoinCodePanel from './JoinCodePanel'
 import TeamRoster from './TeamRoster'
+import { formatDate } from '../../utils/format'
 import { participationErrorMessage, shouldRefetchParticipation } from './errorCodes'
 
 /**
@@ -34,6 +36,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, onStat
   const [notice, setNotice] = useState('')
   const [choice, setChoice] = useState('')
   const [joinCode, setJoinCode] = useState('')
+  const [teamName, setTeamName] = useState('')
   const [issuedCode, setIssuedCode] = useState(null)
 
   useEffect(() => {
@@ -140,26 +143,50 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, onStat
       )}
 
       {/* --------------------------- Create a team -------------------------- */}
+      {/* The name is collected before any join code exists — the backend needs
+          it on create, and it is what members and evaluators see. */}
       {!enrolled && choice === 'leader' && (
         <div className="stack-sm">
+          <p className="text-[15px] font-medium text-ink">Create your team</p>
+          <Input
+            label="Team name"
+            required
+            maxLength={100}
+            autoFocus
+            value={teamName}
+            onChange={(event) => setTeamName(event.target.value)}
+            hint="Visible to your members and to evaluators."
+            placeholder="Alpha Squad"
+          />
           <p className="text-sm text-muted">
-            Create the team, then share the six-digit code with your teammates. Codes last five
-            minutes and you can generate a new one at any time.
+            After this you get a six-digit join code to share. Codes last five minutes and you can
+            generate a new one at any time.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               variant="accent"
               loading={busy === 'create'}
+              disabled={!teamName.trim()}
               onClick={async () => {
-                const result = await run('create', () => hackathonsApi.createTeam(hackathonId, roundIndex))
+                const result = await run('create', () =>
+                  hackathonsApi.createTeam(hackathonId, roundIndex, teamName),
+                )
                 if (result?.join_code) setIssuedCode(result.join_code)
               }}
             >
               Create team
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setChoice('')}>
-              Back
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setChoice('')
+                setTeamName('')
+                setActionError('')
+              }}
+            >
+              Cancel
             </Button>
           </div>
         </div>
@@ -204,6 +231,17 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, onStat
       {/* ------------------------------ Enrolled ---------------------------- */}
       {enrolled && team && (
         <div className="stack-md">
+          {team.team_name && (
+            <div>
+              <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">
+                Team
+              </span>
+              <h3 className="mt-1 text-[18px] font-semibold tracking-[-0.015em] text-ink">
+                {team.team_name}
+              </h3>
+            </div>
+          )}
+
           <TeamRoster team={team} />
 
           {role === 'leader' && !team.is_full && (
@@ -228,6 +266,22 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, onStat
             <Alert variant="info">Only your team leader can submit for this hackathon.</Alert>
           )}
         </div>
+      )}
+
+      {enrolled && pendingAction === 'complete_team' && (
+        <Alert variant="warning" title="Team not complete">
+          {data.block_reason ||
+            `Add ${Math.max(0, Number(data.max_team_size || 0) - Number(team?.member_count || 0))} more teammate(s) before you can submit. Share the join code below.`}
+        </Alert>
+      )}
+
+      {enrolled && pendingAction === 'round_not_open' && (
+        <Alert variant="info" title="Round not open yet">
+          {data.block_reason ||
+            (data.round_start_date
+              ? `Opens on ${formatDate(data.round_start_date)} (IST). Your team is set — come back then to submit.`
+              : 'Your team is set. You can submit once this round opens.')}
+        </Alert>
       )}
 
       {enrolled && !team && isSolo && (

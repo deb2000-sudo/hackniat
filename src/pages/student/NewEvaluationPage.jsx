@@ -389,6 +389,10 @@ export default function NewEvaluationPage() {
       setError('Complete the participation step for this hackathon before continuing.')
       return
     }
+    if (participation && participation.can_continue_to_demo === false) {
+      setError(participation.block_reason || 'You cannot submit for this round yet.')
+      return
+    }
     const validation = validateRequirement(activeRequirement, answers)
     setAnswerErrors(validation)
     if (Object.keys(validation).length) {

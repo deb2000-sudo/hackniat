@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Alert from '../ui/Alert'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import { formatDate } from '../../utils/format'
 import { BADGE, MONO } from '../drop/theme'
 import ParticipationPanel from './ParticipationPanel'
+import {
+  canParticipateInRound,
+  roundStatusBadge,
+  roundStatusKeyClosed,
+  roundTimingText,
+} from './roundStatus'
 
 /**
  * One timeline round for a student: title, dates, the round's own settings as
@@ -17,12 +24,19 @@ import ParticipationPanel from './ParticipationPanel'
 export default function RoundParticipation({ hackathon, round, roundIndex }) {
   const navigate = useNavigate()
   const [participation, setParticipation] = useState(null)
+  const [blockNotice, setBlockNotice] = useState('')
 
   const teamLabel =
     participation?.team_mode_label ||
     (Number(round.max_team_size || 1) === 1 ? 'Solo' : `${round.max_team_size} Members`)
   const videoRequired =
     participation?.working_demo_video_required ?? round.working_demo_video_required !== false
+  const status = roundStatusBadge(round)
+  // Team formation is allowed before a round opens; submitting is not.
+  const participationOpen = canParticipateInRound(round)
+  const canContinue = participation
+    ? participation.can_continue_to_demo ?? participation.can_submit
+    : false
 
   return (
     <article className="stack-md rounded-drop border border-hairline bg-surface p-5">
@@ -42,9 +56,11 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
               {formatDate(round.start_date)} – {formatDate(round.end_date)}
             </p>
           )}
+          <p className="mt-1 text-[13px] font-medium text-ink">{roundTimingText(round)}</p>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
+          <span className={`${BADGE} ${status.tone}`}>{status.label}</span>
           <span className={`${BADGE} border-hairline bg-raised text-ink`}>{teamLabel}</span>
           {videoRequired && (
             <span className={`${BADGE} border-volt-edge bg-volt-tint text-volt-ink`}>
@@ -56,25 +72,48 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
 
       {round.description && <p className="text-[13.5px] text-muted">{round.description}</p>}
 
-      <ParticipationPanel
-        hackathonId={hackathon.id}
-        roundIndex={roundIndex}
-        onState={setParticipation}
-      />
+      {participationOpen ? (
+        <ParticipationPanel
+          hackathonId={hackathon.id}
+          roundIndex={roundIndex}
+          onState={(next) => {
+            setParticipation(next)
+            setBlockNotice('')
+          }}
+        />
+      ) : (
+        <p className="text-sm text-muted">
+          {roundStatusKeyClosed(round)
+            ? 'This round is closed. Enrollment and submissions are no longer accepted.'
+            : 'This round is not open for participation yet.'}
+        </p>
+      )}
 
-      {participation?.can_submit && (
-        <Button
-          type="button"
-          variant="accent"
-          leftIcon={<Icon name="upload" size={17} />}
-          onClick={() =>
-            navigate('/student/submission', {
-              state: { hackathonId: hackathon.id, roundIndex },
-            })
-          }
-        >
-          Submit for {round.title}
-        </Button>
+      {/* Submitting needs can_continue_to_demo — a full team AND an open
+          round. Clicking while blocked surfaces block_reason instead of the
+          button quietly not being there. Members never get the action at all. */}
+      {participation?.enrolled && participation.role !== 'member' && (
+        <div className="stack-sm">
+          <Button
+            type="button"
+            variant={canContinue ? 'accent' : 'secondary'}
+            leftIcon={<Icon name="upload" size={17} />}
+            onClick={() => {
+              if (!canContinue) {
+                setBlockNotice(
+                  participation.block_reason || 'You cannot submit for this round yet.',
+                )
+                return
+              }
+              navigate('/student/submission', {
+                state: { hackathonId: hackathon.id, roundIndex },
+              })
+            }}
+          >
+            Continue to demo
+          </Button>
+          {blockNotice && <Alert variant="warning">{blockNotice}</Alert>}
+        </div>
       )}
     </article>
   )

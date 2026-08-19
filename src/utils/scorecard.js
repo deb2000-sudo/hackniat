@@ -52,8 +52,23 @@ const FIELD_GROUPS = {
     color: '#059669',
   },
   mvp: {
-    aliases: ['mvp_link', 'mvp_url', 'mvp'],
-    pattern: /(^|_)mvp(_|$)/,
+    // The deployed/hosted build of the project. Requirements name this either
+    // after the MVP or after the deployment — project_deployed_link is the
+    // current standard requirement's key — so both vocabularies map here.
+    aliases: [
+      'mvp_link',
+      'mvp_url',
+      'mvp',
+      'project_deployed_link',
+      'deployed_link',
+      'deployment_link',
+      'deployed_url',
+      'live_link',
+      'live_url',
+      'hosted_link',
+      'hosted_url',
+    ],
+    pattern: /(^|_)(mvp|deployed|deployment|hosted|live)(_|$)/,
     fallback: 'mvp_link',
     label: 'MVP Features',
     color: '#D97706',

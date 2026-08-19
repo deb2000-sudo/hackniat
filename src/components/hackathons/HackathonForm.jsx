@@ -7,6 +7,10 @@ import Button from '../ui/Button'
 import Card, { CardBody, CardHeader } from '../ui/Card'
 import Icon from '../ui/Icon'
 import Input, { Select, Textarea } from '../ui/Input'
+import { hackathonsApi } from '../../api/hackathons'
+import { participationErrorMessage } from './errorCodes'
+import { roundStatusBadge } from './roundStatus'
+import { BADGE } from '../drop/theme'
 
 const EMPTY_PRIZES = {
   winner: '',
@@ -57,6 +61,8 @@ function emptyRound() {
     max_team_size: '1',
     working_demo_video_required: true,
     auto_ai_evaluation: false,
+    published: false,
+    round_status: '',
   }
 }
 
@@ -90,6 +96,8 @@ function createInitialForm(initialValue) {
         // Backward compatibility: rounds saved before per-round settings
         // existed inherit the hackathon-level flags.
         max_team_size: String(round.max_team_size || initialValue.max_team_size || 1),
+        published: round.published === true,
+        round_status: round.round_status || '',
         working_demo_video_required:
           round.working_demo_video_required ?? initialValue.working_demo_video_required !== false,
         auto_ai_evaluation: round.auto_ai_evaluation ?? initialValue.auto_ai_evaluation === true,
@@ -247,6 +255,35 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
       ...current,
       timeline: [...current.timeline, emptyRound()],
     }))
+  }
+
+  const [publishing, setPublishing] = useState('')
+  const [publishError, setPublishError] = useState('')
+
+  const publishRound = async (index) => {
+    if (!initialValue?.id) return
+    setPublishing(String(index))
+    setPublishError('')
+    try {
+      const updated = await hackathonsApi.publishRound(initialValue.id, index)
+      setForm((current) => ({
+        ...current,
+        timeline: current.timeline.map((round, roundIndex) =>
+          roundIndex === index
+            ? {
+                ...round,
+                published: true,
+                round_status: updated?.round_status || round.round_status || 'scheduled',
+              }
+            : round,
+        ),
+      }))
+    } catch (err) {
+      // ALREADY_PUBLISHED / ROUND_ENDED both land here.
+      setPublishError(participationErrorMessage(err, 'Could not publish this round.'))
+    } finally {
+      setPublishing('')
+    }
   }
 
   const updateRoundFlag = (index, key) => (event) => {
@@ -605,11 +642,31 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
           </Button>
         </CardHeader>
         <CardBody className="stack-md">
+          {publishError && <Alert variant="danger">{publishError}</Alert>}
           {form.timeline.length ? (
             form.timeline.map((round, index) => (
               <div className="timeline-round-editor" key={index}>
                 <div className="row-between">
-                  <strong>Round {index + 1}</strong>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <strong>Round {index + 1}</strong>
+                    {/* Publish state only exists for a saved hackathon. */}
+                    {editing && (
+                      <span className={`${BADGE} ${roundStatusBadge(round).tone}`}>
+                        {round.published ? roundStatusBadge(round).label : 'Draft'}
+                      </span>
+                    )}
+                    {editing && !round.published && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        loading={publishing === String(index)}
+                        onClick={() => publishRound(index)}
+                      >
+                        Publish
+                      </Button>
+                    )}
+                  </span>
                   {canRemoveRound(index) ? (
                     <button
                       type="button"
