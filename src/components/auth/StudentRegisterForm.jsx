@@ -85,6 +85,15 @@ function firebasePhoneMessage(err) {
   }
 }
 
+function MatchedHint() {
+  return (
+    <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600">
+      <Icon name="checkCircle" size={14} />
+      Password matched
+    </span>
+  )
+}
+
 function OtpRow({
   label,
   code,
@@ -190,6 +199,8 @@ export default function StudentRegisterForm() {
   const phoneE164 = toE164(form.country_code, form.mobile_national)
   const strength = passwordStrength(form.password)
   const fieldErrors = validateStudentForm(form)
+  const passwordsMatch =
+    Boolean(form.password) && Boolean(form.confirm_password) && form.password === form.confirm_password
   const canSubmit =
     emailState === VERIFIED &&
     phoneState === VERIFIED &&
@@ -414,67 +425,8 @@ export default function StudentRegisterForm() {
     <form className="stack-md" onSubmit={handleSubmit} noValidate>
       {submitError && <Alert variant="danger">{submitError}</Alert>}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Input
-          label="First name"
-          required
-          autoComplete="given-name"
-          value={form.first_name}
-          onChange={update('first_name')}
-          error={errors.first_name}
-        />
-        <Input
-          label="Last name"
-          required
-          autoComplete="family-name"
-          value={form.last_name}
-          onChange={update('last_name')}
-          error={errors.last_name}
-        />
-      </div>
-
-      <OtpRow
-        label="Email"
-        state={emailState}
-        code={emailCode}
-        error={emailError}
-        cooldown={emailCooldown}
-        canStart={isEmail(form.email) && isE164(phoneE164)}
-        onCodeChange={setEmailCode}
-        sentTo={form.email.trim().toLowerCase()}
-        onVerify={sendEmailOtp}
-        onConfirm={confirmEmailOtp}
-        onResend={sendEmailOtp}
-        extra={
-          <Input
-            label="Email"
-            type="email"
-            required
-            autoComplete="email"
-            value={form.email}
-            onChange={update('email')}
-            error={errors.email}
-            disabled={emailState === VERIFIED}
-            readOnly={emailState === VERIFIED}
-          />
-        }
-      />
-
-      <Input
-        label="University name"
-        required
-        value={form.university_name}
-        onChange={update('university_name')}
-        error={errors.university_name}
-      />
-      <Input
-        label="NIAT ID"
-        required
-        value={form.niat_id}
-        onChange={update('niat_id')}
-        error={errors.niat_id}
-      />
-
+      {/* Mobile first, then email: one verification session covers the pair,
+          and the mobile is what Firebase needs before anything can be sent. */}
       <OtpRow
         label="Mobile"
         state={phoneState}
@@ -526,6 +478,67 @@ export default function StudentRegisterForm() {
       />
       <div id="recaptcha-container" />
 
+      <OtpRow
+        label="Email"
+        state={emailState}
+        code={emailCode}
+        error={emailError}
+        cooldown={emailCooldown}
+        canStart={isEmail(form.email) && isE164(phoneE164)}
+        onCodeChange={setEmailCode}
+        sentTo={form.email.trim().toLowerCase()}
+        onVerify={sendEmailOtp}
+        onConfirm={confirmEmailOtp}
+        onResend={sendEmailOtp}
+        extra={
+          <Input
+            label="Email"
+            type="email"
+            required
+            autoComplete="email"
+            value={form.email}
+            onChange={update('email')}
+            error={errors.email}
+            disabled={emailState === VERIFIED}
+            readOnly={emailState === VERIFIED}
+          />
+        }
+      />
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Input
+          label="First name"
+          required
+          autoComplete="given-name"
+          value={form.first_name}
+          onChange={update('first_name')}
+          error={errors.first_name}
+        />
+        <Input
+          label="Last name"
+          required
+          autoComplete="family-name"
+          value={form.last_name}
+          onChange={update('last_name')}
+          error={errors.last_name}
+        />
+      </div>
+
+      <Input
+        label="University name"
+        required
+        value={form.university_name}
+        onChange={update('university_name')}
+        error={errors.university_name}
+      />
+      <Input
+        label="NIAT ID"
+        required
+        value={form.niat_id}
+        onChange={update('niat_id')}
+        error={errors.niat_id}
+      />
+
       <PasswordInput
         label="Password"
         required
@@ -548,11 +561,7 @@ export default function StudentRegisterForm() {
         value={form.confirm_password}
         onChange={update('confirm_password')}
         error={errors.confirm_password}
-        hint={
-          form.confirm_password && form.password === form.confirm_password
-            ? 'Passwords match'
-            : undefined
-        }
+        hint={passwordsMatch ? <MatchedHint /> : undefined}
       />
 
       <Button type="submit" variant="accent" block loading={loading} disabled={!canSubmit}>

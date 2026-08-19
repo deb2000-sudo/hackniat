@@ -9,9 +9,6 @@ export default function RegisterPage() {
       <div className="stack-md register-page">
         <div>
           <h1>Create your account</h1>
-          <p className="text-muted">
-            Register as a learner. Team details are added later when you submit a project.
-          </p>
         </div>
         <StudentRegisterForm />
         <p className="text-sm text-center text-muted">
