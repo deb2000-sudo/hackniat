@@ -194,6 +194,8 @@ export const evaluationApi = {
 
     const baseBody = {
       hackathon_id: details.hackathon_id,
+      // 0-based timeline round. Legacy submissions without one are read as 0.
+      round_index: Number(details.round_index) || 0,
       theme_id: details.theme_id,
       problem_statement: details.problem_statement,
       solution_description: details.solution_description,

@@ -15,6 +15,11 @@ function toFormData(fields) {
   return formData
 }
 
+/** Round-scoped base path. `roundIndex` is 0-based. */
+function roundPath(hackathonId, roundIndex) {
+  return `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${Number(roundIndex) || 0}`
+}
+
 export const hackathonsApi = {
   list: (options) => api.get('/hackathons', options),
   get: (hackathonId, options) =>
@@ -29,4 +34,28 @@ export const hackathonsApi = {
     ),
   delete: (hackathonId, options) =>
     api.delete(`/hackathons/${encodeURIComponent(hackathonId)}`, options),
+
+  /* ---------------------- Participation / teams (per round) --------------- */
+  // Enrollment is scoped to a timeline round: a student can be solo in one
+  // round and a team member in another, so every call carries roundIndex.
+
+  /** Current enrollment state for this student in one round, plus UI hints. */
+  participation: (hackathonId, roundIndex, options) =>
+    api.get(`${roundPath(hackathonId, roundIndex)}/participation`, options),
+
+  /** Enroll solo. Solo rounds only (max_team_size === 1). */
+  enrollSolo: (hackathonId, roundIndex, options) =>
+    api.post(`${roundPath(hackathonId, roundIndex)}/enroll/solo`, undefined, options),
+
+  /** Leader creates the team and receives the first join code. */
+  createTeam: (hackathonId, roundIndex, options) =>
+    api.post(`${roundPath(hackathonId, roundIndex)}/teams/create`, undefined, options),
+
+  /** Member joins with a 6-digit code. */
+  joinTeam: (hackathonId, roundIndex, code, options) =>
+    api.post(`${roundPath(hackathonId, roundIndex)}/teams/join`, { code }, options),
+
+  /** Leader refreshes the join code; the previous one is invalidated. */
+  refreshJoinCode: (hackathonId, roundIndex, options) =>
+    api.post(`${roundPath(hackathonId, roundIndex)}/teams/join-code`, undefined, options),
 }

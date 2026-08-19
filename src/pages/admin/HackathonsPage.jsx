@@ -179,6 +179,12 @@ export default function HackathonsPage() {
                         <Icon name="chart" size={15} />
                         {hackathon.timeline?.length || 0} rounds
                       </span>
+                      {hackathon.team_mode_label && (
+                        <span className="flex items-center gap-1.5">
+                          <Icon name="users" size={15} />
+                          {hackathon.team_mode_label}
+                        </span>
+                      )}
                     </div>
                   </div>
 

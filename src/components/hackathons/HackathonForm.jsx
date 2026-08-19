@@ -39,6 +39,12 @@ const FORM_STEPS = [
   { label: 'Timeline', icon: 'clock' },
   { label: 'Banner', icon: 'image' },
 ]
+const TEAM_SIZE_OPTIONS = [
+  { value: '1', label: 'Solo' },
+  { value: '2', label: '2 Members' },
+  { value: '3', label: '3 Members' },
+  { value: '4', label: '4 Members' },
+]
 const REQUIRED_ROUNDS = 2
 
 function emptyRound() {
@@ -48,6 +54,9 @@ function emptyRound() {
     start_date: '',
     end_date: '',
     evaluation_requirement_id: '',
+    max_team_size: '1',
+    working_demo_video_required: true,
+    auto_ai_evaluation: false,
   }
 }
 
@@ -78,6 +87,12 @@ function createInitialForm(initialValue) {
         start_date: round.start_date || '',
         end_date: round.end_date || '',
         evaluation_requirement_id: round.evaluation_requirement_id || '',
+        // Backward compatibility: rounds saved before per-round settings
+        // existed inherit the hackathon-level flags.
+        max_team_size: String(round.max_team_size || initialValue.max_team_size || 1),
+        working_demo_video_required:
+          round.working_demo_video_required ?? initialValue.working_demo_video_required !== false,
+        auto_ai_evaluation: round.auto_ai_evaluation ?? initialValue.auto_ai_evaluation === true,
       })),
       initialValue.start_date || '',
       initialValue.end_date || '',
@@ -234,6 +249,16 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     }))
   }
 
+  const updateRoundFlag = (index, key) => (event) => {
+    const { checked } = event.target
+    setForm((current) => ({
+      ...current,
+      timeline: current.timeline.map((round, roundIndex) =>
+        roundIndex === index ? { ...round, [key]: checked } : round,
+      ),
+    }))
+  }
+
   const updateRound = (index, key) => (event) => {
     setForm((current) => ({
       ...current,
@@ -304,8 +329,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
       hackathon_url: form.hackathon_url.trim(),
       guidelines: form.guidelines.trim(),
       evaluator_guidelines: form.evaluator_guidelines.trim(),
-      working_demo_video_required: form.working_demo_video_required ? 'true' : 'false',
-      auto_ai_evaluation: form.auto_ai_evaluation ? 'true' : 'false',
+
       prizes: Object.fromEntries(
         Object.entries(form.prizes).map(([key, value]) => [key, value.trim()]),
       ),
@@ -315,6 +339,9 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         start_date: round.start_date || null,
         end_date: round.end_date || null,
         evaluation_requirement_id: round.evaluation_requirement_id || null,
+        max_team_size: Number(round.max_team_size || 1),
+        working_demo_video_required: round.working_demo_video_required !== false,
+        auto_ai_evaluation: round.auto_ai_evaluation === true,
       })),
     }
 
@@ -340,15 +367,6 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     }
     if (cleaned.hackathon_url !== initialForm.hackathon_url.trim()) {
       changes.hackathon_url = cleaned.hackathon_url
-    }
-    if (
-      Boolean(form.working_demo_video_required) !==
-      Boolean(initialForm.working_demo_video_required)
-    ) {
-      changes.working_demo_video_required = cleaned.working_demo_video_required
-    }
-    if (Boolean(form.auto_ai_evaluation) !== Boolean(initialForm.auto_ai_evaluation)) {
-      changes.auto_ai_evaluation = cleaned.auto_ai_evaluation
     }
     const normalizedInitialTimeline = initialForm.timeline.map((round) => ({
       title: round.title.trim(),
@@ -486,44 +504,6 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
             error={errors.evaluator_guidelines}
             style={{ minHeight: 180 }}
           />
-          <label className="hackathon-video-toggle">
-            <input
-              type="checkbox"
-              checked={form.working_demo_video_required}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  working_demo_video_required: event.target.checked,
-                }))
-              }
-            />
-            <span>
-              <strong>Working demo video required</strong>
-              <small>
-                When enabled, students must record or upload a demo. Turn off to allow
-                text-only submissions.
-              </small>
-            </span>
-          </label>
-          <label className="hackathon-video-toggle">
-            <input
-              type="checkbox"
-              checked={form.auto_ai_evaluation}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  auto_ai_evaluation: event.target.checked,
-                }))
-              }
-            />
-            <span>
-              <strong>Auto AI evaluation on assign</strong>
-              <small>
-                When enabled, AI analysis starts automatically after assignment. When off,
-                evaluators trigger AI Evaluation manually.
-              </small>
-            </span>
-          </label>
         </CardBody>
       </Card>
 
@@ -713,6 +693,51 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
                     </option>
                   ))}
                 </Select>
+
+                {/* Per-round participation and evaluation settings. These used
+                    to be hackathon-wide; each round now carries its own. */}
+                <Select
+                  label="Team size"
+                  value={round.max_team_size}
+                  onChange={updateRound(index, 'max_team_size')}
+                  hint="Solo lets each student submit alone. Larger sizes need a team leader who submits for the team; the count includes the leader."
+                >
+                  {TEAM_SIZE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+
+                <label className="hackathon-video-toggle">
+                  <input
+                    type="checkbox"
+                    checked={round.working_demo_video_required !== false}
+                    onChange={updateRoundFlag(index, 'working_demo_video_required')}
+                  />
+                  <span>
+                    <strong>Working demo video required</strong>
+                    <small>
+                      When enabled, students must record or upload a demo. Turn off to allow
+                      text-only submissions.
+                    </small>
+                  </span>
+                </label>
+
+                <label className="hackathon-video-toggle">
+                  <input
+                    type="checkbox"
+                    checked={round.auto_ai_evaluation === true}
+                    onChange={updateRoundFlag(index, 'auto_ai_evaluation')}
+                  />
+                  <span>
+                    <strong>Auto AI evaluation on assign</strong>
+                    <small>
+                      When enabled, AI analysis starts automatically after assignment. When off,
+                      evaluators trigger AI Evaluation manually.
+                    </small>
+                  </span>
+                </label>
               </div>
             ))
           ) : (

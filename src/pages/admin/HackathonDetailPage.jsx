@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { hackathonsApi } from '../../api/hackathons'
+import RoundParticipation from '../../components/hackathons/RoundParticipation'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
@@ -58,6 +59,7 @@ export default function HackathonDetailPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === ROLES.ADMIN
   const isEvaluator = user?.role === ROLES.EVALUATOR
+  const isStudent = user?.role === ROLES.STUDENT
   const { data: hackathon, loading, error } = useAsync(() => hackathonsApi.get(hackathonId))
   const { data: requirements } = useAsync(() => evaluationRequirementsApi.list())
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -219,6 +221,26 @@ export default function HackathonDetailPage() {
       </div>
 
       <div className="flex flex-col gap-5 md:gap-6">
+        {isStudent && !!hackathon.timeline?.length && (
+          <section className={PANEL}>
+            <SectionHeader
+              icon="clipboard"
+              title="Rounds"
+              description="Enroll and submit for each round separately."
+            />
+            <div className="stack-md p-4 sm:p-5">
+              {hackathon.timeline.map((round, index) => (
+                <RoundParticipation
+                  key={`${round.title}-${index}`}
+                  hackathon={hackathon}
+                  round={round}
+                  roundIndex={index}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className={PANEL}>
           <SectionHeader
             icon="gift"

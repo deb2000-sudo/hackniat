@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { hackathonsApi } from '../../api/hackathons'
+import ParticipationPanel from '../../components/hackathons/ParticipationPanel'
+import { participationErrorMessage } from '../../components/hackathons/errorCodes'
 import { useAsync } from '../../hooks/useAsync'
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateQueries } from '../../lib/queryCache'
@@ -155,7 +157,15 @@ function buildLegacyDetails(requirement, answers) {
   }
 }
 
-function isVideoRequired(hackathon) {
+function isVideoRequired(hackathon, roundIndex, participation) {
+  if (participation && typeof participation.working_demo_video_required === 'boolean') {
+    return participation.working_demo_video_required
+  }
+  const round = hackathon?.timeline?.[roundIndex]
+  if (round && typeof round.working_demo_video_required === 'boolean') {
+    return round.working_demo_video_required
+  }
+  // Legacy hackathons carry the flag at the top level only.
   return hackathon?.working_demo_video_required !== false
 }
 
@@ -256,6 +266,13 @@ export default function NewEvaluationPage() {
   )
 
   const [selectedHackathonId, setSelectedHackathonId] = useState('')
+  // Enrollment gate: the backend decides whether this student may submit for
+  // the selected hackathon (solo enrolled, or the team's leader).
+  const [canSubmitHackathon, setCanSubmitHackathon] = useState(false)
+  const [participation, setParticipation] = useState(null)
+  // Round the student launched from (RoundParticipation passes it in state).
+  const location = useLocation()
+  const [roundIndex, setRoundIndex] = useState(() => Number(location.state?.roundIndex) || 0)
   const [selectedThemeId, setSelectedThemeId] = useState('')
   const [selectedRequirementId, setSelectedRequirementId] = useState('')
   const [answers, setAnswers] = useState({})
@@ -298,7 +315,7 @@ export default function NewEvaluationPage() {
       null,
     [activeHackathon, selectedThemeId],
   )
-  const videoRequired = isVideoRequired(activeHackathon)
+  const videoRequired = isVideoRequired(activeHackathon, roundIndex, participation)
   const steps = useMemo(
     () =>
       videoRequired
@@ -366,6 +383,10 @@ export default function NewEvaluationPage() {
     }
     if (!activeTheme) {
       setError('Choose a released theme before continuing.')
+      return
+    }
+    if (!canSubmitHackathon) {
+      setError('Complete the participation step for this hackathon before continuing.')
       return
     }
     const validation = validateRequirement(activeRequirement, answers)
@@ -472,6 +493,7 @@ export default function NewEvaluationPage() {
       const submitted = await evaluationApi.createSubmission(file, {
         ...legacy,
         hackathon_id: activeHackathon.id,
+        round_index: roundIndex,
         theme_id: activeTheme.id,
         video_source: file ? videoSource : null,
         evaluation_requirement_id: activeRequirement.id,
@@ -483,7 +505,15 @@ export default function NewEvaluationPage() {
       invalidateQueries(queryKeys.submissionsMine)
       setSubmittedSession(submitted)
     } catch (submitError) {
-      setError(submitError.message || 'Your submission could not be recorded. Please try again.')
+      // NOT_ENROLLED / LEADER_ONLY come back here if enrollment lapsed between
+      // the gate and the POST; participationErrorMessage falls through to the
+      // generic message for everything else.
+      setError(
+        participationErrorMessage(
+          submitError,
+          'Your submission could not be recorded. Please try again.',
+        ),
+      )
     } finally {
       setPhase('idle')
       setUploadPercent(0)
@@ -604,6 +634,9 @@ export default function NewEvaluationPage() {
                   onChange={(event) => {
                     setSelectedHackathonId(event.target.value)
                     setSelectedThemeId('')
+                    setCanSubmitHackathon(false)
+                    setParticipation(null)
+                    setRoundIndex(0)
                     setError('')
                   }}
                   hint="Your submission will appear in this hackathon’s admin review queue."
@@ -615,7 +648,48 @@ export default function NewEvaluationPage() {
                   ))}
                 </Select>
 
-                {activeHackathon.themes?.length ? (
+                {/* Enrollment gate. onReady fires only when the backend says
+                    this student may submit (solo enrolled, or team leader). */}
+                {activeHackathon.timeline?.length > 1 && (
+                  <Select
+                    label="Round"
+                    required
+                    value={String(roundIndex)}
+                    onChange={(event) => {
+                      setRoundIndex(Number(event.target.value))
+                      setCanSubmitHackathon(false)
+                      setParticipation(null)
+                      setError('')
+                    }}
+                    hint="Each round is enrolled in and submitted to separately."
+                  >
+                    {activeHackathon.timeline.map((round, index) => (
+                      <option key={`${round.title}-${index}`} value={String(index)}>
+                        {`Round ${index + 1} · ${round.title}`}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+
+                <ParticipationPanel
+                  key={`${activeHackathon.id}:${roundIndex}`}
+                  hackathonId={activeHackathon.id}
+                  roundIndex={roundIndex}
+                  onState={(data) => {
+                    setParticipation(data)
+                    setCanSubmitHackathon(Boolean(data?.can_submit))
+                  }}
+                />
+
+                {!canSubmitHackathon && participation && (
+                  <p className="text-sm text-muted">
+                    {participation.role === 'member'
+                      ? 'Your team leader fills in and submits this round. You will see the result once it is published.'
+                      : 'Complete the participation step above to unlock the submission form.'}
+                  </p>
+                )}
+
+                {canSubmitHackathon && activeHackathon.themes?.length ? (
                   <Select
                     label="Theme"
                     required
@@ -632,13 +706,13 @@ export default function NewEvaluationPage() {
                       </option>
                     ))}
                   </Select>
-                ) : (
+                ) : canSubmitHackathon ? (
                   <Alert variant="warning" title="No themes released">
                     This hackathon is not accepting submissions until an administrator releases at least one theme.
                   </Alert>
-                )}
+                ) : null}
 
-                {(requirements?.length || 0) > 1 && (
+                {canSubmitHackathon && (requirements?.length || 0) > 1 && (
                   <Select
                     label="Evaluation requirement"
                     value={activeRequirement.id}
@@ -657,29 +731,33 @@ export default function NewEvaluationPage() {
                   </Select>
                 )}
 
-                <div className="submission-requirement-banner">
-                  <span><Icon name="clipboard" size={19} /></span>
-                  <div>
-                    <strong>{activeRequirement.name}</strong>
-                    <p>{activeRequirement.description || 'Complete the fields below.'}</p>
-                  </div>
-                  <small>{activeRequirement.fields?.length || 0} fields</small>
-                </div>
+                {canSubmitHackathon && (
+                  <>
+                    <div className="submission-requirement-banner">
+                      <span><Icon name="clipboard" size={19} /></span>
+                      <div>
+                        <strong>{activeRequirement.name}</strong>
+                        <p>{activeRequirement.description || 'Complete the fields below.'}</p>
+                      </div>
+                      <small>{activeRequirement.fields?.length || 0} fields</small>
+                    </div>
 
-                <div className="submission-requirement-fields">
-                  {(activeRequirement.fields || []).map((field) => (
-                    <RequirementField
-                      key={field.key}
-                      field={field}
-                      value={answers[field.key]}
-                      error={answerErrors[field.key]}
-                      disabled={busy || !!submittedSession}
-                      onChange={(value) => updateAnswer(field.key, value)}
-                    />
-                  ))}
-                </div>
+                    <div className="submission-requirement-fields">
+                      {(activeRequirement.fields || []).map((field) => (
+                        <RequirementField
+                          key={field.key}
+                          field={field}
+                          value={answers[field.key]}
+                          error={answerErrors[field.key]}
+                          disabled={busy || !!submittedSession}
+                          onChange={(value) => updateAnswer(field.key, value)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
 
-                {!videoRequired && (
+                {canSubmitHackathon && !videoRequired && (
                   <Alert variant="info" title="Video not required">
                     This hackathon accepts text-only submissions. You can continue straight to submit.
                   </Alert>
@@ -689,18 +767,20 @@ export default function NewEvaluationPage() {
           </CardBody>
         </Card>
 
-        <div className="submission-panel__actions">
-          <span>Required fields are marked with an asterisk.</span>
-          <Button
-            variant="accent"
-            size="lg"
-            disabled={!activeRequirement || !activeHackathon || !activeTheme || requirementsLoading || hackathonsLoading}
-            onClick={completeRequirements}
-            rightIcon={<Icon name="arrowRight" size={18} />}
-          >
-            {videoRequired ? 'Continue to demo' : 'Continue to submit'}
-          </Button>
-        </div>
+        {canSubmitHackathon && (
+          <div className="submission-panel__actions">
+            <span>Required fields are marked with an asterisk.</span>
+            <Button
+              variant="accent"
+              size="lg"
+              disabled={!activeRequirement || !activeHackathon || !activeTheme || requirementsLoading || hackathonsLoading}
+              onClick={completeRequirements}
+              rightIcon={<Icon name="arrowRight" size={18} />}
+            >
+              {videoRequired ? 'Continue to demo' : 'Continue to submit'}
+            </Button>
+          </div>
+        )}
       </section>
 
       <section className="submission-panel" hidden={currentStage !== 'demo'}>
