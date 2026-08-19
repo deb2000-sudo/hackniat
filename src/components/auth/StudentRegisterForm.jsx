@@ -181,6 +181,10 @@ export default function StudentRegisterForm() {
   const [loading, setLoading] = useState(false)
 
   const [sessionId, setSessionId] = useState('')
+  // Mirrors sessionId for the async send → confirm handoff. The confirm step
+  // runs in a later tick than the send that bound the session, so reading
+  // state there risks posting a stale (or empty) session_id.
+  const sessionIdRef = useRef('')
   const [sessionEmail, setSessionEmail] = useState('')
   const [sessionPhone, setSessionPhone] = useState('')
 
@@ -223,19 +227,19 @@ export default function StudentRegisterForm() {
     setForm((current) => ({ ...current, [key]: value }))
     setErrors((prev) => ({ ...prev, [key]: undefined }))
     setSubmitError('')
-    // The session is bound to the (email, mobile) pair, so editing either one
-    // invalidates it — and with it BOTH verifications, not just the edited
-    // channel. Resetting only one left the other showing a stale "Verified"
-    // badge against a session the backend had already discarded, so submit
-    // sailed through the client gate and came back NOT_VERIFIED.
-    const identifierKeys = ['email', 'mobile_national', 'country_code']
-    if (identifierKeys.includes(key) && (sessionId || emailState === VERIFIED || phoneState === VERIFIED)) {
-      setSessionId('')
-      setSessionEmail('')
-      setSessionPhone('')
+    // Editing an identifier drops only ITS OWN verification. Do not touch the
+    // session here: ensureSession() compares the live pair against
+    // sessionEmail/sessionPhone on the next send and resets both channels if
+    // the pair actually moved. Clearing sessionId on every keystroke instead
+    // wiped the id out from under an in-flight OTP — verify mobile, start
+    // typing while waiting for the SMS, and the confirm posted an empty
+    // session_id — and it silently dropped the other channel's badge.
+    if (key === 'email' && emailState === VERIFIED) {
       setEmailState(IDLE)
       setEmailCode('')
       setEmailError('')
+    }
+    if ((key === 'mobile_national' || key === 'country_code') && phoneState === VERIFIED) {
       setPhoneState(IDLE)
       setPhoneCode('')
       setPhoneError('')
@@ -248,6 +252,7 @@ export default function StudentRegisterForm() {
     if (email) payload.email = email
     if (mobile) payload.mobile_number = mobile
     const { session_id: nextId } = await authApi.registerStart(payload)
+    sessionIdRef.current = nextId
     setSessionId(nextId)
     if (email) setSessionEmail(email)
     if (mobile) setSessionPhone(mobile)
@@ -313,7 +318,7 @@ export default function StudentRegisterForm() {
     setEmailError('')
     setEmailState(VERIFYING)
     try {
-      await authApi.verifyEmailOtp({ session_id: sessionId, code: emailCode })
+      await authApi.verifyEmailOtp({ session_id: sessionIdRef.current || sessionId, code: emailCode })
       setEmailState(VERIFIED)
     } catch (err) {
       setEmailState(ERROR)
@@ -390,7 +395,7 @@ export default function StudentRegisterForm() {
       const credential = await confirmation.confirm(phoneCode)
       const firebaseIdToken = await credential.user.getIdToken()
       await authApi.verifyPhoneToken({
-        session_id: sessionId,
+        session_id: sessionIdRef.current || sessionId,
         firebase_id_token: firebaseIdToken,
         mobile_number: phoneE164,
       })
