@@ -10,7 +10,8 @@ import OtpInput from '../auth/OtpInput'
 import JoinCodePanel from './JoinCodePanel'
 import TeamRoster from './TeamRoster'
 import { formatDate } from '../../utils/format'
-import { participationErrorMessage, shouldRefetchParticipation } from './errorCodes'
+import { participationErrorCode, participationErrorMessage, shouldRefetchParticipation } from './errorCodes'
+import { isRoundAwaitingRelease, roundOpensText } from './roundStatus'
 
 /**
  * Per-hackathon enrollment gate.
@@ -24,12 +25,17 @@ import { participationErrorMessage, shouldRefetchParticipation } from './errorCo
  * `pending_action` from the backend is the source of truth for what to show —
  * the client never infers enrollment state from its own last action.
  */
-export default function ParticipationPanel({ hackathonId, roundIndex = 0, onState }) {
+export default function ParticipationPanel({ hackathonId, roundIndex = 0, round, onState }) {
+  // An unreleased round rejects /participation by design, so don't ask: the
+  // request can only come back as an error the student can do nothing about.
+  const awaitingRelease = isRoundAwaitingRelease(round)
   const fetcher = useCallback(
     (options) => hackathonsApi.participation(hackathonId, roundIndex, options),
     [hackathonId, roundIndex],
   )
-  const { data, loading, error, reload } = useAsync(fetcher, { enabled: Boolean(hackathonId) })
+  const { data, loading, error, reload } = useAsync(fetcher, {
+    enabled: Boolean(hackathonId) && !awaitingRelease,
+  })
 
   const [busy, setBusy] = useState('')
   const [actionError, setActionError] = useState('')
@@ -63,6 +69,22 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, onStat
     } finally {
       setBusy('')
     }
+  }
+
+  // Not an error state: the round simply has not started yet. Tell the student
+  // when it opens instead of reporting a failure they cannot act on. The second
+  // arm covers a round whose local copy looks live but which the backend still
+  // considers unreleased.
+  const notReleased =
+    awaitingRelease ||
+    (error && !data && participationErrorCode(error) === 'ROUND_NOT_PUBLISHED')
+
+  if (notReleased) {
+    return (
+      <Alert variant="info" title={`Round ${Number(roundIndex) + 1} is not open yet`}>
+        {roundOpensText(round)}
+      </Alert>
+    )
   }
 
   if (loading && !data) return <LoadingBlock label="Checking your enrollment…" />

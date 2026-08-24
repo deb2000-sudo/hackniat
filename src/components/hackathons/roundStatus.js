@@ -58,3 +58,30 @@ export function canParticipateInRound(round) {
 export function roundStatusKeyClosed(round) {
   return roundStatusKey(round) === 'closed'
 }
+
+/**
+ * A round the admin has not released yet.
+ *
+ * Checked against `published` explicitly rather than through roundStatusKey:
+ * an unpublished round can still carry a future start_date, which inferStatus
+ * reads as "scheduled" — so status alone would call it open for business.
+ */
+export function isRoundAwaitingRelease(round) {
+  if (!round) return false
+  if (round.published === false) return true
+  return roundStatusKey(round) === 'draft'
+}
+
+/**
+ * When a round students cannot enter yet will open. The start date lives on the
+ * round even while it is unpublished, so answer "when" rather than just "no".
+ */
+export function roundOpensText(round) {
+  if (round?.start_date) return `Goes live on ${formatDate(round.start_date)} (IST).`
+  return 'The opening date has not been announced yet.'
+}
+
+/** "Round 3", or the round's own title when it has one. */
+export function roundDisplayName(round, roundIndex = 0) {
+  return round?.title?.trim() || `Round ${Number(roundIndex) + 1}`
+}

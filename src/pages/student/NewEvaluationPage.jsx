@@ -573,10 +573,10 @@ export default function NewEvaluationPage() {
       <div className="submission-wizard__intro">
         <div>
           <div className={EYEBROW}>Project submission</div>
-          <h1>{videoRequired ? 'Submit your working demo' : 'Submit your project'}</h1>
+          <h1>{videoRequired ? 'Submit your work for evaluation' : 'Submit your project'}</h1>
           <p>
             {videoRequired
-              ? 'Complete every stage to send your project for AI evaluation.'
+              ? 'Complete every stage to send your project for evaluation.'
               : 'This hackathon does not require a working demo video. Complete the requirements and submit.'}
           </p>
         </div>
@@ -679,6 +679,7 @@ export default function NewEvaluationPage() {
                   key={`${activeHackathon.id}:${roundIndex}`}
                   hackathonId={activeHackathon.id}
                   roundIndex={roundIndex}
+                  round={activeHackathon.timeline?.[roundIndex]}
                   onState={(data) => {
                     setParticipation(data)
                     setCanSubmitHackathon(Boolean(data?.can_submit))

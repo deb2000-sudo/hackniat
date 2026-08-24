@@ -8,6 +8,7 @@ import { BADGE, MONO } from '../drop/theme'
 import ParticipationPanel from './ParticipationPanel'
 import {
   canParticipateInRound,
+  roundOpensText,
   roundStatusBadge,
   roundStatusKeyClosed,
   roundTimingText,
@@ -76,6 +77,7 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
         <ParticipationPanel
           hackathonId={hackathon.id}
           roundIndex={roundIndex}
+          round={round}
           onState={(next) => {
             setParticipation(next)
             setBlockNotice('')
@@ -85,7 +87,7 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
         <p className="text-sm text-muted">
           {roundStatusKeyClosed(round)
             ? 'This round is closed. Enrollment and submissions are no longer accepted.'
-            : 'This round is not open for participation yet.'}
+            : `This round is not open for participation yet. ${roundOpensText(round)}`}
         </p>
       )}
 

@@ -20,6 +20,7 @@ const MESSAGES = {
   LEADER_ONLY: 'Only your team leader can submit for this hackathon.',
   NOT_ENROLLED: 'Enroll in this hackathon before submitting.',
   ROUND_ENDED: 'This round has already ended, so it can no longer be published.',
+  ROUND_NOT_PUBLISHED: 'This round has not been released yet.',
   ALREADY_PUBLISHED: 'This round is already published.',
   TEAM_NAME_REQUIRED: 'Enter a team name.',
 }
