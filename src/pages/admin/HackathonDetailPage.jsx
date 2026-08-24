@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { hackathonsApi } from '../../api/hackathons'
 import RoundParticipation from '../../components/hackathons/RoundParticipation'
+import { participationErrorMessage } from '../../components/hackathons/errorCodes'
+import { roundStatusBadge } from '../../components/hackathons/roundStatus'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
@@ -60,11 +62,36 @@ export default function HackathonDetailPage() {
   const isAdmin = user?.role === ROLES.ADMIN
   const isEvaluator = user?.role === ROLES.EVALUATOR
   const isStudent = user?.role === ROLES.STUDENT
-  const { data: hackathon, loading, error } = useAsync(() => hackathonsApi.get(hackathonId))
+  const {
+    data: hackathon,
+    loading,
+    error,
+    reload: reloadHackathon,
+  } = useAsync(() => hackathonsApi.get(hackathonId))
   const { data: requirements } = useAsync(() => evaluationRequirementsApi.list())
+  const [publishingRound, setPublishingRound] = useState('')
+  const [publishError, setPublishError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+
+  /**
+   * Release a round to students. Publishing is per round, and this page is
+   * where an admin actually looks at the timeline — requiring a trip through
+   * the edit wizard to find the same button made it effectively undiscoverable.
+   */
+  const publishRound = async (index) => {
+    setPublishingRound(String(index))
+    setPublishError('')
+    try {
+      await hackathonsApi.publishRound(hackathonId, index)
+      await reloadHackathon({ force: true })
+    } catch (err) {
+      setPublishError(participationErrorMessage(err, 'Could not publish this round.'))
+    } finally {
+      setPublishingRound('')
+    }
+  }
 
   const remove = async () => {
     setDeleting(true)
@@ -275,6 +302,11 @@ export default function HackathonDetailPage() {
             description="Key rounds and milestones"
           />
           <div className="p-4 sm:p-5">
+            {isAdmin && publishError && (
+              <div className="mb-4">
+                <Alert variant="danger">{publishError}</Alert>
+              </div>
+            )}
             {hackathon.timeline?.length ? (
               <ol className="space-y-0">
                 {hackathon.timeline.map((round, index) => (
@@ -298,13 +330,33 @@ export default function HackathonDetailPage() {
                         <h3 className="text-[16px] font-semibold tracking-[-0.015em] text-ink">
                           {round.title}
                         </h3>
-                        {(round.start_date || round.end_date) && (
-                          <span className={`${BADGE} ${BADGE_CLOSED}`}>
-                            <Icon name="calendar" size={13} />
-                            {round.start_date ? formatDate(round.start_date) : 'Date TBD'}
-                            {round.end_date ? ` – ${formatDate(round.end_date)}` : ''}
-                          </span>
-                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* Draft until released, then whatever the schedule
+                              says — matching the badge in the edit wizard. */}
+                          {isAdmin && (
+                            <span className={`${BADGE} ${roundStatusBadge(round).tone}`}>
+                              {round.published ? roundStatusBadge(round).label : 'Draft'}
+                            </span>
+                          )}
+                          {(round.start_date || round.end_date) && (
+                            <span className={`${BADGE} ${BADGE_CLOSED}`}>
+                              <Icon name="calendar" size={13} />
+                              {round.start_date ? formatDate(round.start_date) : 'Date TBD'}
+                              {round.end_date ? ` – ${formatDate(round.end_date)}` : ''}
+                            </span>
+                          )}
+                          {isAdmin && !round.published && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              loading={publishingRound === String(index)}
+                              onClick={() => publishRound(index)}
+                            >
+                              Publish round
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       {round.description ? (
                         <p className="mt-2 text-[14px] leading-relaxed text-muted">

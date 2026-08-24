@@ -1,4 +1,4 @@
-import { formatDate } from '../../utils/format'
+import { APP_TIMEZONE, formatDate } from '../../utils/format'
 
 /**
  * Presentation for a round's lifecycle.
@@ -20,16 +20,42 @@ const TONES = {
   closed: 'border-hairline bg-raised text-muted',
 }
 
-/** Derive a status key when the backend did not send one. */
+/**
+ * Today in the app's timezone as YYYY-MM-DD.
+ *
+ * Round dates are plain calendar dates entered in IST, so they must be compared
+ * against an IST "today". toISOString() gives UTC, which is the previous day for
+ * the first 5.5 hours of every IST day — long enough for a round to look
+ * unopened on the morning it starts.
+ */
+function todayInAppTimezone() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+/** Status implied purely by the round's own dates. */
 function inferStatus(round) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayInAppTimezone()
   if (round?.start_date && today < round.start_date) return 'scheduled'
   if (round?.end_date && today > round.end_date) return 'closed'
   return 'open'
 }
 
+/**
+ * The round's lifecycle state.
+ *
+ * The schedule wins whenever the round carries dates: a stored `round_status`
+ * is written once and then goes stale, so a round would still read "draft" on
+ * the morning its start date arrived. Flags are only consulted for rounds that
+ * carry no dates at all.
+ */
 export function roundStatusKey(round) {
-  return round?.round_status || inferStatus(round)
+  if (round?.start_date || round?.end_date) return inferStatus(round)
+  return round?.round_status || 'draft'
 }
 
 export function roundStatusBadge(round) {
@@ -54,6 +80,13 @@ export function canParticipateInRound(round) {
   return ['scheduled', 'open'].includes(roundStatusKey(round))
 }
 
+/** Copy for a round the schedule says is open but the backend has not released. */
+export function roundPendingReleaseText(round) {
+  return round?.end_date
+    ? `It is scheduled to run until ${formatDate(round.end_date)} (IST). Ask an admin to publish it.`
+    : 'Ask an admin to publish this round.'
+}
+
 /** True when the round has ended. */
 export function roundStatusKeyClosed(round) {
   return roundStatusKey(round) === 'closed'
@@ -68,8 +101,17 @@ export function roundStatusKeyClosed(round) {
  */
 export function isRoundAwaitingRelease(round) {
   if (!round) return false
+  // The calendar decides. A round whose start date has arrived counts as open
+  // even if the stored `published` flag has not caught up with it.
+  if (round.start_date) return todayInAppTimezone() < round.start_date
   if (round.published === false) return true
   return roundStatusKey(round) === 'draft'
+}
+
+/** Inside its scheduled window right now, so submissions should be possible. */
+export function isRoundLive(round) {
+  if (!round?.start_date) return false
+  return inferStatus(round) === 'open'
 }
 
 /**

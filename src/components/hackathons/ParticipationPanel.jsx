@@ -11,7 +11,13 @@ import JoinCodePanel from './JoinCodePanel'
 import TeamRoster from './TeamRoster'
 import { formatDate } from '../../utils/format'
 import { participationErrorCode, participationErrorMessage, shouldRefetchParticipation } from './errorCodes'
-import { isRoundAwaitingRelease, roundOpensText } from './roundStatus'
+import {
+  isRoundAwaitingRelease,
+  isRoundLive,
+  roundDisplayName,
+  roundOpensText,
+  roundPendingReleaseText,
+} from './roundStatus'
 
 /**
  * Per-hackathon enrollment gate.
@@ -71,23 +77,30 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
     }
   }
 
-  // Not an error state: the round simply has not started yet. Tell the student
-  // when it opens instead of reporting a failure they cannot act on. The second
-  // arm covers a round whose local copy looks live but which the backend still
-  // considers unreleased.
-  const notReleased =
-    awaitingRelease ||
-    (error && !data && participationErrorCode(error) === 'ROUND_NOT_PUBLISHED')
+  const roundName = roundDisplayName(round, roundIndex)
 
-  if (notReleased) {
+  // Not an error state: the round has not started yet. Say when it opens rather
+  // than reporting a failure the student can do nothing about.
+  if (awaitingRelease) {
     return (
-      <Alert variant="info" title={`Round ${Number(roundIndex) + 1} is not open yet`}>
+      <Alert variant="info" title={`${roundName} is not open yet`}>
         {roundOpensText(round)}
       </Alert>
     )
   }
 
   if (loading && !data) return <LoadingBlock label="Checking your enrollment…" />
+
+  // The schedule says this round is running, but the backend has not released
+  // it. Name that gap instead of repeating "not open yet" on a day the dates
+  // say it is open — the student needs to know it is waiting on an admin.
+  if (error && !data && participationErrorCode(error) === 'ROUND_NOT_PUBLISHED') {
+    return (
+      <Alert variant="warning" title={`${roundName} has not been released yet`}>
+        {roundPendingReleaseText(round)}
+      </Alert>
+    )
+  }
 
   if (error && !data) {
     return (
@@ -126,6 +139,12 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
   return (
     <section className="stack-md rounded-drop border border-hairline bg-surface p-5">
       {header}
+
+      {isRoundLive(round) && (
+        <Alert variant="success" title={`${roundName} is live now`}>
+          You can do your submission for this round.
+        </Alert>
+      )}
 
       {actionError && <Alert variant="danger">{actionError}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
