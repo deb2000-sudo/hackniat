@@ -129,11 +129,9 @@ export default function HackathonDetailPage() {
       label: 'Working demo',
       value: hackathon.working_demo_video_required === false ? 'Optional' : 'Required',
     },
-    {
-      icon: 'sparkles',
-      label: 'AI evaluation',
-      value: hackathon.auto_ai_evaluation ? 'Automatic' : 'Manual',
-    },
+    // No AI evaluation tile: the flag is set per timeline round, so a single
+    // hackathon-level value cannot describe it. The per-round setting is shown
+    // on the round itself.
   ]
 
   return (
