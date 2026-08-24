@@ -65,9 +65,11 @@ export default function EvaluationDetailPage() {
     : session?.status === EVALUATION_STATUS.COMPLETED
 
   // Student view: Final Score + Detailed Analysis only (no submission details sidebar).
+  // Uses the same container width as the evaluator/admin branch below — the
+  // narrow variant left the scorecard stranded between wide empty margins.
   if (isStudent) {
     return (
-      <div className="container container--narrow page student-eval-page">
+      <div className="container page student-eval-page">
         <PageHeader
           eyebrow="Evaluation"
           title={session?.team_name || session?.title || session?.source_filename || 'Your evaluation'}

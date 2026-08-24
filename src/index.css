@@ -921,8 +921,11 @@ code {
   margin-bottom: 24px;
 }
 
+/* No max-width: the results fill the page container, matching the evaluator
+   and admin views of the same report. Capping this at 760px inside a wider
+   container would strand the scorecard against the left margin. */
 .student-eval-results {
-  max-width: 760px;
+  width: 100%;
 }
 
 .student-final-score [data-card-body] {

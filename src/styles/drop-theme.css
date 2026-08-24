@@ -366,21 +366,8 @@
     background: var(--color-canvas);
   }
 
-  /* Authenticated pages: fill the content column instead of a tight strip. */
-  .drop .app-content .container {
-    max-width: 1480px;
-    padding-inline: 20px;
-  }
-
-  @media (min-width: 768px) {
-    .drop .app-content .container {
-      padding-inline: 32px;
-    }
-  }
-
-  .drop .app-content .container--narrow {
-    max-width: 760px;
-  }
+  /* Container widths live in @layer utilities at the end of this file — see the
+     note there. Putting them here let Tailwind's own .container utility win. */
 
   .drop .admin-submissions-page,
   .drop .admin-submission-detail {
@@ -1684,4 +1671,35 @@
 /* Horizontal rails: keep the scrolling, drop the scrollbar. */
 .drop-no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * Page container widths.
+ *
+ * These MUST sit in @layer utilities, not @layer components. Tailwind ships its
+ * own `.container` utility, and cascade layers outrank specificity: a rule in
+ * `utilities` beats one in `components` however specific it is. With these in
+ * `components`, Tailwind's `.container { max-width: 40rem }` silently won and
+ * every authenticated page using `.container` rendered as a 640px strip —
+ * regardless of the 1480px intended here.
+ *
+ * Same layer, so specificity decides again, and `.drop .app-content .container`
+ * (0,3,0) beats the bare `.container` utility (0,1,0).
+ */
+@layer utilities {
+  /* Authenticated pages: fill the content column instead of a tight strip. */
+  .drop .app-content .container {
+    max-width: 1480px;
+    padding-inline: 20px;
+  }
+
+  @media (min-width: 768px) {
+    .drop .app-content .container {
+      padding-inline: 32px;
+    }
+  }
+
+  .drop .app-content .container--narrow {
+    max-width: 760px;
+  }
 }
