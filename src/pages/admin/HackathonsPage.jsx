@@ -20,6 +20,7 @@ import {
   WRAP_APP,
 } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
+import DraftsInbox from '../../components/hackathons/DraftsInbox'
 import EmptyState from '../../components/ui/EmptyState'
 import Icon from '../../components/ui/Icon'
 import { LoadingBlock } from '../../components/ui/Spinner'
@@ -45,6 +46,32 @@ export default function HackathonsPage() {
     { key: queryKeys.hackathons, staleTime: 60_000 },
   )
   const [filter, setFilter] = useState('all')
+
+  // Admin-only: unfinished hackathon drafts, listed above the live events so an
+  // abandoned wizard is visible rather than silently stranded.
+  const {
+    data: drafts,
+    error: draftsError,
+    reload: reloadDrafts,
+  } = useAsync(
+    (opts) => (isAdmin ? hackathonsApi.listDrafts(opts) : Promise.resolve([])),
+    { key: `${queryKeys.hackathons}:drafts:${isAdmin}`, staleTime: 30_000 },
+  )
+  const [discardingId, setDiscardingId] = useState('')
+  const [discardError, setDiscardError] = useState('')
+
+  const discardDraft = async (draft) => {
+    setDiscardingId(draft.id)
+    setDiscardError('')
+    try {
+      await hackathonsApi.deleteDraft(draft.id)
+      await reloadDrafts({ force: true })
+    } catch (err) {
+      setDiscardError(err.message || 'Could not discard that draft.')
+    } finally {
+      setDiscardingId('')
+    }
+  }
   const hackathons = useMemo(
     () =>
       (data || [])
@@ -82,7 +109,7 @@ export default function HackathonsPage() {
             Refresh
           </button>
           {isAdmin && (
-            <Link to="/admin/hackathons/new" className={`${BTN_VOLT} w-full sm:w-auto`}>
+            <Link to="/admin/hackathons/create" className={`${BTN_VOLT} w-full sm:w-auto`}>
               <Icon name="plus" size={17} />
               Create hackathon
             </Link>
@@ -94,6 +121,16 @@ export default function HackathonsPage() {
         <div className="mb-6">
           <Alert variant="danger" title="Unable to load hackathons">{error.message}</Alert>
         </div>
+      )}
+
+      {isAdmin && discardError && (
+        <div className="mb-6">
+          <Alert variant="danger">{discardError}</Alert>
+        </div>
+      )}
+
+      {isAdmin && !draftsError && (
+        <DraftsInbox drafts={drafts} onDiscard={discardDraft} discardingId={discardingId} />
       )}
 
       <div className="mb-5 flex flex-col gap-4 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
@@ -239,7 +276,7 @@ export default function HackathonsPage() {
             }
             action={
               isAdmin && filter === 'all' ? (
-                <Link to="/admin/hackathons/new" className={BTN_VOLT}>
+                <Link to="/admin/hackathons/create" className={BTN_VOLT}>
                   <Icon name="plus" size={17} />
                   Create hackathon
                 </Link>

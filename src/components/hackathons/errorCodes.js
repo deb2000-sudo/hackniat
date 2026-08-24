@@ -39,3 +39,23 @@ export function shouldRefetchParticipation(err) {
     participationErrorCode(err),
   )
 }
+
+/* ------------------------------- Drafts --------------------------------- */
+
+/**
+ * Publish rejected the draft. DRAFT_INCOMPLETE means required fields are still
+ * blank; DRAFT_INVALID means the values conflict (bad dates, broken timeline).
+ */
+export function isDraftPublishError(err) {
+  return ['DRAFT_INCOMPLETE', 'DRAFT_INVALID'].includes(participationErrorCode(err))
+}
+
+/**
+ * The wizard step the backend blames, when it says. Returns '' if it does not,
+ * leaving the caller to fall back on its own local validation.
+ */
+export function draftErrorStep(err) {
+  const detail = err?.data?.detail
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return ''
+  return detail.step || detail.current_step || ''
+}

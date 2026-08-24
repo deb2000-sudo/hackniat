@@ -127,7 +127,7 @@ export default function AdminDashboard() {
           </p>
         </div>
         <Link
-          to="/admin/hackathons/new"
+          to="/admin/hackathons/create"
           className={`${BTN_VOLT} min-h-11 w-full px-4 text-[14px] sm:w-auto`}
         >
           <Icon name="plus" size={16} />
@@ -333,7 +333,7 @@ export default function AdminDashboard() {
                 Create the first hackathon and it will appear here for every authenticated role.
               </p>
               <Link
-                to="/admin/hackathons/new"
+                to="/admin/hackathons/create"
                 className={`${BTN_VOLT} mt-5 min-h-11 px-4 text-[14px]`}
               >
                 <Icon name="plus" size={16} />

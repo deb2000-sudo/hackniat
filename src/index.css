@@ -4007,7 +4007,7 @@ code {
 
 .hackathon-form-stepper {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
@@ -4081,6 +4081,7 @@ code {
 
 .hackathon-form-stepper li.is-active {
   background: var(--brand-50);
+  border-radius: calc(var(--radius) - 4px);
 }
 
 .hackathon-form-stepper li.is-active button {
@@ -4678,8 +4679,41 @@ code {
 .selected-file-row strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .84rem; }
 .selected-file-row small { color: var(--success-600); font-size: .7rem; }
 .timeline-round-editor { padding: 20px; border-radius: 14px; background: linear-gradient(135deg,#fbfbff,#f8fafc); }
-.hackathon-form-actions { position: sticky; bottom: 16px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.92); box-shadow: 0 12px 38px rgba(15,23,42,.13); backdrop-filter: blur(12px); }
+/* Docked action bar. Width is capped and centred so it reads as a control
+   attached to the form rather than a full-bleed band spanning the whole page;
+   `margin-inline` only touches the sides, leaving .stack-lg's top gap intact. */
+.hackathon-form-actions { position: sticky; bottom: 16px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(100%, 68rem); margin-inline: auto; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.92); box-shadow: 0 12px 38px rgba(15,23,42,.13); backdrop-filter: blur(12px); }
 .hackathon-form-actions p { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: .78rem; }
+.hackathon-form-actions__buttons { display: flex; align-items: center; gap: 10px; }
+
+/* ------------------------------ Drafts inbox ---------------------------- */
+.drafts-inbox { margin-bottom: 24px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.drafts-inbox__head h2 { display: flex; align-items: center; gap: 9px; font-size: 1rem; }
+.drafts-inbox__count { display: grid; min-width: 22px; height: 22px; place-items: center; padding: 0 7px; border-radius: 999px; background: var(--surface-2); font-size: .72rem; font-weight: 700; }
+.drafts-inbox__head p { margin-top: 3px; color: var(--text-muted); font-size: .8rem; }
+.drafts-inbox__list { display: flex; flex-direction: column; gap: 10px; margin: 15px 0 0; padding: 0; list-style: none; }
+.drafts-inbox__row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.drafts-inbox__main { display: flex; min-width: 190px; flex: 1; flex-direction: column; gap: 3px; }
+.drafts-inbox__main strong { overflow: hidden; font-size: .9rem; text-overflow: ellipsis; white-space: nowrap; }
+.drafts-inbox__main small { color: var(--text-muted); font-size: .74rem; }
+.drafts-inbox__checklist { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.drafts-inbox__checklist li { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); font-size: .68rem; }
+.drafts-inbox__checklist li.is-done { border-color: var(--success-500); color: var(--success-600); }
+.drafts-inbox__actions { display: flex; align-items: center; gap: 8px; }
+.drafts-inbox__actions a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 9px; background: var(--brand-600); color: #fff; font-size: .78rem; font-weight: 600; }
+.drafts-inbox__actions button { padding: 7px 12px; border: 1px solid var(--border); border-radius: 9px; background: transparent; color: var(--text-muted); cursor: pointer; font-size: .78rem; }
+.drafts-inbox__actions button:disabled { cursor: not-allowed; opacity: .6; }
+
+.draft-review-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.draft-review-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.draft-review-row__icon { display: grid; place-items: center; color: var(--success-600); }
+.draft-review-row.is-missing .draft-review-row__icon { color: var(--warning-600, #b45309); }
+.draft-review-row__copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
+.draft-review-row__copy strong { font-size: .88rem; }
+.draft-review-row__copy small { color: var(--text-muted); font-size: .74rem; }
+.draft-review-row button { flex-shrink: 0; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: inherit; cursor: pointer; font-size: .78rem; }
+.draft-review-row button:hover { background: var(--surface-2); }
+
 .hackathon-form-actions p svg { color: var(--success-600); }
 .scorecard-bottom-dock {
   pointer-events: none;
@@ -4811,7 +4845,10 @@ code {
   .hackathon-detail-hero__topbar { align-items: flex-start; }
   .hackathon-detail-hero__topbar > .row { flex-direction: column; }
   .hackathon-form-actions { align-items: stretch; flex-direction: column; }
+  .hackathon-form-actions__buttons { width: 100%; flex-direction: column; align-items: stretch; }
   .hackathon-form-actions [data-btn] { width: 100%; }
+  .drafts-inbox__row { align-items: stretch; flex-direction: column; }
+  .drafts-inbox__actions a, .drafts-inbox__actions button { flex: 1; justify-content: center; text-align: center; }
 }
 
 /* rendered AI markdown report */

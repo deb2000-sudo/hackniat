@@ -8,7 +8,13 @@ import Card, { CardBody, CardHeader } from '../ui/Card'
 import Icon from '../ui/Icon'
 import Input, { Select, Textarea } from '../ui/Input'
 import { hackathonsApi } from '../../api/hackathons'
-import { participationErrorMessage } from './errorCodes'
+import { draftErrorStep, participationErrorMessage } from './errorCodes'
+import {
+  DRAFT_STEPS,
+  draftStepFields,
+  draftStepIndex,
+  withStepCompleted,
+} from './draftSteps'
 import { roundStatusBadge } from './roundStatus'
 import { BADGE } from '../drop/theme'
 
@@ -36,20 +42,19 @@ const EMPTY_FORM = {
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const SCALAR_FIELDS = ['name', 'description', 'start_date', 'end_date', 'guidelines']
 const PATCH_SCALAR_FIELDS = [...SCALAR_FIELDS, 'evaluator_guidelines']
-const FORM_STEPS = [
-  { label: 'Event details', icon: 'calendar' },
-  { label: 'Prizes', icon: 'gift' },
-  { label: 'Themes', icon: 'sparkles' },
-  { label: 'Timeline', icon: 'clock' },
-  { label: 'Banner', icon: 'image' },
-]
+const FORM_STEPS = DRAFT_STEPS
+const REVIEW_INDEX = FORM_STEPS.length - 1
+const BASICS_FIELDS = ['name', 'description', 'start_date', 'end_date', 'hackathon_url']
+const GUIDELINE_FIELDS = ['guidelines', 'evaluator_guidelines']
 const TEAM_SIZE_OPTIONS = [
   { value: '1', label: 'Solo' },
   { value: '2', label: '2 Members' },
   { value: '3', label: '3 Members' },
   { value: '4', label: '4 Members' },
 ]
-const REQUIRED_ROUNDS = 2
+// Round 1 is the hackathon itself, so it is always present and cannot be
+// removed. Everything from round 2 onwards is optional and deletable.
+const REQUIRED_ROUNDS = 1
 
 function emptyRound() {
   return {
@@ -71,7 +76,7 @@ function createInitialForm(initialValue) {
     return {
       ...EMPTY_FORM,
       prizes: { ...EMPTY_PRIZES },
-      timeline: [emptyRound(), emptyRound()],
+      timeline: [emptyRound()],
     }
   }
   return {
@@ -87,7 +92,7 @@ function createInitialForm(initialValue) {
     prizes: { ...EMPTY_PRIZES, ...(initialValue.prizes || {}) },
     theme_ids: initialValue.theme_ids || initialValue.themes?.map((theme) => theme.id) || [],
     timeline: clampTimelineDates(
-      (initialValue.timeline || []).map((round) => ({
+      (initialValue.timeline?.length ? initialValue.timeline : [emptyRound()]).map((round) => ({
         title: round.title || '',
         description: round.description || '',
         start_date: round.start_date || '',
@@ -187,20 +192,115 @@ function validate(form, banner, { editing = false, initialForm = null } = {}) {
   return errors
 }
 
+/**
+ * Every required input on the form, as filled / not-filled booleans.
+ *
+ * Deliberately ignores the optional fields (banner, hackathon URL): counting
+ * them would let an untouched form claim progress for work nobody has to do.
+ */
+function completionChecks(form, { editing = false, initialForm = null } = {}) {
+  const checks = SCALAR_FIELDS.map((field) => Boolean(String(form[field] || '').trim()))
+
+  const needsEvaluatorGuidelines =
+    !editing || !String(initialForm?.evaluator_guidelines || '').trim()
+  if (needsEvaluatorGuidelines) {
+    checks.push(Boolean(String(form.evaluator_guidelines || '').trim()))
+  }
+
+  Object.values(form.prizes).forEach((value) => checks.push(Boolean(String(value || '').trim())))
+  checks.push(form.theme_ids.length > 0)
+  form.timeline.forEach((round) => checks.push(Boolean(String(round.title || '').trim())))
+
+  return checks
+}
+
+/**
+ * Share of the required form that is actually filled in.
+ *
+ * This used to be (step + 1) / stepCount, which measured where the user was
+ * standing rather than what they had done — a brand-new form opened claiming
+ * "20% complete" before a single character was typed.
+ */
+function completionPercent(form, options) {
+  const checks = completionChecks(form, options)
+  if (!checks.length) return 0
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100)
+}
+
+/** Trim and normalise every field to the shape the API expects. */
+function cleanForm(form) {
+  return {
+    ...form,
+    name: form.name.trim(),
+    description: form.description.trim(),
+    hackathon_url: form.hackathon_url.trim(),
+    guidelines: form.guidelines.trim(),
+    evaluator_guidelines: form.evaluator_guidelines.trim(),
+
+    prizes: Object.fromEntries(
+      Object.entries(form.prizes).map(([key, value]) => [key, value.trim()]),
+    ),
+    timeline: form.timeline.map((round) => ({
+      title: round.title.trim(),
+      description: round.description.trim() || null,
+      start_date: round.start_date || null,
+      end_date: round.end_date || null,
+      evaluation_requirement_id: round.evaluation_requirement_id || null,
+      max_team_size: Number(round.max_team_size || 1),
+      working_demo_video_required: round.working_demo_video_required !== false,
+      auto_ai_evaluation: round.auto_ai_evaluation === true,
+    })),
+  }
+}
+
+/** Body for PATCH /hackathons/drafts/{id} — only this section's own fields. */
+function draftPatch(stepKey, form) {
+  const cleaned = cleanForm(form)
+  return Object.fromEntries(draftStepFields(stepKey).map((field) => [field, cleaned[field]]))
+}
+
+/** Which section an error belongs to, by wizard index. */
+function errorBelongsToStep(key, step) {
+  if (step === 0) return BASICS_FIELDS.includes(key)
+  if (step === 1) return GUIDELINE_FIELDS.includes(key)
+  if (step === 2) return key === 'theme_ids'
+  if (step === 3) return key.startsWith('timeline.')
+  if (step === 4) return key.startsWith('prizes.')
+  if (step === 5) return key === 'banner'
+  return true
+}
+
 function validateStep(form, banner, step, options = {}) {
   const allErrors = validate(form, banner, options)
   return Object.fromEntries(
-    Object.entries(allErrors).filter(([key]) => {
-      if (step === 0) return SCALAR_FIELDS.includes(key) || key === 'evaluator_guidelines'
-      if (step === 1) return key.startsWith('prizes.')
-      if (step === 2) return key === 'theme_ids'
-      if (step === 3) return key.startsWith('timeline.')
-      return key === 'banner' || key === 'hackathon_url'
-    }),
+    Object.entries(allErrors).filter(([key]) => errorBelongsToStep(key, step)),
   )
 }
 
-export default function HackathonForm({ initialValue, onSubmit, submitting, submitError }) {
+/** First section holding an outstanding error — where publish should land. */
+function firstStepWithError(errors) {
+  const keys = Object.keys(errors || {})
+  if (!keys.length) return -1
+  for (let index = 0; index < FORM_STEPS.length; index += 1) {
+    if (keys.some((key) => errorBelongsToStep(key, index) && index !== REVIEW_INDEX)) return index
+  }
+  return -1
+}
+
+export default function HackathonForm({
+  initialValue,
+  onSubmit,
+  submitting,
+  submitError,
+  /* Draft mode: the wizard persists each section as it goes and finishes with
+     publish, instead of holding everything in memory until one final POST. */
+  draftId = '',
+  initialStep = '',
+  initialCompletedSteps,
+  onSaveStep,
+  onPublish,
+  onDiscard,
+}) {
   // Opt out of the React Compiler for this component. The footer's
   // "Save and continue" / "Create hackathon" button occupies the same JSX
   // position across a step change, and this component has enough
@@ -208,7 +308,8 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   // mismatch here would let a stale render of that button survive into the
   // next step — silently submitting the form instead of just advancing.
   'use no memo'
-  const editing = !!initialValue
+  const draftMode = Boolean(draftId)
+  const editing = !!initialValue && !draftMode
   const initialForm = useMemo(() => createInitialForm(initialValue), [initialValue])
   const validationOptions = useMemo(() => ({ editing, initialForm }), [editing, initialForm])
   const missingEvaluatorGuidelines =
@@ -216,10 +317,14 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
   const [form, setForm] = useState(initialForm)
   const [banner, setBanner] = useState(null)
   const [errors, setErrors] = useState({})
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(() => draftStepIndex(initialStep))
   /** Always-current step for form onSubmit — avoids a race where Enter/submit
    *  fires after a "Save and continue" click has already advanced the step. */
-  const stepRef = useRef(0)
+  const stepRef = useRef(draftStepIndex(initialStep))
+  const [completedSteps, setCompletedSteps] = useState(() => initialCompletedSteps || [])
+  const [savingStep, setSavingStep] = useState(false)
+  const [stepError, setStepError] = useState('')
+  const [discarding, setDiscarding] = useState(false)
   const {
     data: requirements,
     loading: requirementsLoading,
@@ -342,13 +447,82 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const continueToNextStep = (event) => {
+  const continueToNextStep = async (event) => {
     event?.preventDefault?.()
     event?.stopPropagation?.()
-    const validation = validateStep(form, banner, stepRef.current, validationOptions)
+    const current = stepRef.current
+    const nextIndex = Math.min(current + 1, REVIEW_INDEX)
+
+    // Editing a live hackathon still gates every section. A draft is allowed to
+    // be half-written — it saves whatever is there and lets publish run the
+    // strict pass — so blocking here would contradict the whole point of it.
+    if (!draftMode) {
+      const validation = validateStep(form, banner, current, validationOptions)
+      setErrors(validation)
+      if (Object.keys(validation).length) return
+      moveToStep(nextIndex)
+      return
+    }
+
+    const stepKey = FORM_STEPS[current].key
+    const nextCompleted = withStepCompleted(completedSteps, stepKey)
+    setSavingStep(true)
+    setStepError('')
+    try {
+      await onSaveStep?.({
+        stepKey,
+        patch: draftPatch(stepKey, form),
+        currentStep: FORM_STEPS[nextIndex].key,
+        completedSteps: nextCompleted,
+        banner,
+      })
+      setCompletedSteps(nextCompleted)
+      moveToStep(nextIndex)
+    } catch (err) {
+      setStepError(err.message || 'Could not save this section. Try again.')
+    } finally {
+      setSavingStep(false)
+    }
+  }
+
+  const publishDraft = async (event) => {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+    // Check locally first so gaps land as inline field errors on the section
+    // that owns them, rather than as one opaque message from the server.
+    const validation = validate(form, banner, validationOptions)
     setErrors(validation)
-    if (Object.keys(validation).length) return
-    moveToStep(Math.min(stepRef.current + 1, FORM_STEPS.length - 1))
+    const incompleteStep = firstStepWithError(validation)
+    if (incompleteStep !== -1) {
+      setStepError(
+        `${FORM_STEPS[incompleteStep].label} is incomplete. Finish it before publishing.`,
+      )
+      moveToStep(incompleteStep)
+      return
+    }
+
+    setSavingStep(true)
+    setStepError('')
+    try {
+      await onPublish?.()
+    } catch (err) {
+      const blamed = draftErrorStep(err)
+      if (blamed) moveToStep(draftStepIndex(blamed))
+      setStepError(err.message || 'The draft could not be published.')
+    } finally {
+      setSavingStep(false)
+    }
+  }
+
+  const discardDraft = async () => {
+    setStepError('')
+    setDiscarding(true)
+    try {
+      await onDiscard?.()
+    } catch (err) {
+      setStepError(err.message || 'Could not discard this draft.')
+      setDiscarding(false)
+    }
   }
 
   const submitForm = (event) => {
@@ -359,28 +533,7 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
     setErrors(validation)
     if (Object.keys(validation).length) return
 
-    const cleaned = {
-      ...form,
-      name: form.name.trim(),
-      description: form.description.trim(),
-      hackathon_url: form.hackathon_url.trim(),
-      guidelines: form.guidelines.trim(),
-      evaluator_guidelines: form.evaluator_guidelines.trim(),
-
-      prizes: Object.fromEntries(
-        Object.entries(form.prizes).map(([key, value]) => [key, value.trim()]),
-      ),
-      timeline: form.timeline.map((round) => ({
-        title: round.title.trim(),
-        description: round.description.trim() || null,
-        start_date: round.start_date || null,
-        end_date: round.end_date || null,
-        evaluation_requirement_id: round.evaluation_requirement_id || null,
-        max_team_size: Number(round.max_team_size || 1),
-        working_demo_video_required: round.working_demo_video_required !== false,
-        auto_ai_evaluation: round.auto_ai_evaluation === true,
-      })),
-    }
+    const cleaned = cleanForm(form)
 
     if (!editing) {
       onSubmit({
@@ -434,8 +587,8 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
 
   return (
     <form className="stack-lg" onSubmit={handleSubmit} noValidate>
-      {(submitError || errors.form) && (
-        <Alert variant="danger">{submitError || errors.form}</Alert>
+      {(submitError || errors.form || stepError) && (
+        <Alert variant="danger">{submitError || errors.form || stepError}</Alert>
       )}
 
       <ol className="hackathon-form-stepper" aria-label="Hackathon creation progress">
@@ -468,24 +621,18 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
           <small>Current section</small>
           <strong>{FORM_STEPS[step].label}</strong>
         </div>
-        <em>{Math.round(((step + 1) / FORM_STEPS.length) * 100)}% complete</em>
+        <em>{completionPercent(form, validationOptions)}% complete</em>
       </div>
 
       <Card className={`hackathon-form-card ${step !== 0 ? 'wizard-step-hidden' : ''}`}>
         <CardHeader>
           <div className="hackathon-form-heading">
             <span className="hackathon-form-heading__number">01</span>
-            <div><h3>Event information</h3><p>Define the hackathon identity, schedule, and participation rules.</p></div>
+            <div><h3>Event information</h3><p>Define the hackathon identity and schedule.</p></div>
           </div>
           <span className="hackathon-form-heading__icon"><Icon name="calendar" size={20} /></span>
         </CardHeader>
         <CardBody className="stack-md">
-          {missingEvaluatorGuidelines && (
-            <Alert variant="warning" title="Evaluator guidelines missing">
-              This hackathon was saved before evaluator guidelines existed. Add them below and
-              save once so evaluators can review submissions with the right context.
-            </Alert>
-          )}
           <Input
             label="Name"
             required
@@ -521,6 +668,34 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
               error={errors.end_date}
             />
           </div>
+          <Input
+            label="Hackathon URL"
+            type="url"
+            maxLength={2000}
+            hint="Optional · Official website"
+            placeholder="https://drop.example.com"
+            value={form.hackathon_url}
+            onChange={update('hackathon_url')}
+            error={errors.hackathon_url}
+          />
+        </CardBody>
+      </Card>
+
+      <Card className={`hackathon-form-card ${step !== 1 ? 'wizard-step-hidden' : ''}`}>
+        <CardHeader>
+          <div className="hackathon-form-heading">
+            <span className="hackathon-form-heading__number">02</span>
+            <div><h3>Guidelines</h3><p>Tell students how to take part, and evaluators how to judge.</p></div>
+          </div>
+          <span className="hackathon-form-heading__icon"><Icon name="shield" size={20} /></span>
+        </CardHeader>
+        <CardBody className="stack-md">
+          {missingEvaluatorGuidelines && (
+            <Alert variant="warning" title="Evaluator guidelines missing">
+              This hackathon was saved before evaluator guidelines existed. Add them below and
+              save once so evaluators can review submissions with the right context.
+            </Alert>
+          )}
           <Textarea
             label="Participation guidelines"
             hint="Shown to students. Markdown formatting is supported on the detail page."
@@ -544,10 +719,10 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         </CardBody>
       </Card>
 
-      <Card className={`hackathon-form-card ${step !== 1 ? 'wizard-step-hidden' : ''}`}>
+      <Card className={`hackathon-form-card ${step !== 4 ? 'wizard-step-hidden' : ''}`}>
         <CardHeader>
           <div className="hackathon-form-heading">
-            <span className="hackathon-form-heading__number">02</span>
+            <span className="hackathon-form-heading__number">05</span>
             <div><h3>Prize structure</h3><p>Showcase the rewards available to the top three teams.</p></div>
           </div>
           <span className="hackathon-form-heading__icon"><Icon name="gift" size={20} /></span>
@@ -803,10 +978,10 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
         </CardBody>
       </Card>
 
-      <Card className={`hackathon-form-card ${step !== 4 ? 'wizard-step-hidden' : ''}`}>
+      <Card className={`hackathon-form-card ${step !== 5 ? 'wizard-step-hidden' : ''}`}>
         <CardHeader>
           <div className="hackathon-form-heading">
-            <span className="hackathon-form-heading__number">05</span>
+            <span className="hackathon-form-heading__number">06</span>
             <div><h3>Event banner</h3><p>Add a high-quality visual for cards and the event header.</p></div>
           </div>
           <span className="hackathon-form-heading__icon"><Icon name="image" size={20} /></span>
@@ -841,16 +1016,6 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
                 </span>
               )}
             </div>
-            <Input
-              label="Hackathon URL"
-              type="url"
-              maxLength={2000}
-              placeholder="https://drop.example.com"
-              hint="Optional · Official website"
-              value={form.hackathon_url}
-              onChange={update('hackathon_url')}
-              error={errors.hackathon_url}
-            />
           </div>
           {banner && (
             <div className="selected-file-row">
@@ -858,6 +1023,41 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
               <div><strong>{banner.name}</strong><small>Ready to upload</small></div>
             </div>
           )}
+        </CardBody>
+      </Card>
+
+      <Card className={`hackathon-form-card ${step !== REVIEW_INDEX ? 'wizard-step-hidden' : ''}`}>
+        <CardHeader>
+          <div className="hackathon-form-heading">
+            <span className="hackathon-form-heading__number">07</span>
+            <div><h3>Review and publish</h3><p>Check every section, then publish the hackathon.</p></div>
+          </div>
+          <span className="hackathon-form-heading__icon"><Icon name="checkCircle" size={20} /></span>
+        </CardHeader>
+        <CardBody className="stack-md">
+          <ul className="draft-review-list">
+            {FORM_STEPS.slice(0, REVIEW_INDEX).map((item, index) => {
+              const missing = Object.keys(validateStep(form, banner, index, validationOptions))
+              return (
+                <li className={`draft-review-row ${missing.length ? 'is-missing' : ''}`} key={item.key}>
+                  <span className="draft-review-row__icon">
+                    <Icon name={missing.length ? 'alert' : 'checkCircle'} size={18} />
+                  </span>
+                  <div className="draft-review-row__copy">
+                    <strong>{item.label}</strong>
+                    <small>
+                      {missing.length
+                        ? `${missing.length} field${missing.length === 1 ? '' : 's'} still needed`
+                        : item.blurb}
+                    </small>
+                  </div>
+                  <button type="button" onClick={() => moveToStep(index)}>
+                    Edit
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
         </CardBody>
       </Card>
 
@@ -871,37 +1071,48 @@ export default function HackathonForm({ initialValue, onSubmit, submitting, subm
             Back
           </Button>
         ) : (
-          <p><Icon name="shield" size={17} /> Complete each section to continue.</p>
+          <p>
+            <Icon name="shield" size={17} />
+            {draftMode ? 'Saved as a draft as you go.' : 'Complete each section to continue.'}
+          </p>
         )}
-        {/* Keep both footer buttons mounted; hide the inactive one. Swapping a
-            single button in/out let production form.submit fire after the step
-            advanced, which hit onSubmit → create on the banner step. */}
-        <Button
-          key="wizard-next"
-          type="button"
-          variant="accent"
-          size="lg"
-          className={step < FORM_STEPS.length - 1 ? '' : 'hidden'}
-          aria-hidden={step >= FORM_STEPS.length - 1}
-          tabIndex={step < FORM_STEPS.length - 1 ? 0 : -1}
-          onClick={continueToNextStep}
-          rightIcon={<Icon name="arrowRight" size={17} />}
-        >
-          Save and continue
-        </Button>
-        <Button
-          key="wizard-submit"
-          type="button"
-          variant="accent"
-          size="lg"
-          className={step >= FORM_STEPS.length - 1 ? '' : 'hidden'}
-          aria-hidden={step < FORM_STEPS.length - 1}
-          tabIndex={step >= FORM_STEPS.length - 1 ? 0 : -1}
-          loading={submitting}
-          onClick={submitForm}
-        >
-          {editing ? 'Save changes' : 'Create hackathon'}
-        </Button>
+        <div className="hackathon-form-actions__buttons">
+          {draftMode && (
+            <Button variant="ghost" onClick={discardDraft} loading={discarding}>
+              Discard draft
+            </Button>
+          )}
+          {/* Keep both footer buttons mounted; hide the inactive one. Swapping a
+              single button in/out let production form.submit fire after the step
+              advanced, which hit onSubmit → create on the banner step. */}
+          <Button
+            key="wizard-next"
+            type="button"
+            variant="accent"
+            size="lg"
+            className={step < REVIEW_INDEX ? '' : 'hidden'}
+            aria-hidden={step >= REVIEW_INDEX}
+            tabIndex={step < REVIEW_INDEX ? 0 : -1}
+            loading={savingStep}
+            onClick={continueToNextStep}
+            rightIcon={<Icon name="arrowRight" size={17} />}
+          >
+            Save and continue
+          </Button>
+          <Button
+            key="wizard-submit"
+            type="button"
+            variant="accent"
+            size="lg"
+            className={step >= REVIEW_INDEX ? '' : 'hidden'}
+            aria-hidden={step < REVIEW_INDEX}
+            tabIndex={step >= REVIEW_INDEX ? 0 : -1}
+            loading={submitting || savingStep}
+            onClick={draftMode ? publishDraft : submitForm}
+          >
+            {draftMode ? 'Publish hackathon' : editing ? 'Save changes' : 'Create hackathon'}
+          </Button>
+        </div>
       </div>
     </form>
   )

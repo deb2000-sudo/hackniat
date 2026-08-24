@@ -113,7 +113,16 @@ export default function App() {
               <Route element={<ProtectedRoute roles={[ROLES.ADMIN]} />}>
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/hackathons" element={<Navigate to="/hackathons" replace />} />
-                <Route path="/admin/hackathons/new" element={<HackathonFormPage />} />
+                {/* Draft-backed creation. /new is kept so old links still land
+                    in the right place. */}
+                <Route
+                  path="/admin/hackathons/create"
+                  element={<HackathonFormPage draftFlow />}
+                />
+                <Route
+                  path="/admin/hackathons/new"
+                  element={<Navigate to="/admin/hackathons/create" replace />}
+                />
                 <Route path="/admin/hackathons/:hackathonId/edit" element={<HackathonFormPage />} />
                 <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
                 <Route

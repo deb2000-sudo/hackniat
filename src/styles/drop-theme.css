@@ -1091,6 +1091,10 @@
 
   .drop .hackathon-form-stepper li.is-active {
     background: var(--color-volt-tint);
+    /* The container is padded, so the highlight is a tile floating inside it.
+       Without a radius it renders as a hard-edged rectangle fighting both the
+       card's rounded corners and the step connectors either side of it. */
+    border-radius: calc(var(--radius-drop) - 2px);
   }
 
   .drop .hackathon-form-stepper li.is-active button {
@@ -1115,6 +1119,7 @@
     border: 1px solid var(--color-hairline);
     border-radius: var(--radius-drop);
     color: var(--color-ink);
+    margin-top:15px;
   }
 
   .drop .hackathon-wizard-status > span {
@@ -1134,14 +1139,92 @@
 
   .drop .hackathon-form-actions {
     background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-    border-color: var(--color-hairline);
+    /* Deliberately heavier than the hairline used elsewhere: this bar floats
+       over scrolling form content, so it needs an edge that reads as a docked
+       control rather than another section divider. */
+    border: 1px solid var(--color-ink);
     border-radius: var(--radius-drop);
     box-shadow: none;
     backdrop-filter: blur(12px);
+    width:92%;
   }
 
   .drop .hackathon-form-actions p {
     color: var(--color-muted);
+  }
+
+  .drop .drafts-inbox {
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+  }
+
+  .drop .drafts-inbox__head h2 {
+    color: var(--color-ink);
+  }
+
+  .drop .drafts-inbox__count {
+    background: var(--color-raised);
+    color: var(--color-ink);
+  }
+
+  .drop .drafts-inbox__head p,
+  .drop .drafts-inbox__main small {
+    color: var(--color-muted);
+  }
+
+  .drop .drafts-inbox__row {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .drafts-inbox__main strong {
+    color: var(--color-ink);
+  }
+
+  .drop .drafts-inbox__checklist li {
+    border-color: var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  .drop .drafts-inbox__checklist li.is-done {
+    border-color: var(--color-passed);
+    color: var(--color-passed);
+  }
+
+  .drop .drafts-inbox__actions a {
+    background: var(--color-volt);
+    color: var(--color-on-volt);
+  }
+
+  .drop .drafts-inbox__actions button {
+    border-color: var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  .drop .draft-review-row {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .draft-review-row__icon {
+    color: var(--color-passed);
+  }
+
+  .drop .draft-review-row.is-missing .draft-review-row__icon {
+    color: var(--color-missing);
+  }
+
+  .drop .draft-review-row__copy strong {
+    color: var(--color-ink);
+  }
+
+  .drop .draft-review-row button {
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+  }
+
+  .drop .draft-review-row button:hover {
+    background: var(--color-surface);
   }
 
   .drop .scorecard-bottom-dock {

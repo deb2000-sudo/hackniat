@@ -35,6 +35,43 @@ export const hackathonsApi = {
   delete: (hackathonId, options) =>
     api.delete(`/hackathons/${encodeURIComponent(hackathonId)}`, options),
 
+  /* ------------------------- Creation drafts ------------------------------ */
+  // A hackathon is built up as a server-side draft: each wizard section PATCHes
+  // its own fields, so a half-finished event survives a reload or a change of
+  // machine. Strict validation only runs on publish, so partial payloads are
+  // expected here.
+
+  /** Every unpublished draft, newest activity first. */
+  listDrafts: (options) => api.get('/hackathons/drafts', options),
+
+  /** Open a blank draft and return its id. */
+  createDraft: (options) => api.post('/hackathons/drafts', undefined, options),
+
+  getDraft: (draftId, options) =>
+    api.get(`/hackathons/drafts/${encodeURIComponent(draftId)}`, options),
+
+  /** Merge one section's fields, plus the wizard's own position markers. */
+  patchDraft: (draftId, patch, options) =>
+    api.patch(`/hackathons/drafts/${encodeURIComponent(draftId)}`, patch, options),
+
+  /** Banner is multipart, so it cannot ride along with the JSON patch. */
+  uploadDraftBanner: (draftId, file, options) => {
+    const formData = new FormData()
+    formData.append('banner', file)
+    return api.upload(
+      `/hackathons/drafts/${encodeURIComponent(draftId)}/banner`,
+      formData,
+      options,
+    )
+  },
+
+  /** Validate everything and turn the draft into a real hackathon. */
+  publishDraft: (draftId, options) =>
+    api.post(`/hackathons/drafts/${encodeURIComponent(draftId)}/publish`, undefined, options),
+
+  deleteDraft: (draftId, options) =>
+    api.delete(`/hackathons/drafts/${encodeURIComponent(draftId)}`, options),
+
   /* ---------------------- Participation / teams (per round) --------------- */
   // Enrollment is scoped to a timeline round: a student can be solo in one
   // round and a team member in another, so every call carries roundIndex.
