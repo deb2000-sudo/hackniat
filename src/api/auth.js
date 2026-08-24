@@ -1,5 +1,28 @@
 import { api } from './client'
 
+/**
+ * Body for POST /auth/register/start.
+ *
+ * The endpoint merges ONE identifier at a time into a registration session, and
+ * requires at least one of email / mobile_number on every call. Passing a field
+ * the user has not filled in yet would bind a placeholder onto the session, so
+ * callers pass only the identifier they are verifying and let `session_id`
+ * carry the rest.
+ *
+ * @throws {Error} when neither identifier is supplied — the backend rejects it.
+ */
+export function registerStartPayload({ role, sessionId, email, mobile }) {
+  if (!email && !mobile) {
+    throw new Error('Enter an email or a mobile number before starting registration.')
+  }
+  const payload = {}
+  if (role) payload.role = role
+  if (sessionId) payload.session_id = sessionId
+  if (email) payload.email = email
+  if (mobile) payload.mobile_number = mobile
+  return payload
+}
+
 export const authApi = {
   registerStart: (payload) => api.post('/auth/register/start', payload),
   sendEmailOtp: (payload) => api.post('/auth/email/send-otp', payload),

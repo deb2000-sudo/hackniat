@@ -10,11 +10,20 @@ export const AUTH_ERROR = {
   EMAIL_TAKEN: 'EMAIL_TAKEN',
   PHONE_TAKEN: 'PHONE_TAKEN',
   EMPLOYEE_ID_TAKEN: 'EMPLOYEE_ID_TAKEN',
+  EMAIL_MISMATCH: 'EMAIL_MISMATCH',
+  PHONE_MISMATCH: 'PHONE_MISMATCH',
   INVALID_CODE: 'INVALID_CODE',
   EXPIRED: 'EXPIRED',
   RESEND_COOLDOWN: 'RESEND_COOLDOWN',
+  TOO_MANY_ATTEMPTS: 'TOO_MANY_ATTEMPTS',
   NOT_VERIFIED: 'NOT_VERIFIED',
 }
+
+/**
+ * Codes meaning the session no longer agrees with the value on screen. The
+ * channel has to be re-bound and re-sent from scratch, not merely retried.
+ */
+export const SESSION_MISMATCH_CODES = [AUTH_ERROR.EMAIL_MISMATCH, AUTH_ERROR.PHONE_MISMATCH]
 
 /** Machine-readable failure code, or '' when the backend did not send one. */
 export function authErrorCode(err) {
@@ -27,6 +36,12 @@ const MESSAGES = {
   [AUTH_ERROR.EMAIL_TAKEN]: 'That email is already registered. Sign in instead.',
   [AUTH_ERROR.PHONE_TAKEN]: 'That mobile number is already registered.',
   [AUTH_ERROR.EMPLOYEE_ID_TAKEN]: 'That employee ID is already registered.',
+  [AUTH_ERROR.EMAIL_MISMATCH]:
+    'This email no longer matches your registration session. Verify it again.',
+  [AUTH_ERROR.PHONE_MISMATCH]:
+    'This mobile number no longer matches your registration session. Verify it again.',
+  [AUTH_ERROR.TOO_MANY_ATTEMPTS]:
+    'Too many incorrect attempts. Request a new code to continue.',
   [AUTH_ERROR.INVALID_CODE]: 'That code is not correct. Check it and try again, or resend.',
   [AUTH_ERROR.EXPIRED]: 'That code has expired. Resend to get a new one.',
   [AUTH_ERROR.RESEND_COOLDOWN]:
@@ -48,6 +63,8 @@ const FIELD_BY_CODE = {
   [AUTH_ERROR.EMAIL_TAKEN]: 'email',
   [AUTH_ERROR.PHONE_TAKEN]: 'mobile_national',
   [AUTH_ERROR.EMPLOYEE_ID_TAKEN]: 'employee_id',
+  [AUTH_ERROR.EMAIL_MISMATCH]: 'email',
+  [AUTH_ERROR.PHONE_MISMATCH]: 'mobile_national',
 }
 
 /** Form field a failure should be reported against, or '' for form-level. */

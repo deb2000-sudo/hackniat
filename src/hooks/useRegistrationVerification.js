@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { signInWithPhoneNumber, signOut } from 'firebase/auth'
-import { authApi } from '../api/auth'
+import { authApi, registerStartPayload } from '../api/auth'
 import {
   AUTH_ERROR,
   authErrorCode,
@@ -37,6 +37,11 @@ const RESEND_WINDOW = 60
  * channels, which verify independently. Student and evaluator registration
  * differ only in the role they bind and the fields they submit afterwards, so
  * everything up to "both channels are green" lives here.
+ *
+ * Session rule: /auth/register/start requires AT LEAST ONE of email or
+ * mobile_number, and must never carry an identifier the user has not entered.
+ * Each channel therefore binds only its own field, merging into the existing
+ * session by id; the backend keeps whatever the other call already bound.
  *
  * @param {object}   options
  * @param {string}   [options.role]                  Role bound on the session (omitted for students).
@@ -109,6 +114,9 @@ export function useRegistrationVerification({
     [],
   )
 
+  /** The id to post right now — the ref leads state during an async handoff. */
+  const getSessionId = () => sessionIdRef.current || sessionId
+
   const resetEmailVerification = () => {
     setEmailState(IDLE)
     setEmailCode('')
@@ -121,12 +129,38 @@ export function useRegistrationVerification({
     setPhoneError('')
   }
 
+  /**
+   * The session no longer agrees about this identifier (EMAIL/PHONE_MISMATCH).
+   * Forgetting what we bound makes the next send re-bind before it sends,
+   * rather than posting a code against a session that will reject it again.
+   */
+  const restartEmailVerification = () => {
+    setSessionEmail('')
+    setEmailCooldown(0)
+    resetEmailVerification()
+  }
+
+  const restartPhoneVerification = () => {
+    setSessionPhone('')
+    confirmationRef.current = null
+    setPhoneCooldown(0)
+    resetPhoneVerification()
+  }
+
+  /**
+   * Merge ONE identifier into the session. Passing only the field being
+   * verified is deliberate: register/start rejects a call carrying neither,
+   * and sending a value the user has not entered yet binds a placeholder.
+   */
   const bindSession = async ({ email: nextEmail, mobile }) => {
-    const payload = {}
-    if (role) payload.role = role
-    if (sessionId) payload.session_id = sessionId
-    if (nextEmail) payload.email = nextEmail
-    if (mobile) payload.mobile_number = mobile
+    const payload = registerStartPayload({
+      role,
+      // Read through the ref: two channels verified in quick succession would
+      // otherwise both post without a session_id and open two sessions.
+      sessionId: getSessionId(),
+      email: nextEmail,
+      mobile,
+    })
     const { session_id: nextId } = await authApi.registerStart(payload)
     sessionIdRef.current = nextId
     setSessionId(nextId)
@@ -147,8 +181,7 @@ export function useRegistrationVerification({
       setEmailState(IDLE)
       setEmailCode('')
     }
-    const mobile = phoneReady ? phoneE164 : undefined
-    return bindSession({ email, mobile })
+    return bindSession({ email })
   }
 
   const ensurePhoneSession = async () => {
@@ -163,7 +196,7 @@ export function useRegistrationVerification({
       setPhoneState(IDLE)
       setPhoneCode('')
     }
-    return bindSession({ email: emailReady ? email : undefined, mobile: phoneE164 })
+    return bindSession({ mobile: phoneE164 })
   }
 
   /** Re-bind both identifiers before the final submit; returns the live id. */
@@ -196,6 +229,11 @@ export function useRegistrationVerification({
         setEmailState(IDLE)
         return
       }
+      if (code === AUTH_ERROR.EMAIL_MISMATCH) {
+        restartEmailVerification()
+        fieldErrorRef.current?.('email', authErrorMessage(err))
+        return
+      }
       setEmailState(ERROR)
       setEmailError(authErrorMessage(err, 'Could not send email code'))
     }
@@ -205,9 +243,23 @@ export function useRegistrationVerification({
     setEmailError('')
     setEmailState(VERIFYING)
     try {
-      await authApi.verifyEmailOtp({ session_id: sessionIdRef.current || sessionId, code: emailCode })
+      await authApi.verifyEmailOtp({ session_id: getSessionId(), code: emailCode })
       setEmailState(VERIFIED)
     } catch (err) {
+      const code = authErrorCode(err)
+      if (code === AUTH_ERROR.EMAIL_MISMATCH) {
+        restartEmailVerification()
+        fieldErrorRef.current?.('email', authErrorMessage(err))
+        return
+      }
+      if (code === AUTH_ERROR.TOO_MANY_ATTEMPTS) {
+        // This code is spent; clear it and open the resend immediately.
+        setEmailCode('')
+        setEmailCooldown(0)
+        setEmailState(ERROR)
+        setEmailError(authErrorMessage(err))
+        return
+      }
       setEmailState(ERROR)
       setEmailError(authErrorMessage(err, 'Invalid code'))
     }
@@ -245,6 +297,11 @@ export function useRegistrationVerification({
         setPhoneState(IDLE)
         return
       }
+      if (code === AUTH_ERROR.PHONE_MISMATCH) {
+        restartPhoneVerification()
+        fieldErrorRef.current?.('mobile_national', authErrorMessage(err))
+        return
+      }
       setPhoneState(ERROR)
       // Backend failures carry a code; anything else came from Firebase.
       setPhoneError(code ? authErrorMessage(err) : firebasePhoneMessage(err))
@@ -262,7 +319,7 @@ export function useRegistrationVerification({
       const credential = await confirmation.confirm(phoneCode)
       const firebaseIdToken = await credential.user.getIdToken()
       await authApi.verifyPhoneToken({
-        session_id: sessionIdRef.current || sessionId,
+        session_id: getSessionId(),
         firebase_id_token: firebaseIdToken,
         mobile_number: phoneE164,
       })
@@ -279,6 +336,19 @@ export function useRegistrationVerification({
         setPhoneState(IDLE)
         return
       }
+      if (code === AUTH_ERROR.PHONE_MISMATCH) {
+        restartPhoneVerification()
+        fieldErrorRef.current?.('mobile_national', authErrorMessage(err))
+        return
+      }
+      if (code === AUTH_ERROR.TOO_MANY_ATTEMPTS) {
+        setPhoneCode('')
+        setPhoneCooldown(0)
+        confirmationRef.current = null
+        setPhoneState(ERROR)
+        setPhoneError(authErrorMessage(err))
+        return
+      }
       setPhoneState(ERROR)
       setPhoneError(code ? authErrorMessage(err) : firebaseCodeMessage(err))
     }
@@ -290,6 +360,7 @@ export function useRegistrationVerification({
     emailReady,
     phoneReady,
     bothVerified,
+    getSessionId,
 
     emailState,
     emailError,
@@ -299,6 +370,7 @@ export function useRegistrationVerification({
     sendEmailOtp,
     confirmEmailOtp,
     resetEmailVerification,
+    restartEmailVerification,
 
     phoneState,
     phoneError,
@@ -308,6 +380,7 @@ export function useRegistrationVerification({
     sendPhoneOtp,
     confirmPhoneOtp,
     resetPhoneVerification,
+    restartPhoneVerification,
 
     ensureFullSession,
   }

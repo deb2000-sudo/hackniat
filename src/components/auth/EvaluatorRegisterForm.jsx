@@ -24,11 +24,13 @@ const INITIAL = {
   confirm_password: '',
 }
 
+const PENDING_MESSAGE = 'Evaluator registration submitted.'
+
 /**
  * Evaluator self-registration — the student flow with an employee ID, a
  * corporate email domain, and an approval gate instead of a redirect to a
- * dashboard. Email and mobile verify independently against the same
- * registration session before the account can be created.
+ * dashboard. Email and mobile verify independently against one registration
+ * session, each binding only its own field.
  */
 export default function EvaluatorRegisterForm({ onSuccess }) {
   const navigate = useNavigate()
@@ -36,7 +38,7 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [result, setResult] = useState(null)
 
   const verification = useRegistrationVerification({
     role: ROLES.EVALUATOR,
@@ -77,11 +79,11 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
     setLoading(true)
     setSubmitError('')
     try {
-      // Use the id this call returns: a rebind can rotate it, and the state
-      // copy is still the previous value in this tick.
-      const sessionId = await verification.ensureFullSession()
+      // The session already holds both verified identifiers, so complete posts
+      // its id as-is. Re-binding here would be a needless round trip that could
+      // only desynchronise a session that is currently correct.
       const data = await authApi.registerEvaluatorComplete({
-        session_id: sessionId,
+        session_id: verification.getSessionId(),
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         employee_id: form.employee_id.trim(),
@@ -94,31 +96,32 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
       // cookies, but a pending evaluator is 403 on every evaluator route, and
       // PublicOnlyRoute would bounce an authenticated user straight off this
       // page to that 403 — throwing away the message they need to read.
-      setSubmitted(true)
+      setResult(data || {})
       onSuccess?.(data)
     } catch (err) {
       const code = authErrorCode(err)
-      const field = authErrorField(err)
-      if (field) {
-        setErrors((prev) => ({ ...prev, [field]: authErrorMessage(err) }))
+      if (code === AUTH_ERROR.EMAIL_MISMATCH) {
+        verification.restartEmailVerification()
+      } else if (code === AUTH_ERROR.PHONE_MISMATCH) {
+        verification.restartPhoneVerification()
       } else if (code === AUTH_ERROR.NOT_VERIFIED) {
         // The server disagrees that this session is verified, so the green
         // badges are stale. Drop both to re-block submit and force a re-verify.
         verification.resetEmailVerification()
         verification.resetPhoneVerification()
-        setSubmitError(authErrorMessage(err))
-      } else {
-        setSubmitError(authErrorMessage(err, 'Registration failed. Please try again.'))
       }
+      const field = authErrorField(err)
+      if (field) setErrors((prev) => ({ ...prev, [field]: authErrorMessage(err) }))
+      else setSubmitError(authErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {
       setLoading(false)
     }
   }
 
-  if (submitted) {
+  if (result) {
     return (
       <div className="stack-md">
-        <Alert variant="success" title="Evaluator registration submitted.">
+        <Alert variant="success" title={result.message || PENDING_MESSAGE}>
           Your account is pending admin approval. Evaluator pages stay locked until an
           administrator approves you.
         </Alert>
@@ -138,59 +141,6 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
   return (
     <form className="stack-md" onSubmit={handleSubmit} noValidate>
       {submitError && <Alert variant="danger">{submitError}</Alert>}
-
-      {/* Email and mobile verify independently; both required before submit. */}
-      <OtpRow
-        label="Mobile"
-        state={verification.phoneState}
-        code={verification.phoneCode}
-        error={verification.phoneError}
-        cooldown={verification.phoneCooldown}
-        canStart={verification.phoneReady}
-        onCodeChange={verification.setPhoneCode}
-        sentTo={verification.phoneE164}
-        onVerify={verification.sendPhoneOtp}
-        onConfirm={verification.confirmPhoneOtp}
-        onResend={verification.sendPhoneOtp}
-        extra={
-          <MobileField
-            countryCode={form.country_code}
-            mobileNational={form.mobile_national}
-            onChange={update}
-            error={errors.mobile_national}
-            locked={verification.phoneState === VERIFY.VERIFIED}
-          />
-        }
-      />
-      <div id={RECAPTCHA_CONTAINER_ID} />
-
-      <OtpRow
-        label="Email"
-        state={verification.emailState}
-        code={verification.emailCode}
-        error={verification.emailError}
-        cooldown={verification.emailCooldown}
-        canStart={verification.emailReady}
-        onCodeChange={verification.setEmailCode}
-        sentTo={verification.email}
-        onVerify={verification.sendEmailOtp}
-        onConfirm={verification.confirmEmailOtp}
-        onResend={verification.sendEmailOtp}
-        extra={
-          <Input
-            label="Nxtwave email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@nxtwave.co.in"
-            value={form.email}
-            onChange={update('email')}
-            error={errors.email}
-            disabled={verification.emailState === VERIFY.VERIFIED}
-            readOnly={verification.emailState === VERIFY.VERIFIED}
-          />
-        }
-      />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Input
@@ -219,6 +169,59 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
         error={errors.employee_id}
       />
 
+      {/* Email and mobile verify independently; both required before submit. */}
+      <OtpRow
+        label="Email"
+        state={verification.emailState}
+        code={verification.emailCode}
+        error={verification.emailError}
+        cooldown={verification.emailCooldown}
+        canStart={verification.emailReady}
+        onCodeChange={verification.setEmailCode}
+        sentTo={verification.email}
+        onVerify={verification.sendEmailOtp}
+        onConfirm={verification.confirmEmailOtp}
+        onResend={verification.sendEmailOtp}
+        extra={
+          <Input
+            label="Nxtwave email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@nxtwave.co.in"
+            value={form.email}
+            onChange={update('email')}
+            error={errors.email}
+            disabled={verification.emailState === VERIFY.VERIFIED}
+            readOnly={verification.emailState === VERIFY.VERIFIED}
+          />
+        }
+      />
+
+      <OtpRow
+        label="Mobile"
+        state={verification.phoneState}
+        code={verification.phoneCode}
+        error={verification.phoneError}
+        cooldown={verification.phoneCooldown}
+        canStart={verification.phoneReady}
+        onCodeChange={verification.setPhoneCode}
+        sentTo={verification.phoneE164}
+        onVerify={verification.sendPhoneOtp}
+        onConfirm={verification.confirmPhoneOtp}
+        onResend={verification.sendPhoneOtp}
+        extra={
+          <MobileField
+            countryCode={form.country_code}
+            mobileNational={form.mobile_national}
+            onChange={update}
+            error={errors.mobile_national}
+            locked={verification.phoneState === VERIFY.VERIFIED}
+          />
+        }
+      />
+      <div id={RECAPTCHA_CONTAINER_ID} />
+
       <PasswordFields
         password={form.password}
         confirmPassword={form.confirm_password}
@@ -228,7 +231,7 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
       />
 
       <Button type="submit" variant="accent" block loading={loading} disabled={!canSubmit}>
-        Create evaluator account
+        Complete registration
       </Button>
       {disabledReason && <p className="text-center text-sm text-muted">{disabledReason}</p>}
     </form>
