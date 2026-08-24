@@ -7,8 +7,12 @@ export const authApi = {
   verifyPhoneToken: (payload) => api.post('/auth/verify-phone-token', payload),
   registerComplete: (payload) => api.post('/auth/register/complete', payload),
 
-  /** Register a new evaluator account (pending admin approval). */
-  registerEvaluator: (payload) => api.post('/auth/register/evaluator', payload),
+  /**
+   * Finish evaluator registration on a session whose email and mobile are both
+   * verified. The account lands pending admin approval.
+   */
+  registerEvaluatorComplete: (payload) =>
+    api.post('/auth/register/evaluator/complete', payload),
 
   /** Log in; backend sets an HttpOnly session cookie and returns csrf_token. */
   login: (payload) => api.post('/auth/login', payload),

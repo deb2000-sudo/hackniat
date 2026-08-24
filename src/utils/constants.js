@@ -30,3 +30,13 @@ export const ROLE_HOME = {
   [ROLES.EVALUATOR]: '/evaluator',
   [ROLES.STUDENT]: '/student',
 }
+
+// Dialling codes offered on the registration forms.
+export const MOBILE_COUNTRY_CODES = [
+  { value: '+91', label: '+91 IN' },
+  { value: '+1', label: '+1 US' },
+  { value: '+44', label: '+44 UK' },
+  { value: '+971', label: '+971 AE' },
+  { value: '+65', label: '+65 SG' },
+  { value: '+61', label: '+61 AU' },
+]
