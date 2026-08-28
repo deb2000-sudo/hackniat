@@ -1,4 +1,5 @@
 import { api } from './client'
+import { EVALUATION_STATUS } from '../utils/constants'
 import { uploadVideoToStorage } from '../utils/videoUpload'
 
 /**
@@ -57,6 +58,27 @@ function normalizeSubmission(submission) {
   }
 }
 
+/**
+ * The hackathon a submission belongs to. The admin feed has carried this under
+ * more than one key, so resolve them all — a miss silently counted as zero.
+ */
+function submissionHackathonId(submission) {
+  return submission?.hackathon_id || submission?.hackathon?.id || submission?.hackathonId || ''
+}
+
+/**
+ * A submission that has been evaluated.
+ *
+ * Not just `status === 'completed'`: that only tracks the AI pipeline, so a
+ * submission an admin had scored and published still counted as unevaluated.
+ */
+function isEvaluated(submission) {
+  if (submission?.report_published) return true
+  if (submission?.final_score != null) return true
+  if (submission?.evaluator_score != null) return true
+  return submission?.status === EVALUATION_STATUS.COMPLETED
+}
+
 export const evaluationApi = {
   /** List every submission owned by the authenticated student. */
   listSubmissions: async (options) => {
@@ -74,6 +96,50 @@ export const evaluationApi = {
       throw new Error('The admin submissions API returned an unsupported response format.')
     }
     return submissions.map(normalizeSubmission)
+  },
+
+  /**
+   * Admin Submissions landing screen payload.
+   *
+   * Lives here rather than in the page because the login prefetch warms the
+   * same cache key: two producers writing different shapes to one key meant a
+   * prefetched raw array made the page render "No hackathons available".
+   *
+   * The hackathon list is essential; the submissions feed only supplies counts,
+   * so a failure there degrades the numbers instead of the whole screen.
+   */
+  loadSubmissionHackathonsWithCounts: async (options) => {
+    const [hackathonsResult, submissionsResult] = await Promise.allSettled([
+      evaluationApi.listSubmissionHackathons(options),
+      evaluationApi.listAllSubmissions(options),
+    ])
+    if (hackathonsResult.status === 'rejected') throw hackathonsResult.reason
+    const hackathons = hackathonsResult.value
+    const submissions = submissionsResult.status === 'fulfilled' ? submissionsResult.value : []
+
+    const statsByHackathon = submissions.reduce((counts, submission) => {
+      const id = submissionHackathonId(submission)
+      if (!id) return counts
+      const entry = counts.get(id) || { total: 0, evaluated: 0 }
+      entry.total += 1
+      if (isEvaluated(submission)) entry.evaluated += 1
+      counts.set(id, entry)
+      return counts
+    }, new Map())
+
+    return {
+      hackathons: hackathons.map((hackathon) => {
+        const stats = statsByHackathon.get(hackathon.hackathon_id) || { total: 0, evaluated: 0 }
+        const total = Number(hackathon.submission_count ?? stats.total) || stats.total
+        return {
+          ...hackathon,
+          submission_count: total,
+          evaluated_count: stats.evaluated,
+          awaiting_count: Math.max(0, total - stats.evaluated),
+        }
+      }),
+      countsUnavailable: submissionsResult.status === 'rejected',
+    }
   },
 
   /** Admin Submissions landing screen: hackathons with submission counts. */

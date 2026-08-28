@@ -4,7 +4,6 @@ import { evaluationApi } from '../../api/evaluation'
 import { useAsync } from '../../hooks/useAsync'
 import { queryKeys } from '../../lib/queryKeys'
 import { formatDate } from '../../utils/format'
-import { EVALUATION_STATUS } from '../../utils/constants'
 import {
   BADGE,
   BADGE_CLOSED,
@@ -25,79 +24,25 @@ import { LoadingBlock } from '../../components/ui/Spinner'
 /** Neutral stat pill. Uses text-ink, not text-muted: these are numbers to read. */
 const BADGE_STAT = 'border-hairline bg-raised text-ink'
 
-/**
- * The hackathon a submission belongs to. The admin feed has carried this under
- * more than one key, so resolve them all — a miss silently counted as zero.
- */
-function submissionHackathonId(submission) {
-  return submission?.hackathon_id || submission?.hackathon?.id || submission?.hackathonId || ''
-}
-
-/**
- * A submission that has been evaluated.
- *
- * Not just `status === 'completed'`: that only tracks the AI pipeline, so a
- * submission an admin had scored and published still counted as unevaluated.
- * A published report or a final score means the work is done either way.
- */
-function isEvaluated(submission) {
-  if (submission?.report_published) return true
-  if (submission?.final_score != null) return true
-  if (submission?.evaluator_score != null) return true
-  return submission?.status === EVALUATION_STATUS.COMPLETED
-}
-
 export default function AdminSubmissionsPage() {
   const { data, loading, error, reload } = useAsync(
-    async () => {
-      // The hackathon list is the page; the submissions feed only supplies the
-      // per-card counts. allSettled keeps a failure in the second from taking
-      // the first down with it — the cards still render, with counts at zero.
-      const [hackathonsResult, submissionsResult] = await Promise.allSettled([
-        evaluationApi.listSubmissionHackathons(),
-        evaluationApi.listAllSubmissions(),
-      ])
-      if (hackathonsResult.status === 'rejected') throw hackathonsResult.reason
-      const hackathons = hackathonsResult.value
-      const submissions = submissionsResult.status === 'fulfilled' ? submissionsResult.value : []
-      // Totals and evaluated counts come from the same pass, so the two numbers
-      // on a card can never disagree with each other.
-      const statsByHackathon = submissions.reduce((counts, submission) => {
-        const id = submissionHackathonId(submission)
-        if (!id) return counts
-        const entry = counts.get(id) || { total: 0, evaluated: 0 }
-        entry.total += 1
-        if (isEvaluated(submission)) entry.evaluated += 1
-        counts.set(id, entry)
-        return counts
-      }, new Map())
-
-      const cards = hackathons.map((hackathon) => {
-        const stats = statsByHackathon.get(hackathon.hackathon_id) || { total: 0, evaluated: 0 }
-        // Trust the backend's own total when it sends one; otherwise fall back
-        // to what the feed actually contained.
-        const total = Number(hackathon.submission_count ?? stats.total) || stats.total
-        return {
-          ...hackathon,
-          submission_count: total,
-          evaluated_count: stats.evaluated,
-          awaiting_count: Math.max(0, total - stats.evaluated),
-        }
-      })
-
-      return {
-        hackathons: cards,
-        countsUnavailable: submissionsResult.status === 'rejected',
-      }
-    },
+    (options) => evaluationApi.loadSubmissionHackathonsWithCounts(options),
     { key: queryKeys.submissionsAdminHackathons, staleTime: 30_000 },
   )
+
   const [query, setQuery] = useState('')
 
   // Memoised so the fallback [] is not a fresh array on every render, which
   // would invalidate the filter/sort memo below each time.
-  const allHackathons = useMemo(() => data?.hackathons || [], [data])
-  const countsUnavailable = Boolean(data?.countsUnavailable)
+  // Tolerate a bare array as well as the loader's payload. This cache key is
+  // also warmed by the login prefetch, and when the two shapes drifted apart the
+  // page rendered "No hackathons available" while data was sitting right there.
+  // Rendering the rows and flagging the missing counts beats a blank screen.
+  const allHackathons = useMemo(
+    () => (Array.isArray(data) ? data : data?.hackathons || []),
+    [data],
+  )
+  const countsUnavailable = Array.isArray(data) || Boolean(data?.countsUnavailable)
 
   const hackathons = useMemo(() => {
     const needle = query.trim().toLowerCase()
