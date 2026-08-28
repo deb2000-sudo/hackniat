@@ -125,6 +125,16 @@ export default function GithubAiPanel({
         </div>
       )}
 
+      {/* The backend owns this decision, so say why the action is missing rather
+          than rendering an empty box the evaluator cannot act on. */}
+      {!canStart && !processing && status === 'none' && githubLink && (
+        <p className="text-sm text-muted">
+          Analysis is not available for this submission yet. It needs a problem statement, a
+          solution description, and a repository link, and only the assigned evaluator or an
+          admin can run it.
+        </p>
+      )}
+
       {/* Backend decides who may run this and when; never recomputed here. */}
       {canStart && !processing && (
         <div>

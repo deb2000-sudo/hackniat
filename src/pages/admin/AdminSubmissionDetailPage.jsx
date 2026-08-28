@@ -115,6 +115,17 @@ export default function AdminSubmissionDetailPage() {
       )
     : ''
 
+  // Round config as a second signal. The submission carries a snapshot of the
+  // round's flag, but that snapshot is absent on submissions created before the
+  // flag was switched on — and then the panel vanished with no explanation.
+  // The hackathon is already loaded here, so read the round directly too.
+  const submissionRound = hackathon?.timeline?.[Number(submission?.round_index) || 0]
+  const githubAiEnabled =
+    Boolean(submission?.github_ai_evaluation) ||
+    Boolean(submissionRound?.github_ai_evaluation) ||
+    Boolean(submission?.show_github_ai_evaluation_button) ||
+    (submission?.github_ai_status && submission.github_ai_status !== 'none')
+
   const githubLink = submissionLinkForGroup(submission, 'github')
 
   /** Same trigger as the evaluator view; the existing poll reports progress. */
@@ -406,9 +417,7 @@ export default function AdminSubmissionDetailPage() {
             </Accordion>
           )}
 
-          {(submission?.github_ai_evaluation ||
-            submission?.show_github_ai_evaluation_button ||
-            submission?.github_ai_status !== 'none') && (
+          {githubAiEnabled && (
             <GithubAiPanel
               githubLink={githubLink}
               status={submission?.github_ai_status}
