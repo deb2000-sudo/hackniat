@@ -1188,6 +1188,71 @@
     color: var(--color-muted);
   }
 
+  .drop .student-final-score__rank {
+    background: var(--color-volt-tint);
+    color: var(--color-volt-ink);
+  }
+
+  .drop .leaderboard__row {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .leaderboard__row.is-you {
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
+  }
+
+  .drop .leaderboard__head h3,
+  .drop .leaderboard__who strong,
+  .drop .leaderboard__rank,
+  .drop .leaderboard__score {
+    color: var(--color-ink);
+  }
+
+  .drop .leaderboard__round,
+  .drop .leaderboard__stats,
+  .drop .leaderboard__who small {
+    color: var(--color-muted);
+  }
+
+  .drop .github-ai,
+  .drop .github-ai__result,
+  .drop .github-ai__segment {
+    border-color: var(--color-hairline);
+  }
+
+  .drop .github-ai {
+    background: var(--color-surface);
+  }
+
+  .drop .github-ai__result {
+    background: var(--color-raised);
+  }
+
+  .drop .github-ai__segment {
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  .drop .github-ai__title,
+  .drop .github-ai__score strong,
+  .drop .github-ai__rationale {
+    color: var(--color-ink);
+  }
+
+  .drop .github-ai__link {
+    color: var(--color-volt-ink);
+  }
+
+  .drop .github-ai__processing,
+  .drop .github-ai__score span,
+  .drop .github-ai__score small,
+  .drop .github-ai__segment span,
+  .drop .github-ai__context summary {
+    color: var(--color-muted);
+  }
+
   .drop .draft-review-row {
     border-color: var(--color-hairline);
     background: var(--color-raised);

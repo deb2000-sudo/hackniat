@@ -105,6 +105,17 @@ export function isGithubFieldKey(fieldKey) {
   return groupForFieldKey(fieldKey) === 'github'
 }
 
+/**
+ * The scorecard metric the GitHub AI result maps onto.
+ *
+ * Matches through isGithubFieldKey rather than a fixed key list, so a
+ * requirement naming the field project_github_link, github_url, repo_link (or
+ * anything else in the github group) still resolves.
+ */
+export function getGithubMetric(scorecard) {
+  return scorecard?.metrics?.find((metric) => isGithubFieldKey(metric?.field_key)) || null
+}
+
 export function isMvpFieldKey(fieldKey) {
   return groupForFieldKey(fieldKey) === 'mvp'
 }

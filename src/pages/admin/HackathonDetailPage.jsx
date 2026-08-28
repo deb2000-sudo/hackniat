@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { hackathonsApi } from '../../api/hackathons'
 import RoundParticipation from '../../components/hackathons/RoundParticipation'
+import LeaderboardPanel from '../../components/hackathons/LeaderboardPanel'
 import { participationErrorMessage } from '../../components/hackathons/errorCodes'
 import { roundStatusBadge } from '../../components/hackathons/roundStatus'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
@@ -294,6 +295,26 @@ export default function HackathonDetailPage() {
             ))}
           </div>
         </section>
+
+        {/* Standings per round. Staff always see a preview; students only reach
+            a board their admin has published, and the panel reports that state
+            itself rather than the page guessing at it. */}
+        {!!hackathon.timeline?.length &&
+          hackathon.timeline.map((round, index) =>
+            isAdmin || isEvaluator || round.leaderboard_published ? (
+              <section className={PANEL} key={`leaderboard-${round.title}-${index}`}>
+                <div className="p-4 sm:p-5">
+                  <LeaderboardPanel
+                    hackathonId={hackathonId}
+                    roundIndex={index}
+                    roundTitle={round.title || `Round ${index + 1}`}
+                    published={round.leaderboard_published === true}
+                    canManage={isAdmin}
+                  />
+                </div>
+              </section>
+            ) : null,
+          )}
 
         <section className={PANEL}>
           <SectionHeader

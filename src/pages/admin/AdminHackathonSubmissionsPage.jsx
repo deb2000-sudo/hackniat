@@ -19,12 +19,21 @@ import { LoadingBlock } from '../../components/ui/Spinner'
 export default function AdminHackathonSubmissionsPage() {
   const { hackathonId } = useParams()
   const { data, loading, error, reload, setData } = useAsync(async () => {
-    const [hackathon, submissions, evaluators] = await Promise.all([
+    // Only the hackathon itself is essential — without it the page has no
+    // subject. An empty (or failing) submissions or evaluators feed should
+    // render as "nothing to review yet", not take the whole screen down.
+    const [hackathonResult, submissionsResult, evaluatorsResult] = await Promise.allSettled([
       hackathonsApi.get(hackathonId),
       evaluationApi.listHackathonSubmissions(hackathonId),
       adminApi.getApprovedEvaluators(),
     ])
-    return { hackathon, submissions, evaluators }
+    if (hackathonResult.status === 'rejected') throw hackathonResult.reason
+    return {
+      hackathon: hackathonResult.value,
+      submissions:
+        submissionsResult.status === 'fulfilled' ? submissionsResult.value : [],
+      evaluators: evaluatorsResult.status === 'fulfilled' ? evaluatorsResult.value : [],
+    }
   })
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
@@ -33,6 +42,10 @@ export default function AdminHackathonSubmissionsPage() {
   const [bulkAssigning, setBulkAssigning] = useState(false)
   const [actionError, setActionError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
+  const [sheetUrl, setSheetUrl] = useState('')
+  const [popupBlocked, setPopupBlocked] = useState(false)
 
   const submissions = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -176,6 +189,39 @@ export default function AdminHackathonSubmissionsPage() {
     [selectedIds, data?.submissions],
   )
 
+  const linkedSheetUrl = sheetUrl || hackathon?.export_spreadsheet_url || ''
+
+  /**
+   * Push this hackathon's submissions into its linked Google Sheet and open it.
+   *
+   * The tab is opened after an await, so it is outside the user-gesture window
+   * and browsers may block it. `window.open` returns null when that happens —
+   * we keep the URL and render a link rather than leaving the admin thinking
+   * the sync silently failed.
+   */
+  const syncToGoogleSheet = async () => {
+    setExporting(true)
+    setExportError('')
+    setPopupBlocked(false)
+    try {
+      const result = await evaluationApi.syncHackathonToGoogleSheet(hackathonId)
+      const url = result?.spreadsheet_url || ''
+      setSheetUrl(url)
+      if (!url) {
+        setExportError('The sync finished but did not return a spreadsheet link.')
+        return
+      }
+      const opened = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!opened) setPopupBlocked(true)
+      // Pick up export_spreadsheet_url / _synced_at for the header line.
+      reload({ force: true })
+    } catch (err) {
+      setExportError(err.message || 'Could not sync submissions to Google Sheets.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className={`${WRAP_APP} py-7 md:py-10 admin-submissions-page`}>
       <PageHeader
@@ -186,8 +232,18 @@ export default function AdminHackathonSubmissionsPage() {
             ? `${formatDate(hackathon.start_date)} – ${formatDate(hackathon.end_date)} · ${data.submissions.length} submissions`
             : 'Review hackathon submissions.'
         }
+
         actions={
           <>
+            <Button
+              variant="secondary"
+              onClick={syncToGoogleSheet}
+              loading={exporting}
+              disabled={exporting}
+              leftIcon={<Icon name="upload" size={17} />}
+            >
+              {exporting ? 'Syncing…' : 'Sync to Google Sheets'}
+            </Button>
             <Button
               variant="ghost"
               onClick={reload}
@@ -208,6 +264,21 @@ export default function AdminHackathonSubmissionsPage() {
         }
       />
 
+      {/* Once a sheet exists the admin can reach it without re-syncing. */}
+      {linkedSheetUrl && (
+        <p className="-mt-3 mb-5 flex flex-wrap items-center gap-1.5 text-[13px] text-muted">
+          <Icon name="clipboard" size={14} />
+          <a href={linkedSheetUrl} target="_blank" rel="noopener noreferrer" className="underline">
+            Google Sheet
+          </a>
+          <span>
+            {hackathon?.export_spreadsheet_synced_at
+              ? `· last synced ${formatDateTime(hackathon.export_spreadsheet_synced_at)}`
+              : '· not synced yet'}
+          </span>
+        </p>
+      )}
+
       {hackathon?.banner_url && (
         <div className="admin-hackathon-queue-banner">
           <img src={hackathon.banner_url} alt="" />
@@ -223,6 +294,16 @@ export default function AdminHackathonSubmissionsPage() {
       )}
       {actionError && <Alert variant="danger">{actionError}</Alert>}
       {actionMessage && <Alert variant="success">{actionMessage}</Alert>}
+      {/* This app has no toast layer, so sync feedback lands beside the other
+          action results rather than floating over the page. */}
+      {exportError && <Alert variant="danger">{exportError}</Alert>}
+      {popupBlocked && sheetUrl && (
+        <Alert variant="warning" title="Sheet updated — your browser blocked the new tab">
+          <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="underline">
+            Open the Google Sheet
+          </a>
+        </Alert>
+      )}
 
       <div className="admin-submissions-toolbar">
         <div className="admin-submissions-search">

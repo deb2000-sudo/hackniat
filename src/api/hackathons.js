@@ -103,6 +103,31 @@ export const hackathonsApi = {
   publishRound: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/publish`, undefined, options),
 
+  /* --------------------------- Round leaderboard -------------------------- */
+  // Ranking is derived from approved evaluations only, and stays hidden from
+  // students until an admin publishes that round's board.
+
+  /**
+   * Ranked standings for one round. Admins and evaluators can always read this
+   * as a preview; students get 403 LEADERBOARD_NOT_PUBLISHED until publish.
+   */
+  roundLeaderboard: (hackathonId, roundIndex, options) =>
+    api.get(`${roundPath(hackathonId, roundIndex)}/leaderboard`, options),
+
+  /**
+   * Publish or hide a round's leaderboard.
+   *
+   * `notify` controls the ranked-candidate emails: the backend defaults it to
+   * true on a first publish and false on re-publish, so it is only sent when
+   * the caller explicitly wants to mail again. Unpublishing never notifies.
+   */
+  publishRoundLeaderboard: (hackathonId, roundIndex, { publish = true, notify } = {}, options) =>
+    api.post(
+      `${roundPath(hackathonId, roundIndex)}/leaderboard/publish`,
+      notify === undefined ? { publish } : { publish, notify },
+      options,
+    ),
+
   /** Leader refreshes the join code; the previous one is invalidated. */
   refreshJoinCode: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/teams/join-code`, undefined, options),

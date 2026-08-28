@@ -100,6 +100,13 @@ export default function EvaluationDetailPage() {
                     Final score
                   </span>
                   <p>Approved by the hackathon administrator</p>
+                  {/* Only present once the round's leaderboard is published. */}
+                  {session?.leaderboard_rank_label && (
+                    <span className="student-final-score__rank">
+                      <Icon name="trophy" size={15} />
+                      {session.leaderboard_rank_label} on the round leaderboard
+                    </span>
+                  )}
                 </div>
                 <div className="student-final-score__value">
                   {session?.final_score != null || getScorecard(session)?.computed_total != null ? (

@@ -997,6 +997,8 @@ code {
   font-weight: 600;
 }
 
+.student-final-score__rank { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 11px; border-radius: 999px; background: var(--brand-50); color: var(--brand-700); font-size: .78rem; font-weight: 650; }
+
 .student-final-score__empty {
   color: var(--text-subtle) !important;
 }
@@ -4688,6 +4690,42 @@ code {
 .hackathon-form-actions { position: sticky; bottom: 16px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(100%, 68rem); margin-inline: auto; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.92); box-shadow: 0 12px 38px rgba(15,23,42,.13); backdrop-filter: blur(12px); }
 .hackathon-form-actions p { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: .78rem; }
 .hackathon-form-actions__buttons { display: flex; align-items: center; gap: 10px; }
+
+/* ---------------------------- Round leaderboard -------------------------- */
+.leaderboard { display: flex; flex-direction: column; gap: 12px; }
+.leaderboard__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.leaderboard__head h3 { font-size: 1rem; }
+.leaderboard__round { color: var(--text-muted); font-weight: 500; }
+.leaderboard__stats { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 6px; color: var(--text-muted); font-size: .78rem; }
+.leaderboard__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.leaderboard__list { display: flex; flex-direction: column; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.leaderboard__row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.leaderboard__row.is-you { border-color: var(--brand-600); background: var(--brand-50); }
+.leaderboard__rank { min-width: 44px; font-size: .92rem; font-weight: 700; }
+.leaderboard__who { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
+.leaderboard__who strong { overflow: hidden; font-size: .88rem; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard__who small { color: var(--text-muted); font-size: .73rem; }
+.leaderboard__score { font-size: 1rem; font-weight: 700; }
+
+/* --------------------- GitHub AI analysis (staff only) ------------------- */
+.github-ai { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.github-ai__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.github-ai__title { display: inline-flex; align-items: center; gap: 7px; font-size: .84rem; font-weight: 650; }
+.github-ai__link { display: inline-flex; align-items: center; gap: 5px; overflow: hidden; max-width: 100%; color: var(--brand-600); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.github-ai__processing { display: flex; align-items: center; gap: 9px; color: var(--text-muted); font-size: .82rem; }
+.github-ai__result { display: flex; flex-direction: column; gap: 11px; padding: 13px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.github-ai__score { display: flex; flex-wrap: wrap; align-items: baseline; gap: 9px; }
+.github-ai__score span { color: var(--text-muted); font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.github-ai__score strong { font-size: 1.35rem; }
+.github-ai__score small { color: var(--text-muted); font-size: .72rem; }
+.github-ai__segments { display: flex; flex-wrap: wrap; gap: 7px; }
+.github-ai__segment { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: .74rem; }
+.github-ai__segment span { color: var(--text-muted); text-transform: capitalize; }
+.github-ai__rationale { font-size: .84rem; line-height: 1.55; }
+.github-ai__context summary { cursor: pointer; color: var(--text-muted); font-size: .78rem; }
+.github-ai__context ul { margin: 8px 0 0; padding-left: 18px; font-size: .8rem; }
+.github-ai__context li { margin-top: 3px; }
+
 
 /* ------------------------------ Drafts inbox ---------------------------- */
 .drafts-inbox { margin-bottom: 24px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }

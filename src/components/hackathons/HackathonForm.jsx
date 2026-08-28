@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { themesApi } from '../../api/themes'
 import { useAsync } from '../../hooks/useAsync'
@@ -66,6 +66,7 @@ function emptyRound() {
     max_team_size: '1',
     working_demo_video_required: true,
     auto_ai_evaluation: false,
+    github_ai_evaluation: false,
     published: false,
     round_status: '',
   }
@@ -106,6 +107,8 @@ function createInitialForm(initialValue) {
         working_demo_video_required:
           round.working_demo_video_required ?? initialValue.working_demo_video_required !== false,
         auto_ai_evaluation: round.auto_ai_evaluation ?? initialValue.auto_ai_evaluation === true,
+        github_ai_evaluation:
+          round.github_ai_evaluation ?? initialValue.github_ai_evaluation === true,
       })),
       initialValue.start_date || '',
       initialValue.end_date || '',
@@ -249,6 +252,7 @@ function cleanForm(form) {
       max_team_size: Number(round.max_team_size || 1),
       working_demo_video_required: round.working_demo_video_required !== false,
       auto_ai_evaluation: round.auto_ai_evaluation === true,
+      github_ai_evaluation: round.github_ai_evaluation === true,
     })),
   }
 }
@@ -355,7 +359,15 @@ export default function HackathonForm({
     setErrors((current) => ({ ...current, [`prizes.${key}`]: undefined, form: undefined }))
   }
 
+  /**
+   * Append a round. The button sits below a long list of fields, so adding one
+   * silently appended a row far off screen with no sign anything happened —
+   * hence the confirmation and the jump to the new row's first field.
+   */
   const addRound = () => {
+    const nextIndex = form.timeline.length
+    pendingRoundFocus.current = nextIndex
+    setRoundNotice(`Round ${nextIndex + 1} added.`)
     setForm((current) => ({
       ...current,
       timeline: [...current.timeline, emptyRound()],
@@ -364,6 +376,27 @@ export default function HackathonForm({
 
   const [publishing, setPublishing] = useState('')
   const [publishError, setPublishError] = useState('')
+  const [roundNotice, setRoundNotice] = useState('')
+  /** Index of a just-added round awaiting focus; -1 when there is none. */
+  const pendingRoundFocus = useRef(-1)
+
+  // Focus and reveal the round that was just appended, once it is in the DOM.
+  // Removing a round also changes the length, but leaves the ref at -1.
+  useEffect(() => {
+    const index = pendingRoundFocus.current
+    if (index < 0) return
+    pendingRoundFocus.current = -1
+    const field = document.getElementById(`round-title-${index}`)
+    if (!field) return
+    field.focus({ preventScroll: true })
+    field.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [form.timeline.length])
+
+  useEffect(() => {
+    if (!roundNotice) return undefined
+    const id = setTimeout(() => setRoundNotice(''), 4000)
+    return () => clearTimeout(id)
+  }, [roundNotice])
 
   const publishRound = async (index) => {
     if (!initialValue?.id) return
@@ -807,14 +840,6 @@ export default function HackathonForm({
               </p>
             </div>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={addRound}
-            leftIcon={<Icon name="plus" size={16} />}
-          >
-            Add round
-          </Button>
         </CardHeader>
         <CardBody className="stack-md">
           {publishError && <Alert variant="danger">{publishError}</Alert>}
@@ -854,6 +879,7 @@ export default function HackathonForm({
                   ) : null}
                 </div>
                 <Input
+                  id={`round-title-${index}`}
                   label="Title"
                   required
                   maxLength={100}
@@ -970,11 +996,48 @@ export default function HackathonForm({
                     </small>
                   </span>
                 </label>
+
+                <label className="hackathon-video-toggle">
+                  <input
+                    type="checkbox"
+                    checked={round.github_ai_evaluation === true}
+                    onChange={updateRoundFlag(index, 'github_ai_evaluation')}
+                  />
+                  <span>
+                    <strong>AI GitHub analysis</strong>
+                    <small>
+                      When enabled, evaluators can analyse the submitted repository with AI and
+                      pre-fill the GitHub scorecard metric. Independent of video AI evaluation.
+                    </small>
+                  </span>
+                </label>
               </div>
             ))
           ) : (
             <p className="text-sm text-muted">No timeline rounds added.</p>
           )}
+
+          {/* Below the rounds, not in the header: you add a round after reading
+              the ones already there. */}
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-hairline pt-4">
+            {roundNotice && (
+              <span
+                className="flex items-center gap-1.5 text-sm font-medium text-emerald-600"
+                role="status"
+              >
+                <Icon name="checkCircle" size={15} />
+                {roundNotice}
+              </span>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={addRound}
+              leftIcon={<Icon name="plus" size={16} />}
+            >
+              Add round
+            </Button>
+          </div>
         </CardBody>
       </Card>
 

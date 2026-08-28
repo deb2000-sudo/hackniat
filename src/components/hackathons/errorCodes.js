@@ -21,6 +21,9 @@ const MESSAGES = {
   NOT_ENROLLED: 'Enroll in this hackathon before submitting.',
   ROUND_ENDED: 'This round has already ended, so it can no longer be published.',
   ROUND_NOT_PUBLISHED: 'This round has not been released yet.',
+  LEADERBOARD_NOT_PUBLISHED: 'The leaderboard for this round has not been published yet.',
+  NO_APPROVED_SUBMISSIONS:
+    'No approved evaluations yet, so there is nothing to rank. Approve at least one submission first.',
   ALREADY_PUBLISHED: 'This round is already published.',
   TEAM_NAME_REQUIRED: 'Enter a team name.',
 }
