@@ -35,6 +35,7 @@ const EvaluatorsPage = lazy(() => import('./pages/admin/EvaluatorsPage'))
 const HackathonsPage = lazy(() => import('./pages/admin/HackathonsPage'))
 const HackathonFormPage = lazy(() => import('./pages/admin/HackathonFormPage'))
 const HackathonDetailPage = lazy(() => import('./pages/admin/HackathonDetailPage'))
+const HackathonSettingsPage = lazy(() => import('./pages/admin/HackathonSettingsPage'))
 const EvaluationRequirementsPage = lazy(
   () => import('./pages/admin/EvaluationRequirementsPage'),
 )
@@ -124,6 +125,10 @@ export default function App() {
                   element={<Navigate to="/admin/hackathons/create" replace />}
                 />
                 <Route path="/admin/hackathons/:hackathonId/edit" element={<HackathonFormPage />} />
+                <Route
+                  path="/admin/hackathons/:hackathonId/settings"
+                  element={<HackathonSettingsPage />}
+                />
                 <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
                 <Route
                   path="/admin/submissions/hackathons/:hackathonId"

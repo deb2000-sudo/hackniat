@@ -55,7 +55,6 @@ export default function AdminSubmissionsPage() {
     <div className={`${WRAP_APP} py-7 md:py-10`}>
       <header className="mb-7 flex flex-col gap-4 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-3xl">
-          <span className={EYEBROW}>Admin review</span>
           <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
             Submissions by hackathon
           </h1>
@@ -186,7 +185,7 @@ export default function AdminSubmissionsPage() {
                     to={`/admin/submissions/hackathons/${hackathon.hackathon_id}`}
                     className={`${BTN_VOLT} w-full`}
                   >
-                    View submissions
+                    View All Submissions
                     <Icon name="arrowRight" size={16} />
                   </Link>
                 </div>

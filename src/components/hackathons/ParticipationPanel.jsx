@@ -31,6 +31,9 @@ import {
  * `pending_action` from the backend is the source of truth for what to show —
  * the client never infers enrollment state from its own last action.
  */
+/** Actions the panel renders a step for; anything else falls back to team size. */
+const KNOWN_PENDING_ACTIONS = ['solo_enroll', 'choose_role', 'complete_team', 'round_not_open']
+
 export default function ParticipationPanel({ hackathonId, roundIndex = 0, round, onState }) {
   // An unreleased round rejects /participation by design, so don't ask: the
   // request can only come back as an error the student can do nothing about.
@@ -114,6 +117,15 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
 
   const { enrolled, role, team, pending_action: pendingAction } = data
   const isSolo = Number(data.max_team_size) === 1
+
+  // pending_action is the backend's instruction and is honoured whenever it is
+  // one we know. When it is missing or named something else, fall back to the
+  // round's team size: previously an unrecognised value rendered the header and
+  // nothing else, so a team round silently offered no way to enroll at all.
+  const unknownAction = !KNOWN_PENDING_ACTIONS.includes(pendingAction)
+  const showSoloEnroll = !enrolled && (pendingAction === 'solo_enroll' || (unknownAction && isSolo))
+  const showRoleChoice =
+    !enrolled && !choice && (pendingAction === 'choose_role' || (unknownAction && !isSolo))
   const activeCode = issuedCode || team?.join_code || null
 
   const header = (
@@ -150,7 +162,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
       {notice && <Alert variant="success">{notice}</Alert>}
 
       {/* ---------------------------- Solo enroll --------------------------- */}
-      {!enrolled && pendingAction === 'solo_enroll' && (
+      {showSoloEnroll && (
         <div className="stack-sm">
           <p className="text-sm text-muted">
             This hackathon is solo. Enroll to unlock your submission.
@@ -167,7 +179,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
       )}
 
       {/* ------------------------- Leader / member pick --------------------- */}
-      {!enrolled && pendingAction === 'choose_role' && !choice && (
+      {showRoleChoice && (
         <div className="stack-sm">
           <p className="text-sm text-muted">
             Teams of up to {data.max_team_size} (the leader included). How are you taking part?

@@ -257,7 +257,10 @@ export default function AdminSubmissionDetailPage() {
         <Link
           to={
             submission?.hackathon_id
-              ? `/admin/submissions/hackathons/${submission.hackathon_id}`
+              ? /* Carry the round back so the queue reopens where it was left. */
+                `/admin/submissions/hackathons/${submission.hackathon_id}?round=${
+                  Number(submission.round_index) || 0
+                }`
               : '/admin/submissions'
           }
           className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}

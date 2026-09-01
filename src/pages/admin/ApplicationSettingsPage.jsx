@@ -63,6 +63,15 @@ const RESET_COUNT_META = {
   },
 }
 
+/**
+ * Loose key for matching a wipeable-collection name against a deleted_counts
+ * key: the two feeds spell the same thing differently ("users (non-admin)" vs
+ * `users_non_admin`), so compare on letters and digits alone.
+ */
+function collectionKey(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
 function formatCollectionLabel(name) {
   return (
     RESET_COUNT_META[name]?.label ||
@@ -72,7 +81,7 @@ function formatCollectionLabel(name) {
   )
 }
 
-function ResetSummary({ result, onDismiss, onDashboard }) {
+function ResetSummary({ result, excluded = [], onDismiss, onDashboard }) {
   const deletedEntries = useMemo(() => {
     const counts = result?.deleted_counts || {}
     return Object.entries(counts)
@@ -88,6 +97,22 @@ function ResetSummary({ result, onDismiss, onDashboard }) {
 
   const totalDeleted = deletedEntries.reduce((sum, item) => sum + item.count, 0)
   const preserved = Array.isArray(result?.preserved) ? result.preserved : []
+
+  /**
+   * Exclusions the server wiped anyway.
+   *
+   * Per-collection selection is only a request: a backend that does not
+   * support it ignores the field and clears everything. The receipt is the
+   * only proof, so it is checked here rather than reporting a success that
+   * quietly deleted data the admin had deselected.
+   */
+  const ignoredExclusions = useMemo(() => {
+    if (!excluded.length) return []
+    const wiped = new Set(
+      deletedEntries.filter((item) => item.count > 0).map((item) => collectionKey(item.key)),
+    )
+    return excluded.filter((name) => wiped.has(collectionKey(name)))
+  }, [excluded, deletedEntries])
 
   return (
     <div className={`${PANEL} overflow-hidden border-volt-edge bg-surface`}>
@@ -113,6 +138,31 @@ function ResetSummary({ result, onDismiss, onDashboard }) {
       </div>
 
       <div className="stack-md p-5">
+        {ignoredExclusions.length > 0 && (
+          <Alert variant="danger" title="Deselected collections were deleted anyway">
+            The server does not support per-collection resets, so it cleared everything. These
+            were deselected but still wiped:{' '}
+            <span className={MONO}>{ignoredExclusions.join(', ')}</span>
+          </Alert>
+        )}
+
+        {excluded.length > 0 && ignoredExclusions.length === 0 && (
+          <div>
+            <span className={EYEBROW}>Excluded from this reset</span>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {excluded.map((name) => (
+                <li
+                  key={name}
+                  className="inline-flex items-center gap-1.5 rounded-drop border border-hairline bg-raised px-2.5 py-1.5 text-[12.5px] text-ink"
+                >
+                  <Icon name="shield" size={13} className="text-volt-ink" />
+                  <code className={MONO}>{name}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div>
           <span className={EYEBROW}>Removed</span>
           <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -184,6 +234,10 @@ export default function ApplicationSettingsPage() {
   const [resetLoading, setResetLoading] = useState(false)
   const [resetError, setResetError] = useState('')
   const [resetResult, setResetResult] = useState(null)
+  // What the admin deselected, and what was deselected on the run the summary
+  // below is reporting — the two differ once the form is cleared.
+  const [excludedCollections, setExcludedCollections] = useState(() => new Set())
+  const [resultExcluded, setResultExcluded] = useState([])
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
 
   const loadSettings = async () => {
@@ -222,9 +276,38 @@ export default function ApplicationSettingsPage() {
       ? 'New profile password and confirm do not match'
       : ''
 
+  // The list the server reports as wipeable is the whole universe here: an
+  // admin can drop any of them from this run, but nothing outside it is ever
+  // touched.
+  const wipeableCollections = useMemo(
+    () => settings?.wipeable_collections || [],
+    [settings],
+  )
+  const selectedCollections = useMemo(
+    () => wipeableCollections.filter((name) => !excludedCollections.has(name)),
+    [wipeableCollections, excludedCollections],
+  )
+  const excludedNames = useMemo(
+    () => wipeableCollections.filter((name) => excludedCollections.has(name)),
+    [wipeableCollections, excludedCollections],
+  )
+
   const phraseMatches = resetForm.confirm_phrase === confirmPhrase
   const canOpenResetModal =
-    resetForm.profile_password.length > 0 && phraseMatches && !resetLoading
+    resetForm.profile_password.length > 0 &&
+    phraseMatches &&
+    selectedCollections.length > 0 &&
+    !resetLoading
+
+  const toggleCollection = (name) => {
+    setResetError('')
+    setExcludedCollections((current) => {
+      const next = new Set(current)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
 
   const updateProfile = (key) => (event) => {
     setProfileForm((current) => ({ ...current, [key]: event.target.value }))
@@ -258,11 +341,17 @@ export default function ApplicationSettingsPage() {
   const submitReset = async () => {
     setResetLoading(true)
     setResetError('')
+    const excludedForRun = excludedNames
     try {
-      const result = await adminApi.resetDatabase({
+      const payload = {
         profile_password: resetForm.profile_password,
         confirm_phrase: resetForm.confirm_phrase,
-      })
+      }
+      // Only sent when something is actually deselected, so a full reset keeps
+      // hitting the endpoint with exactly the payload it has always had.
+      if (excludedForRun.length) payload.collections = selectedCollections
+      const result = await adminApi.resetDatabase(payload)
+      setResultExcluded(excludedForRun)
       setResetResult(result)
       setResetForm(RESET_FORM)
       setConfirmResetOpen(false)
@@ -327,6 +416,7 @@ export default function ApplicationSettingsPage() {
         <div className="mb-6">
           <ResetSummary
             result={resetResult}
+            excluded={resultExcluded}
             onDismiss={() => setResetResult(null)}
             onDashboard={() => navigate('/admin')}
           />
@@ -418,26 +508,83 @@ export default function ApplicationSettingsPage() {
             {resetError && <Alert variant="danger">{resetError}</Alert>}
 
             <div>
-              <span className={EYEBROW}>What gets wiped</span>
-              {/* Pills wrap to content — a fixed grid left long collection names
-                  truncated beside mostly-empty cells. */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className={EYEBROW}>What gets wiped</span>
+                <div className="flex items-center gap-2">
+                  <span className={`${MONO} text-[12px] text-muted`}>
+                    {selectedCollections.length}/{wipeableCollections.length} selected
+                  </span>
+                  {excludedNames.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setExcludedCollections(new Set())}
+                      disabled={resetLoading}
+                    >
+                      Select all
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {/* Every wipeable collection the server reports, each one droppable
+                  from this run: × excludes it, + puts it back. Pills wrap to
+                  content — a fixed grid left long collection names truncated
+                  beside mostly-empty cells. */}
               <ul className="mt-3 flex flex-wrap gap-2">
-                {(settings?.wipeable_collections || []).map((name) => (
-                  <li
-                    key={name}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-missing/25 bg-danger-soft py-1.5 pr-3 pl-2.5 text-[12px] text-missing"
-                  >
-                    <Icon name="trash" size={12} className="shrink-0 opacity-70" />
-                    <span className={`${MONO} truncate`}>{name}</span>
-                  </li>
-                ))}
+                {wipeableCollections.map((name) => {
+                  const excluded = excludedCollections.has(name)
+                  return (
+                    <li
+                      key={name}
+                      className={`inline-flex max-w-full items-center gap-1.5 rounded-full border py-1.5 pr-1.5 pl-2.5 text-[12px] ${
+                        excluded
+                          ? 'border-hairline bg-raised text-muted'
+                          : 'border-missing/25 bg-danger-soft text-missing'
+                      }`}
+                    >
+                      <Icon
+                        name={excluded ? 'shield' : 'trash'}
+                        size={12}
+                        className="shrink-0 opacity-70"
+                      />
+                      <span className={`${MONO} truncate ${excluded ? 'line-through' : ''}`}>
+                        {name}
+                      </span>
+                      <button
+                        type="button"
+                        className="grid size-5 shrink-0 place-items-center rounded-full transition-colors hover:bg-surface disabled:opacity-50"
+                        onClick={() => toggleCollection(name)}
+                        disabled={resetLoading}
+                        title={excluded ? 'Include in the reset' : 'Keep this collection'}
+                        aria-label={
+                          excluded ? `Include ${name} in the reset` : `Keep ${name}, do not delete it`
+                        }
+                      >
+                        <Icon name={excluded ? 'plus' : 'x'} size={12} />
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
 
-            <Alert variant="warning">
-              Admins and the Profile Password configuration are kept. Everything listed above will
-              be removed.
-            </Alert>
+            {selectedCollections.length === 0 ? (
+              <Alert variant="warning" title="Nothing selected">
+                Every collection is deselected, so this reset would delete nothing. Include at
+                least one to continue.
+              </Alert>
+            ) : excludedNames.length > 0 ? (
+              <Alert variant="warning" title={`${excludedNames.length} kept, ${selectedCollections.length} to delete`}>
+                Deselected collections are left untouched:{' '}
+                <span className={MONO}>{excludedNames.join(', ')}</span>. Admins and the Profile
+                Password configuration are kept either way.
+              </Alert>
+            ) : (
+              <Alert variant="warning">
+                Admins and the Profile Password configuration are kept. Everything listed above
+                will be removed.
+              </Alert>
+            )}
 
             <PasswordInput
               label="Profile Password"
@@ -495,10 +642,20 @@ export default function ApplicationSettingsPage() {
           </>
         }
       >
-        <p>
-          This cannot be undone. All wipeable collections will be permanently deleted. Admin
-          accounts and the Profile Password will be preserved.
-        </p>
+        <div className="stack-md">
+          <p>
+            This cannot be undone.{' '}
+            {excludedNames.length
+              ? `${selectedCollections.length} of ${wipeableCollections.length} collections will be permanently deleted.`
+              : 'All wipeable collections will be permanently deleted.'}{' '}
+            Admin accounts and the Profile Password will be preserved.
+          </p>
+          {excludedNames.length > 0 && (
+            <p className="text-[13.5px] text-muted">
+              Kept: <span className={MONO}>{excludedNames.join(', ')}</span>
+            </p>
+          )}
+        </div>
       </Modal>
     </div>
   )

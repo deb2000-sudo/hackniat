@@ -24,6 +24,7 @@ import {
   PANEL,
   WRAP_APP,
 } from '../../components/drop/theme'
+import Accordion from '../../components/ui/Accordion'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
@@ -42,18 +43,44 @@ function statusBadge(key) {
   return BADGE_CLOSED
 }
 
-function SectionHeader({ icon, title, description }) {
-  return (
-    <div className="flex items-start gap-3 border-b border-hairline px-4 py-4 sm:px-5">
-      <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-volt-ink">
-        <Icon name={icon} size={18} />
-      </span>
-      <div>
-        <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-ink">{title}</h2>
-        <p className="mt-0.5 text-[13px] text-muted">{description}</p>
-      </div>
-    </div>
-  )
+/**
+ * Timeline pill — larger than the compact BADGE used elsewhere on this page,
+ * because the round header is what an admin scans first.
+ */
+const ROUND_PILL =
+  'inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[13.5px] font-medium whitespace-nowrap'
+
+/**
+ * Round status colours.
+ *
+ * Green/red rather than the volt tint used for round badges elsewhere: on this
+ * screen the one thing being read off the row is open vs closed, and traffic
+ * colours answer that without reading the word.
+ */
+const ROUND_STATUS_TONE = {
+  open: 'border-[color-mix(in_srgb,var(--color-passed)_45%,transparent)] bg-success-soft text-passed',
+  closed: 'border-[color-mix(in_srgb,var(--color-missing)_45%,transparent)] bg-danger-soft text-missing',
+  scheduled: 'border-[color-mix(in_srgb,var(--color-warn)_38%,transparent)] bg-warning-soft text-warn',
+  draft: 'border-hairline bg-raised text-muted',
+}
+
+/** Neutral pill for the round's configuration (team size, dates). */
+const ROUND_PILL_NEUTRAL = 'border-hairline bg-raised text-ink'
+
+/**
+ * Total prize money across the three places.
+ *
+ * Prizes are free text ("₹1,00,000", "50000 + goodies"), so a total is only
+ * meaningful for the entries that actually carry digits: strip the separators,
+ * sum what parses, and report nothing when none of it does rather than
+ * printing a confident zero.
+ */
+function totalPrizePool(prizes) {
+  const amounts = Object.values(prizes || {})
+    .map((value) => Number(String(value).replace(/[^0-9.]/g, '')))
+    .filter((amount) => Number.isFinite(amount) && amount > 0)
+  if (!amounts.length) return null
+  return amounts.reduce((sum, amount) => sum + amount, 0)
 }
 
 export default function HackathonDetailPage() {
@@ -136,6 +163,18 @@ export default function HackathonDetailPage() {
     (isAdmin || isEvaluator) && String(hackathon.evaluator_guidelines || '').trim()
   const missingEvaluatorGuidelines =
     isAdmin && !String(hackathon.evaluator_guidelines || '').trim()
+  // Staff-only box inside the guidelines accordion. An admin still gets it
+  // while the guidelines are unwritten — that is where the prompt to write
+  // them belongs — but a student never sees the reviewers' rules either way.
+  const showEvaluatorBox = Boolean(showEvaluatorGuidelines) || missingEvaluatorGuidelines
+  // Standings per round. Staff always see a preview; students only reach a
+  // board their admin has published, and the panel reports that state itself
+  // rather than the page guessing at it. With none visible the whole section
+  // is dropped instead of offering an accordion that opens onto nothing.
+  const leaderboardRounds = (hackathon.timeline || [])
+    .map((round, index) => ({ round, index }))
+    .filter(({ round }) => isAdmin || isEvaluator || round.leaderboard_published)
+  const prizePool = totalPrizePool(hackathon.prizes)
   const summary = [
     {
       icon: 'calendar',
@@ -145,17 +184,19 @@ export default function HackathonDetailPage() {
     {
       icon: 'chart',
       label: 'Competition format',
-      value: `${hackathon.timeline?.length || 0} timeline rounds`,
+      value: `${hackathon.timeline?.length || 0} Rounds`,
     },
     {
       icon: 'trophy',
-      label: 'Winner takes',
-      value: hackathon.prizes?.winner || 'To be announced',
+      label: 'Total prize pool',
+      // Free-text prizes that carry no number leave the pool unknowable, so
+      // say so rather than showing one place's copy as if it were the total.
+      value: prizePool ? prizePool.toLocaleString('en-IN') : 'To be announced',
     },
     {
-      icon: 'video',
-      label: 'Working demo',
-      value: hackathon.working_demo_video_required === false ? 'Optional' : 'Required',
+      icon: 'calendar',
+      label: 'Ends on',
+      value: formatDate(hackathon.end_date),
     },
     // No AI evaluation tile: the flag is set per timeline round, so a single
     // hackathon-level value cannot describe it. The per-round setting is shown
@@ -164,68 +205,69 @@ export default function HackathonDetailPage() {
 
   return (
     <div className={`${WRAP_APP} py-7 md:py-10`}>
-      <section
-        className={`${PANEL} relative mb-6 min-h-[360px] overflow-hidden md:mb-8 md:min-h-[420px]`}
-      >
-        {hackathon.banner_url ? (
-          <img
-            className="absolute inset-0 size-full object-cover"
-            src={hackathon.banner_url}
-            alt=""
-          />
-        ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-surface to-raised" />
-        )}
-        <div className="absolute inset-0 bg-linear-to-r from-canvas via-canvas/80 to-canvas/25" />
-        <div className="absolute inset-0 bg-linear-to-t from-canvas via-transparent to-canvas/40" />
-
-        <div className="relative z-1 flex h-full min-h-[360px] flex-col justify-between gap-8 p-5 md:min-h-[420px] md:p-8">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <Link to="/hackathons" className={`${BTN_GHOST} w-full bg-surface/80 backdrop-blur-sm sm:w-auto`}>
-              <Icon name="arrowLeft" size={17} />
-              All hackathons
-            </Link>
-            {isAdmin && (
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <Link
-                  to={`/admin/hackathons/${hackathon.id}/edit`}
-                  className={`${BTN_GHOST} w-full bg-surface/80 backdrop-blur-sm sm:w-auto`}
-                >
-                  <Icon name="edit" size={16} />
-                  Edit
-                </Link>
-                <button
-                  type="button"
-                  className={`${BTN_GHOST} w-full border-transparent bg-surface/80 text-missing backdrop-blur-sm hover:border-missing/30 hover:bg-danger-soft sm:w-auto`}
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Icon name="trash" size={16} />
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="max-w-3xl">
-            <span className={`${BADGE} ${statusBadge(status.key)}`}>{status.label}</span>
-            <h1 className="mt-4 text-[32px] font-semibold tracking-[-0.035em] text-ink md:text-[48px] md:leading-[1.05]">
-              {hackathon.name}
-            </h1>
-            {hackathon.description ? (
-              <p className="mt-3 max-w-[60ch] text-[15px] leading-relaxed text-muted md:text-[16px]">
-                {hackathon.description}
-              </p>
-            ) : null}
-            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[13.5px] font-medium text-ink/90">
-              <span className="inline-flex items-center gap-2">
-                <Icon name="calendar" size={17} />
-                {formatDate(hackathon.start_date)} – {formatDate(hackathon.end_date)}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Icon name="clock" size={17} />
-                {duration ? `${duration} event days` : 'Schedule announced'}
-              </span>
+      {/* Hero. A compact card rather than a banner wall: the actions, the
+          status and the schedule are what this page is opened for, so they all
+          sit above the fold instead of below a full-bleed image. */}
+      <section className={`${PANEL} mb-6 overflow-hidden md:mb-8`}>
+        <div className="flex flex-col gap-3 border-b border-hairline p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <Link to="/hackathons" className={`${BTN_GHOST} w-full sm:w-auto`}>
+            <Icon name="arrowLeft" size={17} />
+            All hackathons
+          </Link>
+          {isAdmin && (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              {/* Hackathon-level configuration (publishing and the rest)
+                  lives on its own page, so it is reachable from where the
+                  hackathon is being looked at rather than only mid-wizard. */}
+              <Link
+                to={`/admin/hackathons/${hackathon.id}/settings`}
+                className={`${BTN_GHOST} w-full sm:w-auto`}
+              >
+                <Icon name="settings" size={16} />
+                Settings
+              </Link>
+              <Link
+                to={`/admin/hackathons/${hackathon.id}/edit`}
+                className={`${BTN_GHOST} w-full sm:w-auto`}
+              >
+                <Icon name="edit" size={16} />
+                Edit
+              </Link>
+              <button
+                type="button"
+                className={`${BTN_GHOST} w-full border-transparent text-missing hover:border-missing/30 hover:bg-danger-soft sm:w-auto`}
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Icon name="trash" size={16} />
+                Delete
+              </button>
             </div>
+          )}
+        </div>
+
+        <div className="p-5 md:p-8">
+          <span
+            className={`${BADGE} ${statusBadge(status.key)} font-label tracking-[0.1em] uppercase`}
+          >
+            {status.label}
+          </span>
+          <h1 className="mt-4 text-[32px] font-semibold tracking-[-0.035em] text-ink md:text-[44px] md:leading-[1.05]">
+            {hackathon.name}
+          </h1>
+          {hackathon.description ? (
+            <p className="mt-3 max-w-[70ch] text-[15px] leading-relaxed text-muted md:text-[16px]">
+              {hackathon.description}
+            </p>
+          ) : null}
+          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[13.5px] font-medium text-ink/90">
+            <span className="inline-flex items-center gap-2">
+              <Icon name="calendar" size={17} />
+              {formatDate(hackathon.start_date)} – {formatDate(hackathon.end_date)}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Icon name="clock" size={17} />
+              {duration ? `${duration} event days` : 'Schedule announced'}
+            </span>
           </div>
         </div>
       </section>
@@ -246,15 +288,14 @@ export default function HackathonDetailPage() {
         ))}
       </div>
 
-      <div className="flex flex-col gap-5 md:gap-6">
+      {/* Everything below the summary is an accordion, so the page opens as a
+          short index of the hackathon and each part is expanded on demand. */}
+      <div className="flex flex-col gap-4">
+        {/* Enrollment is the student's reason for being here, so their rounds
+            open with the page rather than behind a click. */}
         {isStudent && !!hackathon.timeline?.length && (
-          <section className={PANEL}>
-            <SectionHeader
-              icon="clipboard"
-              title="Rounds"
-              description="Enroll and submit for each round separately."
-            />
-            <div className="stack-md p-4 sm:p-5">
+          <Accordion icon="clipboard" title="Rounds" defaultOpen>
+            <div className="stack-md">
               {hackathon.timeline.map((round, index) => (
                 <RoundParticipation
                   key={`${round.title}-${index}`}
@@ -264,16 +305,11 @@ export default function HackathonDetailPage() {
                 />
               ))}
             </div>
-          </section>
+          </Accordion>
         )}
 
-        <section className={PANEL}>
-          <SectionHeader
-            icon="gift"
-            title="Prize pool"
-            description="Rewards for the top-performing teams"
-          />
-          <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:p-5">
+        <Accordion icon="gift" title="Winners Takeaway">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {PRIZES.map((prize) => (
               <div
                 key={prize.key}
@@ -294,74 +330,59 @@ export default function HackathonDetailPage() {
               </div>
             ))}
           </div>
-        </section>
+        </Accordion>
 
-        {/* Standings per round. Staff always see a preview; students only reach
-            a board their admin has published, and the panel reports that state
-            itself rather than the page guessing at it. */}
-        {!!hackathon.timeline?.length &&
-          hackathon.timeline.map((round, index) =>
-            isAdmin || isEvaluator || round.leaderboard_published ? (
-              <section className={PANEL} key={`leaderboard-${round.title}-${index}`}>
-                <div className="p-4 sm:p-5">
-                  <LeaderboardPanel
-                    hackathonId={hackathonId}
-                    roundIndex={index}
-                    roundTitle={round.title || `Round ${index + 1}`}
-                    published={round.leaderboard_published === true}
-                    canManage={isAdmin}
-                  />
-                </div>
-              </section>
-            ) : null,
-          )}
-
-        <section className={PANEL}>
-          <SectionHeader
-            icon="calendar"
-            title="Event timeline"
-            description="Key rounds and milestones"
-          />
-          <div className="p-4 sm:p-5">
+        <Accordion icon="calendar" title="Event Timeline">
+          <div>
             {isAdmin && publishError && (
               <div className="mb-4">
                 <Alert variant="danger">{publishError}</Alert>
               </div>
             )}
             {hackathon.timeline?.length ? (
-              <ol className="space-y-0">
-                {hackathon.timeline.map((round, index) => (
-                  <li
-                    key={`${round.title}-${index}`}
-                    className="relative grid grid-cols-[44px_minmax(0,1fr)] gap-4 pb-6 last:pb-0"
-                  >
-                    {index < hackathon.timeline.length - 1 ? (
-                      <span
-                        className="absolute top-11 bottom-1 left-[21px] w-px bg-hairline"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    <span
-                      className={`${MONO} relative z-1 grid size-11 place-items-center rounded-full border border-hairline bg-surface text-[12px] font-semibold text-volt-ink`}
+              /* One self-contained card per round rather than a numbered rail:
+                 each round carries its own status, team mode, dates and
+                 requirement, so the rounds read as parallel cards instead of
+                 steps on a thread. */
+              <ol className="flex flex-col gap-4">
+                {hackathon.timeline.map((round, index) => {
+                  // Draft until released, then whatever the schedule says —
+                  // matching the badge in the edit wizard.
+                  const status = roundStatusBadge(round)
+                  const statusKey = round.published ? status.key : 'draft'
+                  const statusLabel = round.published ? status.label : 'Draft'
+                  return (
+                    <li
+                      key={`${round.title}-${index}`}
+                      className="rounded-drop border border-hairline bg-raised/40 p-5"
                     >
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <div className="rounded-drop border border-hairline bg-raised/40 p-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <h3 className="text-[16px] font-semibold tracking-[-0.015em] text-ink">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 className="text-[18px] font-semibold tracking-[-0.015em] text-ink">
                           {round.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-2">
-                          {/* Draft until released, then whatever the schedule
-                              says — matching the badge in the edit wizard. */}
                           {isAdmin && (
-                            <span className={`${BADGE} ${roundStatusBadge(round).tone}`}>
-                              {round.published ? roundStatusBadge(round).label : 'Draft'}
+                            <span
+                              className={`${ROUND_PILL} ${
+                                ROUND_STATUS_TONE[statusKey] || ROUND_STATUS_TONE.draft
+                              }`}
+                            >
+                              Status: {statusLabel}
                             </span>
                           )}
+                          {/* Team size is per round and drives the whole
+                              enrollment flow, so show what this round is
+                              actually configured for rather than leaving it
+                              only visible inside the edit wizard. */}
+                          <span className={`${ROUND_PILL} ${ROUND_PILL_NEUTRAL}`}>
+                            <Icon name="users" size={15} />
+                            {Number(round.max_team_size) > 1
+                              ? `Team of ${round.max_team_size}`
+                              : 'Solo'}
+                          </span>
                           {(round.start_date || round.end_date) && (
-                            <span className={`${BADGE} ${BADGE_CLOSED}`}>
-                              <Icon name="calendar" size={13} />
+                            <span className={`${ROUND_PILL} ${ROUND_PILL_NEUTRAL}`}>
+                              <Icon name="calendar" size={15} />
                               {round.start_date ? formatDate(round.start_date) : 'Date TBD'}
                               {round.end_date ? ` – ${formatDate(round.end_date)}` : ''}
                             </span>
@@ -380,7 +401,7 @@ export default function HackathonDetailPage() {
                         </div>
                       </div>
                       {round.description ? (
-                        <p className="mt-2 text-[14px] leading-relaxed text-muted">
+                        <p className="mt-3 text-[14px] leading-relaxed text-muted">
                           {round.description}
                         </p>
                       ) : null}
@@ -419,9 +440,9 @@ export default function HackathonDetailPage() {
                           </div>
                         )
                       })()}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  )
+                })}
               </ol>
             ) : (
               <div className="flex items-center gap-3 rounded-drop border border-dashed border-hairline px-4 py-8 text-muted">
@@ -430,42 +451,77 @@ export default function HackathonDetailPage() {
               </div>
             )}
           </div>
-        </section>
+        </Accordion>
 
-        <section className={PANEL}>
-          <SectionHeader
-            icon="clipboard"
-            title="Participation guidelines"
-            description="Everything teams need to know"
-          />
-          <div className="markdown-body hackathon-guidelines p-4 text-ink sm:p-5">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{hackathon.guidelines}</ReactMarkdown>
+        {/* Both audiences' rules in one place: they are read together — an
+            admin checking that what reviewers are told matches what teams were
+            promised — so they are two boxes here rather than two accordions.
+            The evaluator box is staff-only. */}
+        <Accordion icon="info" title="Guidelines of The Event">
+          <div className="flex flex-col gap-4">
+            <section className="rounded-drop border border-hairline bg-raised/40 p-4 sm:p-5">
+              <div className="mb-4 flex items-center gap-2.5 border-b border-hairline pb-3">
+                <span className="grid size-8 shrink-0 place-items-center rounded-drop border border-hairline bg-surface text-volt-ink">
+                  <Icon name="users" size={16} />
+                </span>
+                <h3 className="text-[15px] font-semibold tracking-[-0.015em] text-ink">
+                  For Participant
+                </h3>
+              </div>
+              <div className="markdown-body hackathon-guidelines text-ink">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{hackathon.guidelines}</ReactMarkdown>
+              </div>
+            </section>
+
+            {showEvaluatorBox && (
+              <section className="rounded-drop border border-hairline bg-raised/40 p-4 sm:p-5">
+                <div className="mb-4 flex items-center gap-2.5 border-b border-hairline pb-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-drop border border-hairline bg-surface text-volt-ink">
+                    <Icon name="shield" size={16} />
+                  </span>
+                  <h3 className="text-[15px] font-semibold tracking-[-0.015em] text-ink">
+                    For Evaluator
+                  </h3>
+                </div>
+                {showEvaluatorGuidelines ? (
+                  <div className="markdown-body hackathon-guidelines text-ink">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {hackathon.evaluator_guidelines}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <Alert variant="warning" title="Evaluator guidelines not configured">
+                    Add evaluator guidelines so reviewers know how to score submissions.{' '}
+                    <Link
+                      to={`/admin/hackathons/${hackathon.id}/edit`}
+                      className="font-medium underline"
+                    >
+                      Edit hackathon
+                    </Link>
+                  </Alert>
+                )}
+              </section>
+            )}
           </div>
-        </section>
+        </Accordion>
 
-        {missingEvaluatorGuidelines && (
-          <Alert variant="warning" title="Evaluator guidelines not configured">
-            Add evaluator guidelines so reviewers know how to score submissions.{' '}
-            <Link to={`/admin/hackathons/${hackathon.id}/edit`} className="font-medium underline">
-              Edit hackathon
-            </Link>
-          </Alert>
-        )}
-
-        {showEvaluatorGuidelines && (
-          <section className={PANEL}>
-            <SectionHeader
-              icon="shield"
-              title="Evaluator guidelines"
-              description="Review criteria and expectations for assigned evaluators"
-            />
-            <div className="markdown-body hackathon-guidelines p-4 text-ink sm:p-5">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {hackathon.evaluator_guidelines}
-              </ReactMarkdown>
+        {!!leaderboardRounds.length && (
+          <Accordion icon="chart" title="Leaderboard">
+            <div className="flex flex-col gap-6">
+              {leaderboardRounds.map(({ round, index }) => (
+                <LeaderboardPanel
+                  key={`leaderboard-${round.title}-${index}`}
+                  hackathonId={hackathonId}
+                  roundIndex={index}
+                  roundTitle={round.title || `Round ${index + 1}`}
+                  published={round.leaderboard_published === true}
+                  canManage={isAdmin}
+                />
+              ))}
             </div>
-          </section>
+          </Accordion>
         )}
+
       </div>
 
       {isAdmin && (

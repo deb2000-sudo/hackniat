@@ -72,7 +72,7 @@ function submissionHackathonId(submission) {
  * Not just `status === 'completed'`: that only tracks the AI pipeline, so a
  * submission an admin had scored and published still counted as unevaluated.
  */
-function isEvaluated(submission) {
+export function isSubmissionEvaluated(submission) {
   if (submission?.report_published) return true
   if (submission?.final_score != null) return true
   if (submission?.evaluator_score != null) return true
@@ -122,7 +122,7 @@ export const evaluationApi = {
       if (!id) return counts
       const entry = counts.get(id) || { total: 0, evaluated: 0 }
       entry.total += 1
-      if (isEvaluated(submission)) entry.evaluated += 1
+      if (isSubmissionEvaluated(submission)) entry.evaluated += 1
       counts.set(id, entry)
       return counts
     }, new Map())
