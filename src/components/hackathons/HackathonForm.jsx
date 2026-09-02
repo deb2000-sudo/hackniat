@@ -7,6 +7,8 @@ import Button from '../ui/Button'
 import Card, { CardBody, CardHeader } from '../ui/Card'
 import Icon from '../ui/Icon'
 import Input, { Select, Textarea } from '../ui/Input'
+import RichTextEditor from '../ui/RichTextEditor'
+import { isRichTextEmpty } from '../../lib/richText'
 import { hackathonsApi } from '../../api/hackathons'
 import { draftErrorStep, participationErrorMessage } from './errorCodes'
 import {
@@ -46,6 +48,14 @@ const FORM_STEPS = DRAFT_STEPS
 const REVIEW_INDEX = FORM_STEPS.length - 1
 const BASICS_FIELDS = ['name', 'description', 'start_date', 'end_date', 'hackathon_url']
 const GUIDELINE_FIELDS = ['guidelines', 'evaluator_guidelines']
+// Both guideline fields are rich text, so what is stored is HTML and the cap
+// has to count the markup the toolbar adds, not just the words on screen.
+const GUIDELINE_MAX_LENGTH = 10000
+
+/** Blank for a guideline field: no words, whatever tags are wrapped round them. */
+function guidelineBlank(value) {
+  return isRichTextEmpty(value)
+}
 const TEAM_SIZE_OPTIONS = [
   { value: '1', label: 'Solo' },
   { value: '2', label: '2 Members' },
@@ -140,13 +150,21 @@ function clampTimelineDates(timeline, hackathonStart, hackathonEnd) {
 function validate(form, banner, { editing = false, initialForm = null } = {}) {
   const errors = {}
   SCALAR_FIELDS.forEach((field) => {
-    if (!String(form[field] || '').trim()) errors[field] = 'This field is required'
+    const blank = GUIDELINE_FIELDS.includes(field)
+      ? guidelineBlank(form[field])
+      : !String(form[field] || '').trim()
+    if (blank) errors[field] = 'This field is required'
   })
-  const needsEvaluatorGuidelines =
-    !editing || !String(initialForm?.evaluator_guidelines || '').trim()
-  if (needsEvaluatorGuidelines && !String(form.evaluator_guidelines || '').trim()) {
+  const needsEvaluatorGuidelines = !editing || guidelineBlank(initialForm?.evaluator_guidelines)
+  if (needsEvaluatorGuidelines && guidelineBlank(form.evaluator_guidelines)) {
     errors.evaluator_guidelines = 'This field is required'
   }
+  GUIDELINE_FIELDS.forEach((field) => {
+    const length = String(form[field] || '').length
+    if (!errors[field] && length > GUIDELINE_MAX_LENGTH) {
+      errors[field] = `Too long — ${length.toLocaleString()} characters including formatting. Trim it to ${GUIDELINE_MAX_LENGTH.toLocaleString()}.`
+    }
+  })
   if (form.start_date && form.end_date && form.end_date < form.start_date) {
     errors.end_date = 'End date must be on or after the start date'
   }
@@ -202,12 +220,15 @@ function validate(form, banner, { editing = false, initialForm = null } = {}) {
  * them would let an untouched form claim progress for work nobody has to do.
  */
 function completionChecks(form, { editing = false, initialForm = null } = {}) {
-  const checks = SCALAR_FIELDS.map((field) => Boolean(String(form[field] || '').trim()))
+  const checks = SCALAR_FIELDS.map((field) =>
+    GUIDELINE_FIELDS.includes(field)
+      ? !guidelineBlank(form[field])
+      : Boolean(String(form[field] || '').trim()),
+  )
 
-  const needsEvaluatorGuidelines =
-    !editing || !String(initialForm?.evaluator_guidelines || '').trim()
+  const needsEvaluatorGuidelines = !editing || guidelineBlank(initialForm?.evaluator_guidelines)
   if (needsEvaluatorGuidelines) {
-    checks.push(Boolean(String(form.evaluator_guidelines || '').trim()))
+    checks.push(!guidelineBlank(form.evaluator_guidelines))
   }
 
   Object.values(form.prizes).forEach((value) => checks.push(Boolean(String(value || '').trim())))
@@ -316,8 +337,7 @@ export default function HackathonForm({
   const editing = !!initialValue && !draftMode
   const initialForm = useMemo(() => createInitialForm(initialValue), [initialValue])
   const validationOptions = useMemo(() => ({ editing, initialForm }), [editing, initialForm])
-  const missingEvaluatorGuidelines =
-    editing && !String(initialForm.evaluator_guidelines || '').trim()
+  const missingEvaluatorGuidelines = editing && guidelineBlank(initialForm.evaluator_guidelines)
   const [form, setForm] = useState(initialForm)
   const [banner, setBanner] = useState(null)
   const [errors, setErrors] = useState({})
@@ -340,9 +360,9 @@ export default function HackathonForm({
     error: themesError,
   } = useAsync(() => themesApi.list())
 
-  const update = (key) => (event) => {
+  const setField = (key, value) => {
     setForm((current) => {
-      const next = { ...current, [key]: event.target.value }
+      const next = { ...current, [key]: value }
       if (key === 'start_date' || key === 'end_date') {
         next.timeline = clampTimelineDates(next.timeline, next.start_date, next.end_date)
       }
@@ -350,6 +370,11 @@ export default function HackathonForm({
     })
     setErrors((current) => ({ ...current, [key]: undefined, form: undefined }))
   }
+
+  const update = (key) => (event) => setField(key, event.target.value)
+
+  /** RichTextEditor hands back HTML, not a change event. */
+  const updateRichText = (key) => (html) => setField(key, html)
 
   const updatePrize = (key) => (event) => {
     setForm((current) => ({
@@ -729,25 +754,27 @@ export default function HackathonForm({
               save once so evaluators can review submissions with the right context.
             </Alert>
           )}
-          <Textarea
+          <RichTextEditor
             label="Participation guidelines"
-            hint="Shown to students. Markdown formatting is supported on the detail page."
+            hint="Shown to students. Use the toolbar for bold, colour, size, and bullet, numbered, lettered or Roman lists."
+            placeholder="Round 1: how to take part, what to build, what to submit…"
             required
-            maxLength={10000}
+            maxLength={GUIDELINE_MAX_LENGTH}
             value={form.guidelines}
-            onChange={update('guidelines')}
+            onChange={updateRichText('guidelines')}
             error={errors.guidelines}
-            style={{ minHeight: 180 }}
+            minHeight={200}
           />
-          <Textarea
+          <RichTextEditor
             label="Evaluator guidelines"
             hint="Shown to evaluators when they review submissions."
+            placeholder="How to score fairly, what to weigh, what to declare…"
             required={!editing || missingEvaluatorGuidelines}
-            maxLength={10000}
+            maxLength={GUIDELINE_MAX_LENGTH}
             value={form.evaluator_guidelines}
-            onChange={update('evaluator_guidelines')}
+            onChange={updateRichText('evaluator_guidelines')}
             error={errors.evaluator_guidelines}
-            style={{ minHeight: 180 }}
+            minHeight={200}
           />
         </CardBody>
       </Card>

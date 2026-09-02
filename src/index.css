@@ -4914,6 +4914,163 @@ code {
 .markdown-body th { background: var(--surface-2); color: var(--heading); }
 .markdown-body input[type='checkbox'] { margin-right: 7px; accent-color: var(--brand-600); }
 .markdown-body a { text-decoration: underline; }
+
+/* -------------------------- Rich text editor ---------------------------- */
+/* Toolbar + contenteditable used for the hackathon guidelines. Deliberately
+   built on .field/.label/.field__hint so it sits in a form beside .input and
+   .textarea without looking like a different control. */
+.rich-text .rt-shell {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.rich-text .rt-shell:focus-within {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.rich-text .rt-shell--error { border-color: var(--danger-500); }
+.rich-text .rt-shell--error:focus-within { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
+.rich-text .rt-shell--disabled { opacity: 0.65; }
+
+.rt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.rt-group { display: flex; align-items: center; gap: 2px; }
+.rt-group + .rt-group { border-left: 1px solid var(--border); padding-left: 10px; }
+.rt-group--end { margin-left: auto; border-left: 0; padding-left: 0; }
+
+.rt-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.rt-tool:hover:not(:disabled) { background: var(--surface); color: var(--heading); border-color: var(--border); }
+.rt-tool.is-active { background: var(--brand-50); color: var(--brand-700); border-color: var(--brand-300); }
+.rt-tool:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.rt-select {
+  height: 30px;
+  max-width: 128px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.rt-select:disabled { cursor: not-allowed; opacity: 0.5; }
+.rt-select--list { font-family: var(--mono); }
+
+/* Colour picker: a glyph over a bar showing the colour that would be applied. */
+.rt-color { position: relative; }
+.rt-tool--color { flex-direction: column; min-width: 34px; padding: 0 4px; }
+.rt-color__glyph { font-size: 0.8rem; font-weight: 800; line-height: 1; }
+.rt-color__bar { display: block; width: 15px; height: 3px; border-radius: 2px; margin-top: 2px; }
+.rt-tool--color svg { position: absolute; right: -1px; bottom: 1px; opacity: 0.7; }
+
+.rt-color__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: 208px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+.rt-color__grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.rt-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.rt-swatch:hover { transform: scale(1.12); }
+.rt-color__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+.rt-color__reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.rt-color__reset:hover { color: var(--heading); }
+.rt-color__custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.rt-color__custom input[type='color'] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+
+.rt-editor {
+  position: relative;
+  padding: 12px 14px;
+  font-size: 15px;
+  outline: none;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+.rt-editor[data-empty='true']::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  inset: 12px 14px auto 14px;
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+.rt-editor > *:first-child { margin-top: 0; }
+.field__hint--over { color: var(--danger-600); font-weight: 600; }
+
+@media (max-width: 640px) {
+  .rt-group + .rt-group { border-left: 0; padding-left: 0; }
+  .rt-group--end { margin-left: 0; }
+}
+
 /* Admin overview: make hackathons visible immediately after admin login. */
 .admin-overview-stats {
   grid-template-columns: repeat(5, minmax(0, 1fr));

@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { hackathonsApi } from '../../api/hackathons'
 import RoundParticipation from '../../components/hackathons/RoundParticipation'
 import LeaderboardPanel from '../../components/hackathons/LeaderboardPanel'
 import { participationErrorMessage } from '../../components/hackathons/errorCodes'
 import { roundStatusBadge } from '../../components/hackathons/roundStatus'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
+import RichText from '../../components/ui/RichText'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { ROLES } from '../../utils/constants'
@@ -468,9 +467,10 @@ export default function HackathonDetailPage() {
                   For Participant
                 </h3>
               </div>
-              <div className="markdown-body hackathon-guidelines text-ink">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{hackathon.guidelines}</ReactMarkdown>
-              </div>
+              <RichText
+                className="markdown-body hackathon-guidelines text-ink"
+                value={hackathon.guidelines}
+              />
             </section>
 
             {showEvaluatorBox && (
@@ -484,11 +484,10 @@ export default function HackathonDetailPage() {
                   </h3>
                 </div>
                 {showEvaluatorGuidelines ? (
-                  <div className="markdown-body hackathon-guidelines text-ink">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {hackathon.evaluator_guidelines}
-                    </ReactMarkdown>
-                  </div>
+                  <RichText
+                    className="markdown-body hackathon-guidelines text-ink"
+                    value={hackathon.evaluator_guidelines}
+                  />
                 ) : (
                   <Alert variant="warning" title="Evaluator guidelines not configured">
                     Add evaluator guidelines so reviewers know how to score submissions.{' '}

@@ -164,6 +164,55 @@
     color: var(--color-ink);
   }
 
+
+  /* ------------------------- Rich text editor -------------------------- */
+  /* The shell tracks .input/.textarea above; only the accents need the Drop
+     palette, since index.css hardcodes an indigo focus ring and active state. */
+  .drop .rich-text .rt-shell {
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .rich-text .rt-shell:focus-within {
+    border-color: var(--color-volt-edge);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-volt) 24%, transparent);
+  }
+
+  .drop .rich-text .rt-shell--error {
+    border-color: var(--color-missing);
+  }
+
+  .drop .rich-text .rt-shell--error:focus-within {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-missing) 18%, transparent);
+  }
+
+  .drop .rt-toolbar {
+    background: var(--color-raised);
+    border-bottom-color: var(--color-hairline);
+  }
+
+  .drop .rt-tool.is-active {
+    background: var(--color-volt-tint);
+    border-color: var(--color-volt-edge);
+    color: var(--color-volt-ink);
+  }
+
+  .drop .rt-select,
+  .drop .rt-color__menu {
+    background: var(--color-surface);
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+  }
+
+  .drop .rt-color__menu {
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+  }
+
+  .drop .rt-swatch {
+    border-color: color-mix(in srgb, var(--color-hairline) 70%, transparent);
+  }
+
   /* ------------------------------ Buttons ------------------------------ */
   .drop [data-btn] {
     border-radius: var(--radius-drop);
