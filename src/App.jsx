@@ -13,6 +13,7 @@ const DropLandingPage = lazy(() => import('./pages/DropLandingPage'))
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'))
 const EvaluatorRegisterPage = lazy(() => import('./pages/auth/EvaluatorRegisterPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'))
@@ -75,6 +76,7 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/evaluator" element={<EvaluatorRegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             </Route>
 
             <Route element={<Layout />}>

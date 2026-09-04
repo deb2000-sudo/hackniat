@@ -56,6 +56,11 @@ export default function LoginPage() {
         {location.state?.passwordChanged && (
           <Alert variant="success">Password changed successfully. Sign in with your new password.</Alert>
         )}
+        {location.state?.passwordReset && (
+          <Alert variant="success">
+            {location.state.message || 'Password reset successfully. Please log in.'}
+          </Alert>
+        )}
 
         <form className="stack-md" onSubmit={handleSubmit} noValidate>
           <Input
@@ -77,6 +82,11 @@ export default function LoginPage() {
             onChange={update('password')}
             error={errors.password}
           />
+          <div className="-mt-1 text-right">
+            <Link to="/forgot-password" className={LINK_INLINE}>
+              Forgot password?
+            </Link>
+          </div>
           <Button type="submit" variant="accent" block loading={loading}>
             Sign in
           </Button>

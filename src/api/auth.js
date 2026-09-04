@@ -37,6 +37,22 @@ export const authApi = {
   registerEvaluatorComplete: (payload) =>
     api.post('/auth/register/evaluator/complete', payload),
 
+  /**
+   * Open a password-reset session for an existing account.
+   *
+   * Unlike register/start, this takes BOTH identifiers in one call and binds
+   * them together — the session it returns has purpose "password_reset", and
+   * the register endpoints reject it with PURPOSE_MISMATCH. 30-minute TTL.
+   */
+  forgotPasswordStart: (payload) => api.post('/auth/forgot-password/start', payload),
+
+  /**
+   * Set the new password on a reset session whose email and mobile are both
+   * verified. Sets no login cookies and revokes existing sessions, so the
+   * caller must clear local auth state and send the user to sign in.
+   */
+  forgotPasswordReset: (payload) => api.post('/auth/forgot-password/reset', payload),
+
   /** Log in; backend sets an HttpOnly session cookie and returns csrf_token. */
   login: (payload) => api.post('/auth/login', payload),
 

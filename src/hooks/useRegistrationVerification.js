@@ -31,19 +31,28 @@ const { IDLE, SENDING, AWAITING, VERIFYING, VERIFIED, ERROR } = VERIFY
 const RESEND_WINDOW = 60
 
 /**
- * Email + mobile verification for the registration flows.
+ * Email + mobile verification, shared by registration and password reset.
  *
- * Owns the registration session (POST /auth/register/start) and both OTP
- * channels, which verify independently. Student and evaluator registration
- * differ only in the role they bind and the fields they submit afterwards, so
- * everything up to "both channels are green" lives here.
+ * Both OTP channels verify independently against one session, using the same
+ * three endpoints (email/send-otp, email/verify-otp, verify-phone-token).
+ * Student and evaluator registration differ only in the role they bind and the
+ * fields they submit afterwards, so everything up to "both channels are green"
+ * lives here.
  *
- * Session rule: /auth/register/start requires AT LEAST ONE of email or
- * mobile_number, and must never carry an identifier the user has not entered.
- * Each channel therefore binds only its own field, merging into the existing
- * session by id; the backend keeps whatever the other call already bound.
+ * Two ways the session gets there:
+ *
+ * - Registration opens it here. /auth/register/start requires AT LEAST ONE of
+ *   email or mobile_number, and must never carry an identifier the user has
+ *   not entered, so each channel binds only its own field and merges into the
+ *   existing session by id; the backend keeps what the other call bound.
+ * - Password reset opens it before this hook is mounted, because
+ *   /auth/forgot-password/start binds both identifiers at once against an
+ *   existing account. Pass that id as `sessionId` and the hook verifies
+ *   against it without ever calling register/start — which would be rejected
+ *   with PURPOSE_MISMATCH anyway, reset sessions being a different purpose.
  *
  * @param {object}   options
+ * @param {string}   [options.sessionId]             Session opened by the caller; when set the hook never opens one.
  * @param {string}   [options.role]                  Role bound on the session (omitted for students).
  * @param {string}   options.email                   Raw email field value.
  * @param {string}   options.countryCode             Dialling code, e.g. '+91'.
@@ -53,6 +62,7 @@ const RESEND_WINDOW = 60
  * @param {string}   [options.invalidEmailMessage]   Shown when `isEmailValid` rejects the value.
  */
 export function useRegistrationVerification({
+  sessionId: externalSessionId = '',
   role,
   email: rawEmail,
   countryCode,
@@ -115,7 +125,7 @@ export function useRegistrationVerification({
   )
 
   /** The id to post right now — the ref leads state during an async handoff. */
-  const getSessionId = () => sessionIdRef.current || sessionId
+  const getSessionId = () => externalSessionId || sessionIdRef.current || sessionId
 
   const resetEmailVerification = () => {
     setEmailState(IDLE)
@@ -174,6 +184,9 @@ export function useRegistrationVerification({
       fieldErrorRef.current?.('email', invalidEmailMessage)
       throw new Error(`${invalidEmailMessage} to receive a verification code.`)
     }
+    // The caller's session already carries both identifiers; re-binding is
+    // neither needed nor allowed.
+    if (externalSessionId) return externalSessionId
     if (sessionId && sessionEmail === email) {
       return sessionId
     }
@@ -189,6 +202,7 @@ export function useRegistrationVerification({
       fieldErrorRef.current?.('mobile_national', 'Enter a valid mobile number')
       throw new Error('Enter a valid mobile number to receive an SMS code.')
     }
+    if (externalSessionId) return externalSessionId
     if (sessionId && sessionPhone === phoneE164) {
       return sessionId
     }
@@ -204,6 +218,7 @@ export function useRegistrationVerification({
     if (!emailReady || !phoneReady) {
       throw new Error('Enter a valid email and mobile number before creating your account.')
     }
+    if (externalSessionId) return externalSessionId
     return bindSession({ email, mobile: phoneE164 })
   }
 

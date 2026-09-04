@@ -92,6 +92,37 @@ export function validateEvaluatorForm(form) {
   return errors
 }
 
+/**
+ * Validate step one of the password reset: both identifiers, together.
+ *
+ * /auth/forgot-password/start requires both — unlike registration, which
+ * attaches them one at a time — and answers a wrong pair with a single
+ * ACCOUNT_NOT_FOUND rather than saying which half missed.
+ * @returns {Record<string,string>} field -> error message (empty when valid)
+ */
+export function validateForgotPasswordForm(form) {
+  const errors = {}
+  if (!isEmail(form.email)) errors.email = 'Enter a valid email address'
+  if (!isE164(toE164(form.country_code, form.mobile_national))) {
+    errors.mobile_national = 'Enter a valid mobile number'
+  }
+  return errors
+}
+
+/**
+ * Validate a new-password pair against the same rule registration uses:
+ * 8+ characters with at least one letter and one number.
+ * @returns {Record<string,string>} field -> error message (empty when valid)
+ */
+export function validateNewPasswordForm(form) {
+  const errors = {}
+  if (!passwordStrength(form.password).ok) {
+    errors.password = 'Password must be at least 8 characters with a letter and a number'
+  }
+  if (form.password !== form.confirm_password) errors.confirm_password = 'Passwords do not match'
+  return errors
+}
+
 /** Validate the login form. */
 export function validateLoginForm(form) {
   const errors = {}

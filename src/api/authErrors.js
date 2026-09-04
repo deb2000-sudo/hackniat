@@ -17,6 +17,13 @@ export const AUTH_ERROR = {
   RESEND_COOLDOWN: 'RESEND_COOLDOWN',
   TOO_MANY_ATTEMPTS: 'TOO_MANY_ATTEMPTS',
   NOT_VERIFIED: 'NOT_VERIFIED',
+  RATE_LIMITED: 'RATE_LIMITED',
+  SESSION_NOT_FOUND: 'SESSION_NOT_FOUND',
+  SESSION_EXPIRED: 'SESSION_EXPIRED',
+  // Password reset only.
+  ACCOUNT_NOT_FOUND: 'ACCOUNT_NOT_FOUND',
+  IDENTIFIER_MISMATCH: 'IDENTIFIER_MISMATCH',
+  PURPOSE_MISMATCH: 'PURPOSE_MISMATCH',
 }
 
 /**
@@ -48,6 +55,9 @@ const MESSAGES = {
     'A code was sent a moment ago. Wait for the timer before requesting another.',
   [AUTH_ERROR.NOT_VERIFIED]:
     'Verify your email and mobile number before creating your account.',
+  [AUTH_ERROR.RATE_LIMITED]: 'Too many requests. Wait a few minutes and try again.',
+  [AUTH_ERROR.SESSION_NOT_FOUND]: 'That session is no longer available. Start again.',
+  [AUTH_ERROR.SESSION_EXPIRED]: 'That session has expired. Start again.',
 }
 
 /** Human-readable text for a registration failure. */
@@ -70,6 +80,53 @@ const FIELD_BY_CODE = {
 /** Form field a failure should be reported against, or '' for form-level. */
 export function authErrorField(err) {
   return FIELD_BY_CODE[authErrorCode(err)] || ''
+}
+
+/**
+ * Password reset says some of these differently.
+ *
+ * The shared copy talks about "your registration session" and "creating your
+ * account", which is wrong for someone who already has one. Only the codes
+ * that need different words appear here; everything else falls through to the
+ * shared map.
+ */
+const RESET_MESSAGES = {
+  // Deliberately vague: naming the field that matched would confirm which of
+  // the two an attacker had guessed right.
+  [AUTH_ERROR.ACCOUNT_NOT_FOUND]: 'No account found with this email and mobile number.',
+  [AUTH_ERROR.NOT_VERIFIED]:
+    'Verify your email and mobile number before setting a new password.',
+  [AUTH_ERROR.IDENTIFIER_MISMATCH]:
+    'These details do not match the ones you verified. Start again.',
+  [AUTH_ERROR.PURPOSE_MISMATCH]: 'That link is for a different flow. Start again.',
+  [AUTH_ERROR.EMAIL_MISMATCH]:
+    'This email no longer matches your reset session. Start again.',
+  [AUTH_ERROR.PHONE_MISMATCH]:
+    'This mobile number no longer matches your reset session. Start again.',
+  [AUTH_ERROR.SESSION_NOT_FOUND]: 'Your reset session is no longer available. Start again.',
+  [AUTH_ERROR.SESSION_EXPIRED]:
+    'Your reset session has expired. Reset sessions last 30 minutes — start again.',
+}
+
+/** Human-readable text for a password-reset failure. */
+export function passwordResetErrorMessage(err, fallback = 'Something went wrong. Try again.') {
+  return RESET_MESSAGES[authErrorCode(err)] || authErrorMessage(err, fallback)
+}
+
+/**
+ * Codes meaning the reset session itself is gone or was never the right kind.
+ * Nothing can be retried against it, so the flow has to go back to step one.
+ */
+const DEAD_SESSION_CODES = [
+  AUTH_ERROR.SESSION_EXPIRED,
+  AUTH_ERROR.SESSION_NOT_FOUND,
+  AUTH_ERROR.PURPOSE_MISMATCH,
+  AUTH_ERROR.IDENTIFIER_MISMATCH,
+]
+
+/** Should the reset flow throw this session away and restart from step one? */
+export function isDeadSessionError(err) {
+  return DEAD_SESSION_CODES.includes(authErrorCode(err))
 }
 
 /**
