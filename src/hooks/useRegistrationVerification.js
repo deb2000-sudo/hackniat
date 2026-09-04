@@ -53,6 +53,7 @@ const RESEND_WINDOW = 60
  *
  * @param {object}   options
  * @param {string}   [options.sessionId]             Session opened by the caller; when set the hook never opens one.
+ * @param {string}   [options.phoneNumber]           E.164 supplied by the caller; overrides countryCode + mobileNational.
  * @param {string}   [options.role]                  Role bound on the session (omitted for students).
  * @param {string}   options.email                   Raw email field value.
  * @param {string}   options.countryCode             Dialling code, e.g. '+91'.
@@ -63,6 +64,7 @@ const RESEND_WINDOW = 60
  */
 export function useRegistrationVerification({
   sessionId: externalSessionId = '',
+  phoneNumber: externalPhone = '',
   role,
   email: rawEmail,
   countryCode,
@@ -98,7 +100,12 @@ export function useRegistrationVerification({
   })
 
   const email = String(rawEmail || '').trim().toLowerCase()
-  const phoneE164 = toE164(countryCode, mobileNational)
+  // Password reset never asks for the number: /auth/forgot-password/start
+  // returns the one already on the account, and that exact string is what the
+  // SMS goes to and what verify-phone-token has to be told.
+  const phoneE164 = externalPhone
+    ? String(externalPhone).trim()
+    : toE164(countryCode, mobileNational)
   const emailReady = isEmailValid(email)
   const phoneReady = isE164(phoneE164)
   const bothVerified = emailState === VERIFIED && phoneState === VERIFIED
@@ -220,6 +227,21 @@ export function useRegistrationVerification({
     }
     if (externalSessionId) return externalSessionId
     return bindSession({ email, mobile: phoneE164 })
+  }
+
+  /**
+   * Open the email entry box for a code the backend has ALREADY sent.
+   *
+   * /auth/forgot-password/start emails one as it creates the session, so the
+   * reset flow arrives here mid-verification. Calling send-otp to get to the
+   * same place would burn a second of the five an address gets per hour, and
+   * invalidate the code the user is already reading.
+   */
+  const adoptEmailCode = (cooldown = RESEND_WINDOW) => {
+    setEmailError('')
+    setEmailCode('')
+    setEmailState(AWAITING)
+    setEmailCooldown(cooldown)
   }
 
   const sendEmailOtp = async () => {
@@ -382,6 +404,7 @@ export function useRegistrationVerification({
     emailCode,
     emailCooldown,
     setEmailCode,
+    adoptEmailCode,
     sendEmailOtp,
     confirmEmailOtp,
     resetEmailVerification,

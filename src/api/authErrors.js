@@ -22,6 +22,7 @@ export const AUTH_ERROR = {
   SESSION_EXPIRED: 'SESSION_EXPIRED',
   // Password reset only.
   ACCOUNT_NOT_FOUND: 'ACCOUNT_NOT_FOUND',
+  PHONE_NOT_ON_FILE: 'PHONE_NOT_ON_FILE',
   IDENTIFIER_MISMATCH: 'IDENTIFIER_MISMATCH',
   PURPOSE_MISMATCH: 'PURPOSE_MISMATCH',
 }
@@ -91,9 +92,9 @@ export function authErrorField(err) {
  * shared map.
  */
 const RESET_MESSAGES = {
-  // Deliberately vague: naming the field that matched would confirm which of
-  // the two an attacker had guessed right.
-  [AUTH_ERROR.ACCOUNT_NOT_FOUND]: 'No account found with this email and mobile number.',
+  [AUTH_ERROR.ACCOUNT_NOT_FOUND]: 'No account found with this email address.',
+  [AUTH_ERROR.PHONE_NOT_ON_FILE]:
+    'This account has no mobile number on file, so it cannot be reset here. Contact support.',
   [AUTH_ERROR.NOT_VERIFIED]:
     'Verify your email and mobile number before setting a new password.',
   [AUTH_ERROR.IDENTIFIER_MISMATCH]:

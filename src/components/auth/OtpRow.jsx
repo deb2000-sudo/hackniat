@@ -6,8 +6,15 @@ import { VERIFY } from '../../hooks/useRegistrationVerification'
 /**
  * One verifiable identifier: the field itself, a Verify button that turns into
  * a "Verified" badge, and the six-box code entry that appears while a code is
- * in flight. Shared by student and evaluator registration so both channels
- * behave identically on either page.
+ * in flight. Shared by student and evaluator registration and by the password
+ * reset, so every channel behaves identically wherever it appears.
+ *
+ * `autoSent` is for a code that was already sent before the row mounted —
+ * /auth/forgot-password/start emails one as it opens the session. The box is
+ * then open from the start, and a Verify button beside it would be a second,
+ * duplicate way to ask for the code the user is already holding, so it is
+ * hidden while the box is open. It comes back if the channel resets, which is
+ * the one state with nothing in flight to resend.
  */
 export default function OtpRow({
   label,
@@ -22,6 +29,7 @@ export default function OtpRow({
   canStart,
   extra,
   sentTo,
+  autoSent = false,
 }) {
   const showOtp =
     state === VERIFY.AWAITING ||
@@ -37,7 +45,7 @@ export default function OtpRow({
             <Icon name="checkCircle" size={17} />
             Verified
           </span>
-        ) : (
+        ) : autoSent && showOtp ? null : (
           <Button
             type="button"
             variant="secondary"

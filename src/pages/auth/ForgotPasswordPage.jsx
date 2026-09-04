@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthShell from '../../components/layout/AuthShell'
-import MobileField from '../../components/auth/MobileField'
 import OtpRow from '../../components/auth/OtpRow'
 import PasswordFields from '../../components/auth/PasswordFields'
 import Alert from '../../components/ui/Alert'
@@ -26,15 +25,18 @@ import {
 
 const INITIAL = {
   email: '',
-  country_code: '+91',
-  mobile_national: '',
   password: '',
   confirm_password: '',
 }
 
 const STEP = { IDENTIFY: 0, VERIFY: 1, PASSWORD: 2 }
 
-const STEP_LABELS = ['Your details', 'Verify', 'New password']
+const STEP_LABELS = ['Your email', 'Verify', 'New password']
+
+/** Masked mobile for display. The full number never reaches the page. */
+function maskedMobile(last4) {
+  return `••••${last4 || '••••'}`
+}
 
 /** Progress rail across the three stages. */
 function Stepper({ step }) {
@@ -46,14 +48,10 @@ function Stepper({ step }) {
         return (
           <li key={label} className="flex flex-1 flex-col gap-1.5">
             <span
-              className={`h-1 rounded-full ${
-                done || current ? 'bg-volt' : 'bg-hairline'
-              }`}
+              className={`h-1 rounded-full ${done || current ? 'bg-volt' : 'bg-hairline'}`}
               aria-hidden="true"
             />
-            <span
-              className={`text-[12px] ${current ? 'font-semibold text-ink' : 'text-muted'}`}
-            >
+            <span className={`text-[12px] ${current ? 'font-semibold text-ink' : 'text-muted'}`}>
               {label}
             </span>
           </li>
@@ -66,16 +64,26 @@ function Stepper({ step }) {
 /**
  * Reset a forgotten password without being signed in.
  *
- * The account is proven by re-verifying BOTH identifiers already on it — the
- * same email OTP and Firebase Phone Auth widgets registration uses — so the
- * middle step here is literally the middle of registration, minus the ability
- * to change what is being verified.
+ * The account is proven by verifying BOTH channels already on it — the same
+ * email OTP and Firebase Phone Auth widgets registration uses — so the middle
+ * step here is the middle of registration, minus the ability to change what is
+ * being verified.
  *
- * Where it differs: the session is opened up front by
- * /auth/forgot-password/start, which needs both identifiers together and only
- * answers for an account that exists. It carries purpose "password_reset", so
- * the register endpoints would reject it; the verification hook is given the
- * id and told not to open one of its own.
+ * Only the email is typed. /auth/forgot-password/start looks the account up by
+ * it, emails the code itself, and answers with the session plus the mobile
+ * number already on file. Two things follow from that:
+ *
+ * - The email channel arrives ALREADY SENT. It adopts that code rather than
+ *   calling send-otp, which would spend a second of the five-per-hour budget
+ *   and invalidate the code sitting in the user's inbox. Resend still goes
+ *   through send-otp.
+ * - The SMS cannot come from the backend — Firebase Phone Auth runs in the
+ *   browser — so it goes out on the Verify press, addressed to the number the
+ *   start call returned. That number is used, never rendered: the page shows
+ *   only the last four digits it was given.
+ *
+ * The session carries purpose "password_reset", which the register endpoints
+ * reject, so the verification hook is handed the id and told not to open one.
  *
  * Works for every role. An evaluator awaiting approval can reset and sign in,
  * and stays pending afterwards — resetting a password is not approval.
@@ -86,16 +94,17 @@ export default function ForgotPasswordPage() {
   const [form, setForm] = useState(INITIAL)
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
-  const [sessionId, setSessionId] = useState('')
   const [loading, setLoading] = useState(false)
+  /** What /auth/forgot-password/start handed back, or null before it ran. */
+  const [started, setStarted] = useState(null)
 
   const verification = useRegistrationVerification({
-    // Opened by handleStart below. Passing it keeps the hook off
-    // /auth/register/start, which a reset session is not valid for.
-    sessionId,
+    // Both opened by handleStart below. Passing the session keeps the hook off
+    // /auth/register/start, which a reset session is not valid for; passing the
+    // number keeps it from deriving one from inputs this page does not have.
+    sessionId: started?.session_id || '',
+    phoneNumber: started?.mobile_number || '',
     email: form.email,
-    countryCode: form.country_code,
-    mobileNational: form.mobile_national,
     onFieldError: (field, message) => setErrors((prev) => ({ ...prev, [field]: message })),
   })
 
@@ -111,21 +120,21 @@ export default function ForgotPasswordPage() {
    *
    * Reset sessions expire after 30 minutes and cannot be re-bound the way a
    * registration session can, so an expired or mismatched one has nothing left
-   * to retry against — the identifiers have to be submitted again.
+   * to retry against — the email has to be submitted again.
    */
   const restart = (message) => {
-    setSessionId('')
+    setStarted(null)
     setStep(STEP.IDENTIFY)
     setSubmitError(message)
     // Both badges belong to the session being thrown away. Leaving them green
-    // would let the next attempt walk straight past step two on a session that
-    // has verified nothing, and fail at the reset with NOT_VERIFIED.
+    // would let the next attempt walk past step two on a session that has
+    // verified nothing, and fail at the reset with NOT_VERIFIED.
     verification.restartEmailVerification()
     verification.restartPhoneVerification()
     setForm((current) => ({ ...current, password: '', confirm_password: '' }))
   }
 
-  /* --------------------------- 1. identifiers --------------------------- */
+  /* ------------------------------ 1. email ------------------------------ */
 
   const handleStart = async (event) => {
     event.preventDefault()
@@ -136,13 +145,11 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     setSubmitError('')
     try {
-      const { session_id: id } = await authApi.forgotPasswordStart({
-        email: verification.email,
-        // E.164 throughout — start, verify-phone-token and reset must all send
-        // the identical string or the reset fails with IDENTIFIER_MISMATCH.
-        mobile_number: verification.phoneE164,
-      })
-      setSessionId(id)
+      const data = await authApi.forgotPasswordStart({ email: verification.email })
+      setStarted(data)
+      // The code is already in their inbox: open the entry box for it instead
+      // of sending another, and run the resend timer from now.
+      verification.adoptEmailCode()
       setStep(STEP.VERIFY)
     } catch (err) {
       setSubmitError(
@@ -153,7 +160,7 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  /* ---------------------------- 2. verify ------------------------------- */
+  /* ------------------------------ 2. verify ----------------------------- */
 
   const goToPassword = () => {
     if (!verification.bothVerified) return
@@ -169,13 +176,18 @@ export default function ForgotPasswordPage() {
     setErrors(validation)
     if (Object.keys(validation).length) return
 
+    if (!started) {
+      restart('Your reset session is no longer available. Start again.')
+      return
+    }
+
     setLoading(true)
     setSubmitError('')
     try {
       const data = await authApi.forgotPasswordReset({
-        session_id: sessionId,
+        session_id: started.session_id,
         email: verification.email,
-        mobile_number: verification.phoneE164,
+        mobile_number: started.mobile_number,
         new_password: form.password,
         confirm_password: form.confirm_password,
       })
@@ -209,7 +221,7 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  const sentBothCodes = verification.bothVerified
+  const mobileLabel = maskedMobile(started?.mobile_last4)
 
   return (
     <AuthShell>
@@ -218,9 +230,9 @@ export default function ForgotPasswordPage() {
           <h1>Reset your password</h1>
           <p className="text-muted">
             {step === STEP.IDENTIFY &&
-              'Enter the email and mobile number on your account. You will verify both before choosing a new password.'}
+              'Enter the email on your account. We will send a code to it, and to the mobile number registered with it.'}
             {step === STEP.VERIFY &&
-              'Send yourself a code on each channel and enter both. We check the email and the mobile number already on your account.'}
+              'Confirm both codes. We check the email and the mobile number already on your account.'}
             {step === STEP.PASSWORD && 'Choose a new password for your Drop account.'}
           </p>
         </div>
@@ -240,12 +252,7 @@ export default function ForgotPasswordPage() {
               value={form.email}
               onChange={update('email')}
               error={errors.email}
-            />
-            <MobileField
-              countryCode={form.country_code}
-              mobileNational={form.mobile_national}
-              onChange={update}
-              error={errors.mobile_national}
+              hint="The address you signed up with."
             />
             <Button type="submit" variant="accent" block loading={loading}>
               Continue
@@ -255,8 +262,10 @@ export default function ForgotPasswordPage() {
 
         {step === STEP.VERIFY && (
           <div className="stack-md">
-            {/* Both identifiers are fixed to the session now, so the fields are
-                read-only: changing one here could only ever produce a mismatch. */}
+            {started?.message && <Alert variant="info">{started.message}</Alert>}
+
+            {/* Email: the code was sent by the start call, so this row opens
+                straight into the entry box. Resend goes through send-otp. */}
             <OtpRow
               label="Email"
               state={verification.emailState}
@@ -269,18 +278,12 @@ export default function ForgotPasswordPage() {
               onVerify={verification.sendEmailOtp}
               onConfirm={verification.confirmEmailOtp}
               onResend={verification.sendEmailOtp}
-              extra={
-                <Input
-                  label="Email"
-                  type="email"
-                  value={form.email}
-                  onChange={update('email')}
-                  disabled
-                  readOnly
-                />
-              }
+              autoSent
+              extra={<Input label="Email" type="email" value={form.email} disabled readOnly />}
             />
 
+            {/* Mobile: only the last four digits are known here. The SMS goes
+                out on Verify, because Firebase Phone Auth runs in the browser. */}
             <OtpRow
               label="Mobile"
               state={verification.phoneState}
@@ -289,17 +292,17 @@ export default function ForgotPasswordPage() {
               cooldown={verification.phoneCooldown}
               canStart={verification.phoneReady}
               onCodeChange={verification.setPhoneCode}
-              sentTo={verification.phoneE164}
+              sentTo={mobileLabel}
               onVerify={verification.sendPhoneOtp}
               onConfirm={verification.confirmPhoneOtp}
               onResend={verification.sendPhoneOtp}
               extra={
-                <MobileField
-                  countryCode={form.country_code}
-                  mobileNational={form.mobile_national}
-                  onChange={update}
-                  error={errors.mobile_national}
-                  locked
+                <Input
+                  label="Registered mobile"
+                  value={mobileLabel}
+                  disabled
+                  readOnly
+                  hint="Press Verify to text a code to this number."
                 />
               }
             />
@@ -308,15 +311,15 @@ export default function ForgotPasswordPage() {
               type="button"
               variant="accent"
               block
-              disabled={!sentBothCodes}
+              disabled={!verification.bothVerified}
               onClick={goToPassword}
               rightIcon={<Icon name="arrowRight" size={17} />}
             >
               Continue
             </Button>
-            {!sentBothCodes && (
+            {!verification.bothVerified && (
               <p className="text-center text-sm text-muted">
-                Verify both your email and your mobile number to continue.
+                Confirm both codes to continue.
               </p>
             )}
             <button
@@ -324,7 +327,7 @@ export default function ForgotPasswordPage() {
               className="text-center text-sm underline text-muted"
               onClick={() => restart('')}
             >
-              Use a different email or mobile number
+              Use a different email
             </button>
           </div>
         )}

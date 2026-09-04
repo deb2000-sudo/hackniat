@@ -93,19 +93,16 @@ export function validateEvaluatorForm(form) {
 }
 
 /**
- * Validate step one of the password reset: both identifiers, together.
+ * Validate step one of the password reset.
  *
- * /auth/forgot-password/start requires both — unlike registration, which
- * attaches them one at a time — and answers a wrong pair with a single
- * ACCOUNT_NOT_FOUND rather than saying which half missed.
+ * Email alone: /auth/forgot-password/start looks the account up by it, emails
+ * the code itself, and hands back the mobile number already on the account, so
+ * there is nothing for the user to type about their phone.
  * @returns {Record<string,string>} field -> error message (empty when valid)
  */
 export function validateForgotPasswordForm(form) {
   const errors = {}
   if (!isEmail(form.email)) errors.email = 'Enter a valid email address'
-  if (!isE164(toE164(form.country_code, form.mobile_national))) {
-    errors.mobile_national = 'Enter a valid mobile number'
-  }
   return errors
 }
 
