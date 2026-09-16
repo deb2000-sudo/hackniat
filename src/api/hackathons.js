@@ -22,6 +22,24 @@ function roundPath(hackathonId, roundIndex) {
 
 export const hackathonsApi = {
   list: (options) => api.get('/hackathons', options),
+
+  /**
+   * Public home catalog — hackathons with at least one published round, each
+   * carrying a status computed in IST at request time (open / closing_soon /
+   * upcoming / closed) plus solo-or-team labels. No auth, no cookies needed.
+   *
+   * Deliberately not `list()`: that is the full authenticated document list,
+   * it includes round-less events and it carries no status badges.
+   *
+   * Status is recomputed per request and there is no websocket behind it, so
+   * callers that care about "closing soon" have to poll.
+   */
+  catalog: ({ includeClosed = true, ...options } = {}) =>
+    api.get(
+      includeClosed ? '/hackathons/catalog' : '/hackathons/catalog?include_closed=false',
+      options,
+    ),
+
   get: (hackathonId, options) =>
     api.get(`/hackathons/${encodeURIComponent(hackathonId)}`, options),
   listThemes: (hackathonId, options) =>

@@ -41,14 +41,30 @@ export const EYEBROW =
   'block font-label text-xs font-medium tracking-[0.12em] text-muted uppercase'
 
 /** Status pills. State colours are for status only — never decoration. */
-export const PILL_VOLT =
-  'inline-flex items-center gap-[9px] rounded-full border border-volt-edge bg-volt-tint px-3.5 py-[7px] text-[13px] font-medium text-volt-ink'
+const PILL_BASE =
+  'inline-flex items-center gap-[9px] rounded-full border px-3.5 py-[7px] text-[13px] font-medium'
+
+export const PILL_VOLT = `${PILL_BASE} border-volt-edge bg-volt-tint text-volt-ink`
+
+/**
+ * The same pill with nothing to claim — a count of zero, or a figure that
+ * hasn't loaded. Volt is reserved for something actually being live, so these
+ * are a separate recipe rather than overrides tacked onto PILL_VOLT (Tailwind
+ * resolves conflicts by stylesheet order, not by class-string order).
+ */
+export const PILL_MUTED = `${PILL_BASE} border-hairline bg-raised text-muted`
 
 export const BADGE = 'shrink-0 rounded-full border px-2.5 py-[5px] text-[11.5px] font-medium whitespace-nowrap'
 export const BADGE_OPEN = 'border-volt-edge bg-volt-tint text-volt-ink'
 export const BADGE_CLOSING =
   'border-[color-mix(in_srgb,var(--color-warn)_38%,transparent)] bg-[var(--drop-warning-soft)] text-warn'
-export const BADGE_CLOSED = 'border-hairline bg-raised text-muted'
+
+/** Not a state colour — an event that hasn't started can't be urgent. */
+export const BADGE_UPCOMING = 'border-hairline bg-raised text-ink'
+
+/** Facts that aren't a status: team mode, counts, themes. */
+export const BADGE_NEUTRAL = 'border-hairline bg-raised text-muted'
+export const BADGE_CLOSED = BADGE_NEUTRAL
 
 /** Numbers are always monospace and tabular. */
 export const MONO = 'font-mono tabular-nums'
