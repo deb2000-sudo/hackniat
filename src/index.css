@@ -620,6 +620,24 @@ code {
   overflow: hidden;
 }
 
+/* Append affordance, sitting under the last field card. Dashed so it reads as
+   "room for another one" rather than as a card in its own right.
+
+   Hooked on [data-btn] rather than the bare class: Button.module.css sits in
+   this same cascade layer, so a one-class selector would be a coin flip
+   against its own `border` shorthand. */
+[data-btn].requirement-add-field {
+  padding-block: 14px;
+  border-style: dashed;
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+[data-btn].requirement-add-field:hover:not(:disabled) {
+  border-color: var(--brand-500);
+  color: var(--heading);
+}
+
 .requirement-field-card__header {
   background: var(--surface-2);
 }

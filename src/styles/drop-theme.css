@@ -1448,6 +1448,20 @@
     border-bottom: 1px solid var(--color-hairline);
   }
 
+  /* Carries [data-btn] to outrank the generic secondary-button skin above,
+     which would otherwise repaint this border on specificity alone. */
+  .drop [data-btn].requirement-add-field {
+    border-style: dashed;
+    border-color: var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  .drop [data-btn].requirement-add-field:hover:not(:disabled) {
+    border-color: var(--color-volt-edge);
+    background: var(--color-raised);
+    color: var(--color-ink);
+  }
+
   .drop .requirement-field-card__number,
   .drop .requirement-section-heading > span {
     color: var(--color-volt-ink);
