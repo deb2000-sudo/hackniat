@@ -6,7 +6,6 @@ import { ROLES } from '../utils/constants'
 import {
   alignMetricsToRequirement,
   buildStandardScorecardPreset,
-  groupForFieldKey,
   sortScorecardMetrics,
   sumWeights,
 } from '../utils/scorecard'
@@ -42,10 +41,6 @@ function emptySegment() {
 function isVideoMetricKey(fieldKey) {
   const key = String(fieldKey || '').trim().toLowerCase()
   return key === 'video_explanation' || key === 'video'
-}
-
-function isSolutionDescriptionKey(fieldKey) {
-  return groupForFieldKey(fieldKey) === 'solution_description'
 }
 
 function normalizePlaceholders(list) {
@@ -582,19 +577,17 @@ export default function MetricScoringPage() {
                             value={metric.scoring_prompt}
                             disabled={!isAdmin}
                             error={errors[`m${index}.scoring_prompt`]}
-                            hint={
-                              isSolutionDescriptionKey(metric.field_key)
-                                ? 'Insert {Problem Statement} to give the model the student’s problem.'
-                                : undefined
-                            }
                             onChange={(event) =>
                               updateMetric(index, { scoring_prompt: event.target.value })
                             }
                           />
                           {promptPlaceholders.length > 0 && (
                             <div>
+                              {/* Tokens are listed by the API, never hardcoded here —
+                                  a new one appears the moment the backend ships it. */}
                               <p className="mb-1.5 text-[12px] text-muted">
-                                Insert into prompt
+                                Insert into prompt — each student&rsquo;s own values replace
+                                these when their submission is scored.
                               </p>
                               <div className="flex flex-wrap gap-1.5">
                                 {promptPlaceholders.map((placeholder) => (
@@ -603,8 +596,9 @@ export default function MetricScoringPage() {
                                     type="button"
                                     disabled={!isAdmin}
                                     title={
-                                      placeholder.description ||
-                                      `Insert ${placeholder.token} as literal text`
+                                      placeholder.description
+                                        ? `${placeholder.label}: ${placeholder.description}`
+                                        : `Insert ${placeholder.token} as literal text`
                                     }
                                     className={`${MONO} rounded-full border border-hairline bg-raised px-2.5 py-1 text-[11px] text-muted transition hover:border-volt hover:text-ink disabled:cursor-not-allowed disabled:opacity-50`}
                                     onClick={() =>
