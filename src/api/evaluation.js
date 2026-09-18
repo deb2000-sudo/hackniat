@@ -408,6 +408,17 @@ export const evaluationApi = {
     return normalizeSubmission(submission)
   },
 
+  /**
+   * Roster behind a submission: every member's name, email and user id, with
+   * the leader flagged. Solo rounds return the single student as one member.
+   *
+   * Scoped to the submission rather than the team id because that is what the
+   * admin table already holds — and it inherits the submission's own access
+   * rules rather than inventing a second set.
+   */
+  getSubmissionTeam: (submissionId, options) =>
+    api.get(`/submissions/${encodeURIComponent(submissionId)}/team`, options),
+
   /** Fetch the completed submission's checklist and Markdown analysis report. */
   getSubmissionReport: (submissionId, options) =>
     api.get(

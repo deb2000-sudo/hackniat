@@ -8,6 +8,7 @@ import { formatDate, formatDateTime } from '../../utils/format'
 import { BADGE, BADGE_OPEN, BTN_VOLT, EYEBROW, MONO, PANEL, WRAP_APP } from '../../components/drop/theme'
 import { roundDisplayName, roundStatusBadge } from '../../components/hackathons/roundStatus'
 import PageHeader from '../../components/layout/PageHeader'
+import TeamDetailsModal from '../../components/evaluation/TeamDetailsModal'
 import Alert from '../../components/ui/Alert'
 import Badge, { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -188,6 +189,10 @@ export default function AdminHackathonSubmissionsPage() {
       return next
     })
   }
+
+  // Which submission's roster the modal is showing. Held as the whole row so
+  // the dialog can title itself before the fetch lands.
+  const [teamSubmission, setTeamSubmission] = useState(null)
 
   const onAssign = async (submissionId, evaluatorId) => {
     setAssigningId(submissionId)
@@ -554,7 +559,14 @@ export default function AdminHackathonSubmissionsPage() {
                       />
                     </td>
                     <td>
-                      <strong>{submission.team_name || 'Unnamed team'}</strong>
+                      <button
+                        type="button"
+                        className="team-name-button"
+                        onClick={() => setTeamSubmission(submission)}
+                        title="View team members"
+                      >
+                        <strong>{submission.team_name || 'Unnamed team'}</strong>
+                      </button>
                     </td>
                     <td>{submission.theme_name || submission.theme_chosen || '—'}</td>
                     <td><StatusBadge status={submission.status} /></td>
@@ -617,6 +629,12 @@ export default function AdminHackathonSubmissionsPage() {
         ) : null}
         </>
       )}
+
+      <TeamDetailsModal
+        open={Boolean(teamSubmission)}
+        submission={teamSubmission}
+        onClose={() => setTeamSubmission(null)}
+      />
     </div>
   )
 }

@@ -5490,6 +5490,56 @@ code {
 .manual-choice-row input {
   accent-color: var(--metric-color, var(--brand-500));
 }
+
+/* Graded levels stack rather than sit in a row: each carries a label and a
+   mark, so they need the width to stay readable. */
+.manual-choice-row--levels {
+  flex-direction: column;
+  align-items: stretch;
+}
+.manual-choice-row--levels label {
+  justify-content: flex-start;
+  padding: 8px 12px;
+}
+.manual-choice-row--levels label > span {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.manual-choice-row--levels label small {
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: .78rem;
+  font-variant-numeric: tabular-nums;
+}
+.manual-choice-row--levels label.is-active small {
+  color: var(--heading);
+}
+
+.manual-segment-cap {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.manual-metric-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: .85rem;
+}
+.manual-metric-total strong {
+  color: var(--heading);
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
 .manual-metric-card__structure {
   display: grid;
   gap: 12px;
@@ -5545,4 +5595,125 @@ code {
   margin-top: 2px;
   color: var(--text-muted);
   font-size: 0.78rem;
+}
+
+/* Same look as a row of .manual-boolean-list, but scoped to the item itself so
+   it never cascades into the radio labels of an enum segment sitting beside it
+   in a mixed-kind metric. */
+.manual-segment-check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.manual-segment-check input {
+  margin-top: 3px;
+  accent-color: var(--metric-color, var(--brand-500));
+}
+.manual-segment-check strong,
+.manual-segment-check small {
+  display: block;
+}
+.manual-segment-check small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+/* ------------------------------ Team details ------------------------------ */
+
+/* The team name doubles as the trigger for the roster dialog, so it has to read
+   as a control without turning the table cell into a wall of links. */
+.team-name-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.team-name-button strong {
+  border-bottom: 1px dashed var(--border-strong);
+}
+.team-name-button:hover strong,
+.team-name-button:focus-visible strong {
+  color: var(--brand-600);
+  border-bottom-color: currentColor;
+}
+
+.team-modal__count {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.team-member-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-member {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.team-member__avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+.team-member__body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.team-member__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.team-member__email {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.team-member__email.is-empty {
+  font-style: italic;
+}
+/* justify-self keeps the row hugging its content — the grid parent would
+   otherwise stretch it across the full width. */
+.team-member__id {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  justify-self: start;
+  margin-top: 4px;
+  font-size: 0.74rem;
+}
+.team-member__id-label {
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.team-member__id code {
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
 }
