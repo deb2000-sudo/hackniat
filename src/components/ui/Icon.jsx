@@ -253,6 +253,66 @@ const paths = {
       <path d="M5 21h14" />
     </>
   ),
+  bold: (
+    <>
+      <path d="M7.5 5h5a3.5 3.5 0 0 1 0 7h-5z" />
+      <path d="M7.5 12h6a3.5 3.5 0 0 1 0 7h-6z" />
+    </>
+  ),
+  italic: (
+    <>
+      <path d="M10 4h8M6 20h8" />
+      <path d="M14.5 4 9.5 20" />
+    </>
+  ),
+  underline: (
+    <>
+      <path d="M7 4v6a5 5 0 0 0 10 0V4" />
+      <path d="M5 20h14" />
+    </>
+  ),
+  strikethrough: (
+    <>
+      <path d="M4 12h16" />
+      <path d="M8 8.5A3.5 3.5 0 0 1 11.5 5h1.2a3.4 3.4 0 0 1 3.2 2" />
+      <path d="M16 15.4A3.6 3.6 0 0 1 12.4 19h-1A3.5 3.5 0 0 1 8 16" />
+    </>
+  ),
+  listBullet: (
+    <>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <circle cx="4.4" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.4" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.4" cy="18" r="1.3" fill="currentColor" stroke="none" />
+    </>
+  ),
+  listNumber: (
+    <>
+      <path d="M10 6h10M10 12h10M10 18h10" />
+      <path d="M4 8V4.4l-1 .7" />
+      <path d="M2.7 11.5c.2-.6.8-1 1.4-.9.7.1 1.1.6 1 1.2-.1.9-2.2 1.5-2.4 2.5h2.6" />
+      <path d="M2.8 16.8c.3-.4.8-.6 1.3-.5.6.1 1 .5.9 1-.1.5-.6.7-1.1.7.7 0 1.2.3 1.2.9s-.6 1-1.3.9c-.5 0-.9-.2-1.1-.6" />
+    </>
+  ),
+  indent: (
+    <>
+      <path d="M3 6h18M10 12h11M3 18h18" />
+      <path d="M3 9.5 6 12l-3 2.5z" fill="currentColor" stroke="none" />
+    </>
+  ),
+  outdent: (
+    <>
+      <path d="M3 6h18M10 12h11M3 18h18" />
+      <path d="M6 9.5 3 12l3 2.5z" fill="currentColor" stroke="none" />
+    </>
+  ),
+  clearFormat: (
+    <>
+      <path d="M4 7V5h11v2" />
+      <path d="M9.5 5v13M7 18h5" />
+      <path d="m15 15 6 6m0-6-6 6" />
+    </>
+  ),
 }
 
 export default function Icon({ name, size = 20, strokeWidth = 1.8, className = '', ...rest }) {

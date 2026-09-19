@@ -27,21 +27,6 @@ export function formatRemaining(ms) {
   return `${pad(minutes)}m ${pad(seconds)}s`
 }
 
-/** Human-readable equivalent for screen readers and <time datetime>. */
-export function describeRemaining(ms) {
-  if (ms <= 0) return 'Submissions closed'
-
-  const days = Math.floor(ms / DAY)
-  const hours = Math.floor((ms % DAY) / HOUR)
-  const minutes = Math.floor((ms % HOUR) / MINUTE)
-
-  const parts = []
-  if (days) parts.push(`${days} day${days === 1 ? '' : 's'}`)
-  if (hours) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`)
-  if (minutes && !days) parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`)
-  return `${parts.join(' ')} left`
-}
-
 /**
  * A single shared clock, ticking once a second.
  *
@@ -71,4 +56,4 @@ export function useCountdown(deadline) {
   return Math.max(0, deadline - now)
 }
 
-export { DAY, HOUR }
+export { HOUR }

@@ -6,7 +6,9 @@ import { ROLES } from '../utils/constants'
 import {
   alignMetricsToRequirement,
   buildStandardScorecardPreset,
-  groupForFieldKey,
+  enumOptionsAreScored,
+  normalizeSegmentOptions,
+  segmentEffectiveMax,
   sortScorecardMetrics,
   sumWeights,
 } from '../utils/scorecard'
@@ -42,10 +44,6 @@ function emptySegment() {
 function isVideoMetricKey(fieldKey) {
   const key = String(fieldKey || '').trim().toLowerCase()
   return key === 'video_explanation' || key === 'video'
-}
-
-function isSolutionDescriptionKey(fieldKey) {
-  return groupForFieldKey(fieldKey) === 'solution_description'
 }
 
 function normalizePlaceholders(list) {
@@ -100,10 +98,60 @@ function normalizeMetric(metric) {
       label: segment?.label || '',
       kind: segment?.kind || 'score',
       max_score: segment?.max_score ?? 0,
-      options: Array.isArray(segment?.options) ? segment.options : [],
+      // Legacy scorecards store bare strings; normalizing here means the editor
+      // only ever deals in {value, label, score}.
+      options: normalizeSegmentOptions(segment?.options),
       description: segment?.description || '',
     })),
   }
+}
+
+function emptyOption() {
+  return { value: '', label: '', score: 0 }
+}
+
+const trimNumber = (value) => {
+  const number = Number(value) || 0
+  return Number.isInteger(number) ? String(number) : String(Math.round(number * 100) / 100)
+}
+
+/**
+ * Non-blocking warnings about marks that don't add up. Computed locally rather
+ * than read from `metric.warnings[]` so they track what the admin is typing —
+ * the API's copy goes stale the moment a field changes. Same formula as the
+ * backend's `metric_segment_sum_warnings`.
+ */
+function segmentSumWarnings(metric) {
+  const segments = metric.segments || []
+  if (!segments.length) return []
+
+  const warnings = []
+  let total = 0
+
+  segments.forEach((segment) => {
+    const effective = segmentEffectiveMax(segment)
+    total += effective
+    if (segment.kind === 'enum' && enumOptionsAreScored(segment.options)) {
+      const declared = Number(segment.max_score) || 0
+      if (declared && Math.abs(declared - effective) > 0.01) {
+        warnings.push(
+          `${segment.label || segment.key || 'Segment'}: option marks top out at ` +
+            `${trimNumber(effective)} but segment max score is ${trimNumber(declared)}.`,
+        )
+      }
+    }
+  })
+
+  const metricMax = Number(metric.max_score) || 0
+  if (Math.abs(total - metricMax) > 0.01) {
+    warnings.push(
+      `Segment marks add up to ${trimNumber(total)} but ` +
+        `${metric.field_label || metric.field_key || 'this metric'} max score is ` +
+        `${trimNumber(metricMax)}.`,
+    )
+  }
+
+  return warnings
 }
 
 function validate(name, metrics) {
@@ -135,12 +183,50 @@ function validate(name, metrics) {
         errors[`${prefix}.segments`] = 'Add at least one segment for manual metrics.'
       }
       metric.segments?.forEach((segment, segmentIndex) => {
+        const segmentPrefix = `${prefix}.s${segmentIndex}`
         if (!segment.key.trim()) {
-          errors[`${prefix}.s${segmentIndex}.key`] = 'Segment key is required.'
+          errors[`${segmentPrefix}.key`] = 'Segment key is required.'
         }
-        if (segment.kind === 'enum' && !(segment.options || []).length) {
-          errors[`${prefix}.s${segmentIndex}.options`] = 'Add enum options (comma-separated).'
+        if (segment.kind !== 'enum') return
+
+        const options = segment.options || []
+        if (!options.length) {
+          errors[`${segmentPrefix}.options`] = 'Add at least one level for an enum segment.'
+          return
         }
+
+        // Options are mutually exclusive, so each one on its own must fit
+        // inside the segment's max — they are never summed against it.
+        const cap = Number(segment.max_score) || 0
+        const seenValues = new Set()
+
+        options.forEach((option, optionIndex) => {
+          const optionPrefix = `${segmentPrefix}.o${optionIndex}`
+          const value = String(option.value || '').trim()
+
+          if (!value) {
+            errors[`${optionPrefix}.value`] = 'Value is required.'
+          } else if (seenValues.has(value)) {
+            // A repeated value makes the evaluator's pick ambiguous, and the
+            // backend resolves it to whichever option it finds first.
+            errors[`${optionPrefix}.value`] = `Duplicate value “${value}”.`
+          } else {
+            seenValues.add(value)
+          }
+
+          if (!String(option.label || '').trim()) {
+            errors[`${optionPrefix}.label`] = 'Label is required.'
+          }
+
+          const score = Number(option.score)
+          if (option.score === '' || option.score == null || !Number.isFinite(score)) {
+            errors[`${optionPrefix}.score`] = 'Marks are required.'
+          } else if (score < 0) {
+            errors[`${optionPrefix}.score`] = 'Marks must be 0 or more.'
+          } else if (cap > 0 && score > cap) {
+            errors[`${optionPrefix}.score`] = `Marks must be ≤ ${trimNumber(cap)}`
+          }
+        })
       })
     }
   })
@@ -173,15 +259,131 @@ function toPayloadMetrics(metrics) {
         max_score: Number(segment.max_score || 0),
         options:
           segment.kind === 'enum'
-            ? String(segment.optionsText ?? (segment.options || []).join(', '))
-                .split(',')
-                .map((part) => part.trim())
-                .filter(Boolean)
+            ? (segment.options || []).map((option) => ({
+                value: String(option.value || '').trim(),
+                label: String(option.label || option.value || '').trim(),
+                score: Number(option.score) || 0,
+              }))
             : undefined,
         description: segment.description?.trim() || undefined,
       })),
     }
   })
+}
+
+/** Yellow, never blocking — an admin may be mid-edit, or may mean it. */
+function SegmentSumWarning({ metric }) {
+  const warnings = segmentSumWarnings(metric)
+  if (!warnings.length) return null
+
+  return (
+    <Alert variant="warning" title="Marks don’t add up">
+      <ul className="list-disc pl-4">
+        {warnings.map((warning) => (
+          <li key={warning}>{warning}</li>
+        ))}
+      </ul>
+      <p className="mt-2">
+        You can still save — evaluators just won’t be able to reach the metric’s full{' '}
+        {trimNumber(metric.max_score)} marks.
+      </p>
+    </Alert>
+  )
+}
+
+/**
+ * Graded levels for an enum segment. The evaluator picks exactly ONE, so each
+ * level's marks stand alone: Fully=5 on a max-5 segment awards 5/5, and the
+ * four levels are never summed against that 5.
+ */
+function SegmentLevels({ segment, isAdmin, errors, errorPrefix, onAdd, onChange, onRemove }) {
+  const options = segment.options || []
+  const cap = Number(segment.max_score) || 0
+  const graded = enumOptionsAreScored(options)
+
+  return (
+    <div className="sm:col-span-2 xl:col-span-4">
+      <div className="row-between wrap mb-2 gap-2">
+        <div>
+          <h5 className="text-[13px] font-semibold text-ink">Levels / options</h5>
+          <p className="text-[12.5px] text-muted">
+            The evaluator picks one. Each level&rsquo;s marks must be{' '}
+            {cap > 0 ? `≤ ${trimNumber(cap)}` : 'a number'} — they are not added together.
+            {!graded && options.length > 0 && ' All marks are 0, so this is a plain choice.'}
+          </p>
+        </div>
+        {isAdmin && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={onAdd}
+            leftIcon={<Icon name="plus" size={15} />}
+          >
+            Add option
+          </Button>
+        )}
+      </div>
+
+      {errors[`${errorPrefix}.options`] && (
+        <Alert variant="danger">{errors[`${errorPrefix}.options`]}</Alert>
+      )}
+
+      <div className="stack-sm">
+        {options.map((option, optionIndex) => (
+          <div
+            key={optionIndex}
+            className="grid grid-cols-1 gap-3 rounded-drop border border-hairline bg-raised p-3 sm:grid-cols-[1fr_1.4fr_auto_auto] sm:items-end"
+          >
+            <Input
+              label="Value"
+              value={option.value || ''}
+              disabled={!isAdmin}
+              placeholder="full"
+              error={errors[`${errorPrefix}.o${optionIndex}.value`]}
+              hint="Stable id stored on the scorecard."
+              onChange={(event) => onChange(optionIndex, { value: event.target.value })}
+            />
+            <Input
+              label="Label"
+              value={option.label || ''}
+              disabled={!isAdmin}
+              placeholder="Fully Authentication feature"
+              error={errors[`${errorPrefix}.o${optionIndex}.label`]}
+              hint="Shown to the evaluator."
+              onChange={(event) => onChange(optionIndex, { label: event.target.value })}
+            />
+            <Input
+              label="Marks"
+              type="number"
+              min="0"
+              max={cap > 0 ? cap : undefined}
+              step="1"
+              value={option.score ?? ''}
+              disabled={!isAdmin}
+              error={errors[`${errorPrefix}.o${optionIndex}.score`]}
+              hint={cap > 0 ? `of ${trimNumber(cap)}` : undefined}
+              onChange={(event) =>
+                onChange(optionIndex, {
+                  score: event.target.value === '' ? '' : Number(event.target.value),
+                })
+              }
+            />
+            {isAdmin && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => onRemove(optionIndex)}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function MetricScoringPage() {
@@ -278,12 +480,18 @@ export default function MetricScoringPage() {
     setSaveMessage('')
   }
 
-  const updateSegment = (metricIndex, segmentIndex, patch) => {
+  /**
+   * Patch one segment. `derive` covers patches that need the current segment
+   * (the option list), so option edits don't each need their own setMetrics.
+   */
+  const updateSegment = (metricIndex, segmentIndex, patch, derive) => {
     setMetrics((current) =>
       current.map((metric, index) => {
         if (index !== metricIndex) return metric
         const segments = (metric.segments || []).map((segment, sIndex) =>
-          sIndex === segmentIndex ? { ...segment, ...patch } : segment,
+          sIndex === segmentIndex
+            ? { ...segment, ...(derive ? derive(segment) : patch) }
+            : segment,
         )
         return { ...metric, segments }
       }),
@@ -298,6 +506,27 @@ export default function MetricScoringPage() {
           : metric,
       ),
     )
+  }
+
+  /** Patch one option inside one segment, leaving every sibling untouched. */
+  const updateOption = (metricIndex, segmentIndex, optionIndex, patch) => {
+    updateSegment(metricIndex, segmentIndex, null, (segment) => ({
+      options: (segment.options || []).map((option, oIndex) =>
+        oIndex === optionIndex ? { ...option, ...patch } : option,
+      ),
+    }))
+  }
+
+  const addOption = (metricIndex, segmentIndex) => {
+    updateSegment(metricIndex, segmentIndex, null, (segment) => ({
+      options: [...(segment.options || []), emptyOption()],
+    }))
+  }
+
+  const removeOption = (metricIndex, segmentIndex, optionIndex) => {
+    updateSegment(metricIndex, segmentIndex, null, (segment) => ({
+      options: (segment.options || []).filter((_, oIndex) => oIndex !== optionIndex),
+    }))
   }
 
   const removeSegment = (metricIndex, segmentIndex) => {
@@ -582,19 +811,17 @@ export default function MetricScoringPage() {
                             value={metric.scoring_prompt}
                             disabled={!isAdmin}
                             error={errors[`m${index}.scoring_prompt`]}
-                            hint={
-                              isSolutionDescriptionKey(metric.field_key)
-                                ? 'Insert {Problem Statement} to give the model the student’s problem.'
-                                : undefined
-                            }
                             onChange={(event) =>
                               updateMetric(index, { scoring_prompt: event.target.value })
                             }
                           />
                           {promptPlaceholders.length > 0 && (
                             <div>
+                              {/* Tokens are listed by the API, never hardcoded here —
+                                  a new one appears the moment the backend ships it. */}
                               <p className="mb-1.5 text-[12px] text-muted">
-                                Insert into prompt
+                                Insert into prompt — each student&rsquo;s own values replace
+                                these when their submission is scored.
                               </p>
                               <div className="flex flex-wrap gap-1.5">
                                 {promptPlaceholders.map((placeholder) => (
@@ -603,8 +830,9 @@ export default function MetricScoringPage() {
                                     type="button"
                                     disabled={!isAdmin}
                                     title={
-                                      placeholder.description ||
-                                      `Insert ${placeholder.token} as literal text`
+                                      placeholder.description
+                                        ? `${placeholder.label}: ${placeholder.description}`
+                                        : `Insert ${placeholder.token} as literal text`
                                     }
                                     className={`${MONO} rounded-full border border-hairline bg-raised px-2.5 py-1 text-[11px] text-muted transition hover:border-volt hover:text-ink disabled:cursor-not-allowed disabled:opacity-50`}
                                     onClick={() =>
@@ -693,26 +921,6 @@ export default function MetricScoringPage() {
                               updateSegment(index, segmentIndex, { max_score: event.target.value })
                             }
                           />
-                          {segment.kind === 'enum' && (
-                            <Input
-                              label="Options (comma-separated)"
-                              value={
-                                segment.optionsText ??
-                                (segment.options || []).join(', ')
-                              }
-                              disabled={!isAdmin}
-                              error={errors[`m${index}.s${segmentIndex}.options`]}
-                              onChange={(event) =>
-                                updateSegment(index, segmentIndex, {
-                                  optionsText: event.target.value,
-                                  options: event.target.value
-                                    .split(',')
-                                    .map((part) => part.trim())
-                                    .filter(Boolean),
-                                })
-                              }
-                            />
-                          )}
                           <Input
                             label="Description"
                             value={segment.description || ''}
@@ -735,8 +943,26 @@ export default function MetricScoringPage() {
                               </Button>
                             </div>
                           )}
+
+                          {segment.kind === 'enum' && (
+                            <SegmentLevels
+                              segment={segment}
+                              isAdmin={isAdmin}
+                              errors={errors}
+                              errorPrefix={`m${index}.s${segmentIndex}`}
+                              onAdd={() => addOption(index, segmentIndex)}
+                              onChange={(optionIndex, patch) =>
+                                updateOption(index, segmentIndex, optionIndex, patch)
+                              }
+                              onRemove={(optionIndex) =>
+                                removeOption(index, segmentIndex, optionIndex)
+                              }
+                            />
+                          )}
                         </div>
                       ))}
+
+                      <SegmentSumWarning metric={metric} />
                     </div>
                   )}
                 </article>

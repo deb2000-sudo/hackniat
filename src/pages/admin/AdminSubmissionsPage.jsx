@@ -21,42 +21,40 @@ import Icon from '../../components/ui/Icon'
 import Input from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
 
+/** Neutral stat pill. Uses text-ink, not text-muted: these are numbers to read. */
+const BADGE_STAT = 'border-hairline bg-raised text-ink'
+
 export default function AdminSubmissionsPage() {
   const { data, loading, error, reload } = useAsync(
-    async () => {
-      const [hackathons, submissions] = await Promise.all([
-        evaluationApi.listSubmissionHackathons(),
-        evaluationApi.listAllSubmissions(),
-      ])
-      const evaluatedByHackathon = submissions.reduce((counts, submission) => {
-        if (submission.status !== 'completed' || !submission.hackathon_id) return counts
-        counts.set(
-          submission.hackathon_id,
-          (counts.get(submission.hackathon_id) || 0) + 1,
-        )
-        return counts
-      }, new Map())
-      return hackathons.map((hackathon) => ({
-        ...hackathon,
-        evaluated_count: evaluatedByHackathon.get(hackathon.hackathon_id) || 0,
-      }))
-    },
+    (options) => evaluationApi.loadSubmissionHackathonsWithCounts(options),
     { key: queryKeys.submissionsAdminHackathons, staleTime: 30_000 },
   )
+
   const [query, setQuery] = useState('')
+
+  // Memoised so the fallback [] is not a fresh array on every render, which
+  // would invalidate the filter/sort memo below each time.
+  // Tolerate a bare array as well as the loader's payload. This cache key is
+  // also warmed by the login prefetch, and when the two shapes drifted apart the
+  // page rendered "No hackathons available" while data was sitting right there.
+  // Rendering the rows and flagging the missing counts beats a blank screen.
+  const allHackathons = useMemo(
+    () => (Array.isArray(data) ? data : data?.hackathons || []),
+    [data],
+  )
+  const countsUnavailable = Array.isArray(data) || Boolean(data?.countsUnavailable)
 
   const hackathons = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return [...(data || [])]
+    return [...allHackathons]
       .filter((hackathon) => !needle || hackathon.name.toLowerCase().includes(needle))
       .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
-  }, [data, query])
+  }, [allHackathons, query])
 
   return (
     <div className={`${WRAP_APP} py-7 md:py-10`}>
       <header className="mb-7 flex flex-col gap-4 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-3xl">
-          <span className={EYEBROW}>Admin review</span>
           <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
             Submissions by hackathon
           </h1>
@@ -82,7 +80,7 @@ export default function AdminSubmissionsPage() {
           </span>
           <div>
             <div className={`${MONO} text-[22px] leading-none font-semibold tracking-[-0.03em] text-ink`}>
-              {data?.length || 0}
+              {allHackathons.length}
             </div>
             <div className="mt-1 text-[12.5px] text-muted">Hackathons</div>
           </div>
@@ -103,10 +101,27 @@ export default function AdminSubmissionsPage() {
         </div>
       </div>
 
+      {/* A failed load is presented as "nothing here" rather than a red error,
+          because this screen 500s when the collection is empty. The server's
+          own message is kept underneath so a genuine outage is still
+          diagnosable instead of silently looking like an empty database. */}
       {error && (
         <div className="mb-6">
-          <Alert variant="danger" title="Unable to load submission hackathons">
-            {error.message}
+          <Alert variant="warning" title="No hackathon or submission is present">
+            Nothing is available to review yet. Create a hackathon, or refresh once students
+            have submitted.
+            <span className="mt-1.5 block text-[12px] opacity-70">Server said: {error.message}</span>
+          </Alert>
+        </div>
+      )}
+
+      {/* Counts come from a second feed. If only that one failed, say so —
+          otherwise the zeros read as real data. */}
+      {!error && countsUnavailable && (
+        <div className="mb-6">
+          <Alert variant="warning" title="Submission counts are unavailable">
+            These hackathons loaded, but the submission feed did not, so every count shows zero.
+            Refresh to try again.
           </Alert>
         </div>
       )}
@@ -116,10 +131,6 @@ export default function AdminSubmissionsPage() {
       ) : hackathons.length ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {hackathons.map((hackathon) => {
-            const awaiting = Math.max(
-              0,
-              Number(hackathon.submission_count || 0) - Number(hackathon.evaluated_count || 0),
-            )
             return (
               <article
                 key={hackathon.hackathon_id}
@@ -156,16 +167,17 @@ export default function AdminSubmissionsPage() {
                   </div>
 
                   <div className="mt-auto flex flex-wrap gap-2 border-t border-hairline pt-4">
+                    <span className={`${BADGE} ${BADGE_STAT}`}>
+                      <strong className={`${MONO} mr-1`}>{hackathon.submission_count || 0}</strong>
+                      Submissions
+                    </span>
                     <span className={`${BADGE} ${BADGE_OPEN}`}>
                       <strong className={`${MONO} mr-1`}>{hackathon.evaluated_count || 0}</strong>
                       Evaluated
                     </span>
-                    <span className={`${BADGE} ${BADGE_CLOSED}`}>
-                      <strong className={`${MONO} mr-1`}>{awaiting}</strong>
+                    <span className={`${BADGE} ${BADGE_STAT}`}>
+                      <strong className={`${MONO} mr-1`}>{hackathon.awaiting_count || 0}</strong>
                       Awaiting evaluation
-                    </span>
-                    <span className={`${BADGE} ${hackathon.auto_ai_evaluation ? BADGE_OPEN : BADGE_CLOSED}`}>
-                      {hackathon.auto_ai_evaluation ? 'AI runs automatically' : 'Manual AI'}
                     </span>
                   </div>
 
@@ -173,7 +185,7 @@ export default function AdminSubmissionsPage() {
                     to={`/admin/submissions/hackathons/${hackathon.hackathon_id}`}
                     className={`${BTN_VOLT} w-full`}
                   >
-                    View submissions
+                    View All Submissions
                     <Icon name="arrowRight" size={16} />
                   </Link>
                 </div>
@@ -181,7 +193,7 @@ export default function AdminSubmissionsPage() {
             )
           })}
         </div>
-      ) : !error ? (
+      ) : (
         <div className={`${PANEL} p-8`}>
           <EmptyState
             icon="trophy"
@@ -193,7 +205,7 @@ export default function AdminSubmissionsPage() {
             }
           />
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

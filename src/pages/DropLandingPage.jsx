@@ -6,7 +6,18 @@ import CountUpStat from '../components/drop/CountUpStat'
 import { IconMissing, IconPassed, IconWarn } from '../components/drop/icons'
 import { HOUR, formatRemaining, useCountdown } from '../components/drop/useCountdown'
 import { useDropSurface } from '../components/drop/useDropSurface'
-import { BTN, BTN_GHOST, BTN_VOLT, EYEBROW, MONO, PANEL, PILL_VOLT, WRAP } from '../components/drop/theme'
+import { useHackathonCatalog } from '../components/drop/useHackathonCatalog'
+import {
+  BTN,
+  BTN_GHOST,
+  BTN_VOLT,
+  EYEBROW,
+  MONO,
+  PANEL,
+  PILL_MUTED,
+  PILL_VOLT,
+  WRAP,
+} from '../components/drop/theme'
 
 const PITCH =
   "Most hackathons take your submission and hand back a number. Drop tells you what's wrong before the deadline, and tells you why afterwards."
@@ -105,8 +116,40 @@ function ReadinessClock() {
   )
 }
 
+/**
+ * The live-count pill. Held back until the catalog lands rather than counting
+ * up from a placeholder — a number on a landing page is a claim, and a wrong
+ * one for half a second is still wrong.
+ */
+function LivePill({ count, loading }) {
+  if (loading || !count) {
+    return (
+      <p className={PILL_MUTED}>
+        <span
+          className="size-1.5 shrink-0 rounded-full bg-[var(--color-muted)]"
+          aria-hidden="true"
+        />
+        <span>{loading ? 'Checking what’s live…' : 'No hackathons open right now'}</span>
+      </p>
+    )
+  }
+
+  return (
+    <p className={PILL_VOLT}>
+      <span className="size-1.5 shrink-0 rounded-full bg-volt" aria-hidden="true" />
+      <span>
+        <span className={MONO}>{count}</span> hackathon{count === 1 ? '' : 's'} live right now
+      </span>
+    </p>
+  )
+}
+
 export default function DropLandingPage() {
   useDropSurface({ title: 'Drop — Build. Ship. Drop.', description: PITCH })
+
+  // One catalog fetch for the whole page: the pill, the board and the numbers
+  // band all read the same poll rather than each running their own.
+  const { hackathons, liveCount, themeCount, loading, error, refresh } = useHackathonCatalog()
 
   return (
     <div className="drop">
@@ -122,12 +165,7 @@ export default function DropLandingPage() {
       <main id="top">
         {/* ------------------------------ Hero ------------------------------ */}
         <section className={`${WRAP} pt-6 pb-10 md:pt-22 md:pb-24`} aria-labelledby="drop-hero-title">
-          <p className={PILL_VOLT}>
-            <span className="size-1.5 shrink-0 rounded-full bg-volt" aria-hidden="true" />
-            <span>
-              <span className={MONO}>14</span> hackathons live right now
-            </span>
-          </p>
+          <LivePill count={liveCount} loading={loading} />
 
           <h1
             id="drop-hero-title"
@@ -152,7 +190,12 @@ export default function DropLandingPage() {
         </section>
 
         {/* -------------------------- Hackathon board ------------------------ */}
-        <HackathonBoard />
+        <HackathonBoard
+          hackathons={hackathons}
+          loading={loading}
+          error={error}
+          onRetry={refresh}
+        />
 
         {/* ------------------------------ Hook ------------------------------ */}
         <section className={`${WRAP} py-18 text-center md:py-28`} aria-labelledby="drop-hook-title">
@@ -289,8 +332,10 @@ export default function DropLandingPage() {
         <section className="border-y border-hairline py-12 md:py-18" aria-label="Drop in numbers">
           <div className={WRAP}>
             <div className="grid grid-cols-1 md:grid-cols-3">
-              <CountUpStat value={14} label="live hackathons" />
-              <CountUpStat value={8400} label="builders" />
+              {/* Both counts come off the same catalog poll as the board — the
+                  band can never claim more than the board can show. */}
+              <CountUpStat value={liveCount} label="live hackathons" />
+              <CountUpStat value={themeCount} label="themes to build on" />
               <CountUpStat value={100} suffix="%" label="get feedback" emphasis />
             </div>
           </div>

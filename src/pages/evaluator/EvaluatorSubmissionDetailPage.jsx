@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { resolveApiUrl } from '../../api/client'
@@ -12,6 +10,7 @@ import {
   buildAiOverridesPayload,
   buildManualMetricsPayload,
   draftFromScorecard,
+  getGithubMetric,
   getScorecard,
   isManualScoringComplete,
   previewScorecard,
@@ -25,6 +24,7 @@ import {
 } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
 import Accordion from '../../components/ui/Accordion'
+import RichText from '../../components/ui/RichText'
 import { accordionManualPending } from '../../components/ui/uiClasses'
 import Badge, { AiModeBadge, ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -32,6 +32,7 @@ import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
 import Spinner, { LoadingBlock } from '../../components/ui/Spinner'
 import AiMetricsPanel from '../../components/evaluation/AiMetricsPanel'
+import GithubAiPanel from '../../components/evaluation/GithubAiPanel'
 import ManualScoreForms from '../../components/evaluation/ManualScoreForms'
 import ScorecardBar from '../../components/evaluation/ScorecardBar'
 import SubmitForReviewCard from '../../components/evaluation/SubmitForReviewCard'
@@ -44,7 +45,9 @@ export default function EvaluatorSubmissionDetailPage() {
     [submissionId],
   )
   const { data: submission, loading, error, restart: restartPolling } = usePolling(fetcher, {
-    isDone: (item) => ['completed', 'failed'].includes(item?.status),
+    isDone: (item) =>
+      ['completed', 'failed'].includes(item?.status) &&
+      item?.github_ai_status !== 'processing',
     interval: 3000,
   })
   const { data: hackathon } = useAsync(
@@ -57,6 +60,8 @@ export default function EvaluatorSubmissionDetailPage() {
   const [actionError, setActionError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [showDetailReport, setShowDetailReport] = useState(false)
+  const [githubAiStarting, setGithubAiStarting] = useState(false)
+  const [githubAiError, setGithubAiError] = useState('')
   const [notes, setNotes] = useState('')
   const [draftByFieldKey, setDraftByFieldKey] = useState({})
   const [overrideEnabled, setOverrideEnabled] = useState(false)
@@ -80,6 +85,27 @@ export default function EvaluatorSubmissionDetailPage() {
       setNotes(submission?.evaluator_notes || reviewOverride?.evaluator_notes || '')
     }
   }, [scorecardBase, submission, reviewOverride, notes])
+
+
+  // Re-seed the GitHub metric when an analysis completes.
+  //
+  // The effect above seeds the draft once, on first load. A GitHub AI run
+  // finishes later, so without this the panel would show a score the scorecard
+  // form below never picked up. Only this one field_key is replaced — any edits
+  // in progress on other metrics survive — and the evaluator can still change
+  // it afterwards, so a manual value always wins.
+  const lastGithubAiStatus = useRef(null)
+  useEffect(() => {
+    const status = submission?.github_ai_status
+    const previous = lastGithubAiStatus.current
+    lastGithubAiStatus.current = status
+    if (status !== 'completed' || previous === 'completed' || previous == null) return
+    if (!scorecardBase) return
+    const metric = getGithubMetric(scorecardBase)
+    const seeded = metric ? draftFromScorecard(scorecardBase)[metric.field_key] : null
+    if (!seeded) return
+    setDraftByFieldKey((current) => ({ ...current, [metric.field_key]: seeded }))
+  }, [submission?.github_ai_status, scorecardBase])
 
   const preview = useMemo(
     () =>
@@ -180,7 +206,41 @@ export default function EvaluatorSubmissionDetailPage() {
   const canEditManual =
     completed && ['none', 'changes_requested'].includes(reviewStatus) && !processing
   const canSubmit = canEditManual && manualComplete
+  // Round config as a second signal. The submission carries a snapshot of the
+  // round's flag, but that snapshot is absent on submissions created before the
+  // flag was switched on — and then the panel vanished with no explanation.
+  // The hackathon is already loaded here, so read the round directly too.
+  const submissionRound = hackathon?.timeline?.[Number(submission?.round_index) || 0]
+  const githubAiEnabled =
+    Boolean(submission?.github_ai_evaluation) ||
+    Boolean(submissionRound?.github_ai_evaluation) ||
+    Boolean(submission?.show_github_ai_evaluation_button) ||
+    (submission?.github_ai_status && submission.github_ai_status !== 'none')
+
   const githubLink = submissionLinkForGroup(submission, 'github')
+
+  /**
+   * Kick off the repository analysis, then let the existing poll pick up the
+   * status changes rather than running a second timer alongside it.
+   */
+  const runGithubAi = async () => {
+    setGithubAiStarting(true)
+    setGithubAiError('')
+    try {
+      await evaluationApi.evaluateGithubWithAi(submissionId)
+      restartPolling()
+    } catch (err) {
+      // 409 means it is already running — that is the state we wanted, so
+      // start watching instead of reporting a failure.
+      if (err?.status === 409) {
+        restartPolling()
+        return
+      }
+      setGithubAiError(err?.message || 'Could not start the GitHub AI evaluation.')
+    } finally {
+      setGithubAiStarting(false)
+    }
+  }
   const mvpLink = submissionLinkForGroup(submission, 'mvp')
 
   return (
@@ -252,9 +312,10 @@ export default function EvaluatorSubmissionDetailPage() {
             icon="shield"
             defaultOpen={false}
           >
-            <div className="markdown-body hackathon-guidelines text-ink">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
-            </div>
+            <RichText
+              className="markdown-body hackathon-guidelines text-ink"
+              value={evaluatorGuidelines}
+            />
           </Accordion>
         </div>
       ) : null}
@@ -370,6 +431,21 @@ export default function EvaluatorSubmissionDetailPage() {
                 <AiMetricsPanel scorecard={preview} />
               )}
             </Accordion>
+          )}
+
+          {/* Repository analysis. Independent of the video AI above: a round may
+              enable either, both, or neither. */}
+          {githubAiEnabled && (
+            <GithubAiPanel
+              githubLink={githubLink}
+              status={submission?.github_ai_status}
+              result={submission?.github_ai_result}
+              error={submission?.github_ai_error}
+              canStart={Boolean(submission?.show_github_ai_evaluation_button)}
+              starting={githubAiStarting}
+              actionError={githubAiError}
+              onStart={runGithubAi}
+            />
           )}
 
           {completed && scorecardBase && (

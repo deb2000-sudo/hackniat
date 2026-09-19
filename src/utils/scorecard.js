@@ -52,8 +52,23 @@ const FIELD_GROUPS = {
     color: '#059669',
   },
   mvp: {
-    aliases: ['mvp_link', 'mvp_url', 'mvp'],
-    pattern: /(^|_)mvp(_|$)/,
+    // The deployed/hosted build of the project. Requirements name this either
+    // after the MVP or after the deployment — project_deployed_link is the
+    // current standard requirement's key — so both vocabularies map here.
+    aliases: [
+      'mvp_link',
+      'mvp_url',
+      'mvp',
+      'project_deployed_link',
+      'deployed_link',
+      'deployment_link',
+      'deployed_url',
+      'live_link',
+      'live_url',
+      'hosted_link',
+      'hosted_url',
+    ],
+    pattern: /(^|_)(mvp|deployed|deployment|hosted|live)(_|$)/,
     fallback: 'mvp_link',
     label: 'MVP Features',
     color: '#D97706',
@@ -73,6 +88,95 @@ function normalizeFieldKey(value) {
   return String(value || '').trim().toLowerCase()
 }
 
+/* --------------------------- Enum segment options -------------------------- */
+
+/**
+ * Enum options are stored as `{value, label, score}`, but scorecards written
+ * before graded levels existed hold plain strings. Normalizing on read means
+ * every caller sees one shape, and a legacy option scores 0 — which is exactly
+ * what an ungraded choice always was.
+ *
+ * Mirrors the backend's `coerce_segment_option`.
+ */
+export function normalizeSegmentOptions(options) {
+  if (!Array.isArray(options)) return []
+  return options
+    .map((option) => {
+      if (typeof option === 'string') {
+        const text = option.trim()
+        return text ? { value: text, label: text, score: 0 } : null
+      }
+      if (!option || typeof option !== 'object') return null
+      const value = String(option.value ?? option.key ?? option.label ?? '').trim()
+      const label = String(option.label ?? option.value ?? option.key ?? '').trim()
+      if (!value && !label) return null
+      const score = Number(option.score)
+      return {
+        value: value || label,
+        label: label || value,
+        score: Number.isFinite(score) ? score : 0,
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * A *graded* enum awards marks for the level picked (Fully 5 / Partial 3 / …).
+ * An ungraded one is a plain label choice carrying no marks, like GitHub
+ * public/private. Mirrors the backend's `enum_options_are_scored`.
+ */
+export function enumOptionsAreScored(options) {
+  return normalizeSegmentOptions(options).some((option) => Number(option.score) > 0)
+}
+
+/**
+ * The highest mark a segment can actually award — for a graded enum that is its
+ * best option, not its declared max. Deliberately *uncapped* so it matches the
+ * backend's `segment_effective_max`: the gap between this and `max_score` is
+ * precisely what the admin warning is there to report.
+ */
+export function segmentEffectiveMax(segment) {
+  const options = normalizeSegmentOptions(segment?.options)
+  if (segment?.kind === 'enum' && enumOptionsAreScored(options)) {
+    return options.reduce((best, option) => Math.max(best, Number(option.score) || 0), 0)
+  }
+  return Number(segment?.max_score) || 0
+}
+
+/** Marks for one chosen enum option — a single pick, never a sum of options. */
+function awardForEnumChoice(segment, value) {
+  const options = normalizeSegmentOptions(segment?.options)
+  const chosen = options.find((option) => option.value === value)
+  const cap = Number(segment?.max_score) || 0
+  const awarded = Number(chosen?.score) || 0
+  return cap > 0 ? Math.min(awarded, cap) : awarded
+}
+
+/** Parent metrics never exceed their own max, however the segments add up. */
+function capToMetricMax(total, metric) {
+  const max = Number(metric?.max_score) || 0
+  return max > 0 ? Math.min(total, max) : total
+}
+
+/**
+ * Read a draft entry, which is either a `{value}` / `{score}` wrapper or a bare
+ * scalar from an older call site.
+ *
+ * The obvious `entry.value ?? draft[key]` falls through to the wrapper *object*
+ * whenever the stored value is null — and `draftFromScorecard` seeds exactly
+ * `{value: null}` for an untouched segment. That object is neither null nor '',
+ * so the segment reads as answered and submits `{value: null}` as the
+ * evaluator's pick. Returning null for an empty wrapper is the whole point.
+ */
+function readDraftEntry(entry, ...fields) {
+  if (entry == null) return null
+  if (typeof entry !== 'object' || Array.isArray(entry)) return entry
+  for (const field of fields) {
+    if (entry[field] != null) return entry[field]
+  }
+  return null
+}
+
 /** Which standard group a field key belongs to, or null for a custom metric. */
 export function groupForFieldKey(fieldKey) {
   const key = normalizeFieldKey(fieldKey)
@@ -88,6 +192,17 @@ export function groupForFieldKey(fieldKey) {
 
 export function isGithubFieldKey(fieldKey) {
   return groupForFieldKey(fieldKey) === 'github'
+}
+
+/**
+ * The scorecard metric the GitHub AI result maps onto.
+ *
+ * Matches through isGithubFieldKey rather than a fixed key list, so a
+ * requirement naming the field project_github_link, github_url, repo_link (or
+ * anything else in the github group) still resolves.
+ */
+export function getGithubMetric(scorecard) {
+  return scorecard?.metrics?.find((metric) => isGithubFieldKey(metric?.field_key)) || null
 }
 
 export function isMvpFieldKey(fieldKey) {
@@ -393,11 +508,8 @@ export function computeManualMetricScore(metric, draft = {}) {
 
   // GitHub: private visibility forces 0 and skips structure.
   if (isGithubFieldKey(metric.field_key)) {
-    const visibility = draft.visibility?.value ?? draft.visibility
-    const structure =
-      draft.structure_score?.score ??
-      draft.structure_score?.value ??
-      draft.structure_score
+    const visibility = readDraftEntry(draft.visibility, 'value')
+    const structure = readDraftEntry(draft.structure_score, 'score', 'value')
     const isPrivate = String(visibility || '').toLowerCase() === 'private'
     const isPublic = String(visibility || '').toLowerCase() === 'public'
     const score = isPrivate
@@ -446,7 +558,7 @@ export function computeManualMetricScore(metric, draft = {}) {
       }
     })
     return {
-      score: answered === defs.length ? total : null,
+      score: answered === defs.length ? capToMetricMax(total, metric) : null,
       segments,
     }
   }
@@ -455,9 +567,9 @@ export function computeManualMetricScore(metric, draft = {}) {
   let total = 0
   let answered = 0
   const segments = defs.map((segment) => {
-    const entry = draft[segment.key] || {}
+    const entry = draft[segment.key]
     if (segment.kind === 'boolean') {
-      const raw = entry.value ?? draft[segment.key]
+      const raw = readDraftEntry(entry, 'value')
       const unanswered = raw == null || raw === ''
       if (!unanswered) answered += 1
       const checked = raw === true || raw === 'true'
@@ -466,7 +578,7 @@ export function computeManualMetricScore(metric, draft = {}) {
       return { ...segment, value: unanswered ? null : checked, score: segmentScore }
     }
     if (segment.kind === 'score') {
-      const raw = entry.score ?? entry.value ?? draft[segment.key]
+      const raw = readDraftEntry(entry, 'score', 'value')
       const unanswered = raw == null || raw === ''
       if (!unanswered) answered += 1
       const segmentScore = unanswered ? null : Number(raw)
@@ -474,13 +586,22 @@ export function computeManualMetricScore(metric, draft = {}) {
       return { ...segment, value: unanswered ? null : Number(raw), score: segmentScore }
     }
     // enum / other
-    const value = entry.value ?? draft[segment.key] ?? null
-    if (value != null && value !== '') answered += 1
-    return { ...segment, value, score: null }
+    const value = readDraftEntry(entry, 'value')
+    const unanswered = value == null || value === ''
+    if (!unanswered) answered += 1
+
+    // An ungraded enum (GitHub public/private) records a choice but awards
+    // nothing; a graded one awards the chosen level, capped at its own max.
+    if (!enumOptionsAreScored(segment.options)) {
+      return { ...segment, value, score: null }
+    }
+    const segmentScore = unanswered ? null : awardForEnumChoice(segment, value)
+    if (segmentScore != null) total += segmentScore
+    return { ...segment, value, score: segmentScore }
   })
 
   return {
-    score: answered === defs.length ? total : null,
+    score: answered === defs.length ? capToMetricMax(total, metric) : null,
     segments,
   }
 }
@@ -516,11 +637,8 @@ export function buildManualMetricsPayload(scorecard, draftByFieldKey = {}) {
       const { segments } = computeManualMetricScore(metric, draft)
 
       if (isGithubFieldKey(metric.field_key)) {
-        const visibility = draft.visibility?.value ?? draft.visibility
-        const structure =
-          draft.structure_score?.score ??
-          draft.structure_score?.value ??
-          draft.structure_score
+        const visibility = readDraftEntry(draft.visibility, 'value')
+        const structure = readDraftEntry(draft.structure_score, 'score', 'value')
         const isPrivate = String(visibility || '').toLowerCase() === 'private'
         const segmentPayload = [{ key: 'visibility', value: visibility }]
         if (!isPrivate && structure != null && structure !== '') {

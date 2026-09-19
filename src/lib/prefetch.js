@@ -33,8 +33,10 @@ export function prefetchForRole(role) {
       return { users, evaluators, pending }
     })
     prefetchQuery(queryKeys.hackathons, () => hackathonsApi.list())
+    // Must match what AdminSubmissionsPage reads from this key — warming it
+    // with a bare array made the page render as empty.
     prefetchQuery(queryKeys.submissionsAdminHackathons, () =>
-      evaluationApi.listSubmissionHackathons(),
+      evaluationApi.loadSubmissionHackathonsWithCounts(),
     )
   }
 }
@@ -66,8 +68,10 @@ export function prefetchRouteData(pathname) {
     prefetchQuery(queryKeys.hackathons, () => hackathonsApi.list())
   }
   if (pathname === '/admin/submissions') {
+    // Must match what AdminSubmissionsPage reads from this key — warming it
+    // with a bare array made the page render as empty.
     prefetchQuery(queryKeys.submissionsAdminHackathons, () =>
-      evaluationApi.listSubmissionHackathons(),
+      evaluationApi.loadSubmissionHackathonsWithCounts(),
     )
   }
   if (pathname === '/admin/users') {

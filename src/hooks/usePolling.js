@@ -14,7 +14,12 @@ function isSamePollSnapshot(prev, next) {
     prev.final_score === next.final_score &&
     prev.review_status === next.review_status &&
     prev.auto_ai_evaluation === next.auto_ai_evaluation &&
-    prev.show_ai_evaluation_button === next.show_ai_evaluation_button
+    prev.show_ai_evaluation_button === next.show_ai_evaluation_button &&
+    // GitHub AI runs on its own status field. Without it here a
+    // processing → completed transition looks like an unchanged snapshot and
+    // the panel never leaves its spinner.
+    prev.github_ai_status === next.github_ai_status &&
+    prev.show_github_ai_evaluation_button === next.show_github_ai_evaluation_button
   )
 }
 

@@ -1,180 +1,206 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { IconArrow, IconUsers } from './icons'
-import { DAY, describeRemaining, formatRemaining, useNow } from './useCountdown'
-import { BADGE, BADGE_CLOSED, BADGE_CLOSING, BADGE_OPEN, MONO, PANEL, WRAP } from './theme'
+import { IconArrow } from './icons'
+import { formatDate } from '../../utils/format'
+import { isAccepting } from './useHackathonCatalog'
+import {
+  BADGE,
+  BADGE_CLOSED,
+  BADGE_CLOSING,
+  BADGE_NEUTRAL,
+  BADGE_OPEN,
+  BADGE_UPCOMING,
+  BTN_GHOST,
+  MONO,
+  PANEL,
+  WRAP,
+} from './theme'
 
-/**
- * Deadlines are anchored once, at module load, to a fixed offset from now.
- * A landing page with hard-coded dates is a landing page that quietly rots —
- * this way every countdown is always plausible and always genuinely counting.
- */
-const ANCHOR = Date.now()
-const away = (days, hours, mins) => ANCHOR + ((days * 24 + hours) * 60 + mins) * 60 * 1000
+/** The board is a teaser; the rest live behind "see all". */
+const PREVIEW_LIMIT = 6
 
-const HACKATHONS = [
-  {
-    id: 'ship-in-48',
-    name: 'Ship in 48',
-    org: 'Basement Collective',
-    deadline: away(2, 11, 24),
-    team: 'Solo or team of 4',
-    prize: '$5,000',
-    entrants: 312,
-    solo: true,
-    isTeam: true,
-  },
-  {
-    id: 'cold-start',
-    name: 'Cold start',
-    org: 'Nightshift Labs',
-    deadline: away(0, 18, 40),
-    team: 'Teams of 2–5',
-    prize: '$12,000',
-    entrants: 847,
-    solo: false,
-    isTeam: true,
-  },
-  {
-    id: 'agents-actually',
-    name: 'Agents, actually',
-    org: 'Runloop',
-    deadline: away(5, 3, 12),
-    team: 'Solo only',
-    prize: '$8,000',
-    entrants: 1204,
-    solo: true,
-    isTeam: false,
-  },
-  {
-    id: 'offline-first',
-    name: 'Offline first',
-    org: 'Terminal Club',
-    deadline: away(0, 9, 15),
-    team: 'Teams of 3',
-    prize: '$3,000',
-    entrants: 96,
-    solo: false,
-    isTeam: true,
-  },
-  {
-    id: 'one-weekend-one-api',
-    name: 'One weekend, one API',
-    org: 'Postbox',
-    deadline: away(11, 6, 48),
-    team: 'Solo or team of 3',
-    prize: '$15,000',
-    entrants: 2038,
-    solo: true,
-    isTeam: true,
-  },
-  {
-    id: 'small-models-big-jobs',
-    name: 'Small models, big jobs',
-    org: 'Cutoff',
-    deadline: away(3, 21, 5),
-    team: 'Teams of 2–4',
-    prize: '$6,500',
-    entrants: 528,
-    solo: false,
-    isTeam: true,
-  },
-]
-
-/** The board previews a slice of the live board; the rest sit behind "see all". */
-const TOTAL_LIVE = 14
+/** Themes past this are collapsed into a "+n" pill so cards stay one height. */
+const THEME_LIMIT = 2
 
 const FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'open', label: 'Open' },
-  { id: 'closing', label: 'Closing soon' },
+  { id: 'closing_soon', label: 'Closing soon' },
+  { id: 'upcoming', label: 'Upcoming' },
+  { id: 'closed', label: 'Closed' },
   { id: 'solo', label: 'Solo' },
   { id: 'team', label: 'Team' },
 ]
 
-const matches = (filter, hackathon, remaining) => {
+/** Server-computed status → badge tone. Unknown statuses stay neutral. */
+const TONES = {
+  open: BADGE_OPEN,
+  closing_soon: BADGE_CLOSING,
+  upcoming: BADGE_UPCOMING,
+  closed: BADGE_CLOSED,
+}
+
+const matches = (filter, hackathon) => {
   switch (filter) {
+    // "Open" is the practical question — can I still enter — so it covers the
+    // last-three-days window too.
     case 'open':
-      return remaining >= DAY
-    case 'closing':
-      return remaining > 0 && remaining < DAY
+      return isAccepting(hackathon)
+    case 'closing_soon':
+    case 'upcoming':
+    case 'closed':
+      return hackathon.status === filter
     case 'solo':
-      return hackathon.solo
+      return hackathon.team_mode === 'solo' || hackathon.max_team_size === 1
     case 'team':
-      return hackathon.isTeam
+      return hackathon.team_mode === 'team' || hackathon.max_team_size > 1
     default:
       return true
   }
 }
 
-const statusOf = (remaining) => {
-  if (remaining <= 0) return { label: 'Closed', tone: BADGE_CLOSED }
-  if (remaining < DAY) return { label: 'Closing soon', tone: BADGE_CLOSING }
-  return { label: 'Open', tone: BADGE_OPEN }
-}
-
 const META_LABEL = 'text-[11.5px] tracking-[0.06em] text-muted uppercase'
 
-function HackathonCard({ hackathon, remaining }) {
-  const status = statusOf(remaining)
+const CARD_SHELL = `${PANEL} group flex flex-col overflow-hidden transition-[transform,border-color,background-color] duration-150`
+
+function HackathonCard({ hackathon }) {
+  // Banners are time-limited signed GCS URLs. The poll refreshes them long
+  // before they expire, but a stale one must not leave a broken-image icon.
+  const [bannerBroken, setBannerBroken] = useState(false)
+
+  const themes = hackathon.themes || []
+  const extraThemes = Math.max(0, themes.length - THEME_LIMIT)
+  const teamSize = hackathon.featured_round?.team_mode_label || hackathon.team_mode_label
+  const endsIn = hackathon.days_until_end
+  const showEndsIn = hackathon.status === 'closing_soon' && endsIn != null
 
   return (
-    <article
-      className={`${PANEL} group flex flex-col p-[22px] transition-[transform,border-color,background-color] duration-150 hover:-translate-y-[3px] hover:border-volt-edge hover:bg-raised`}
+    <Link
+      to={`/hackathons/${hackathon.id}`}
+      className={`${CARD_SHELL} hover:-translate-y-[3px] hover:border-volt-edge hover:bg-raised`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-[18px] font-semibold tracking-[-0.015em] text-ink">
-            {hackathon.name}
-          </h3>
-          <p className="mt-[5px] text-[13.5px] text-muted">by {hackathon.org}</p>
+      <div className="relative h-[168px] shrink-0 overflow-hidden bg-raised">
+        {hackathon.banner_url && !bannerBroken ? (
+          <img
+            src={hackathon.banner_url}
+            alt=""
+            loading="lazy"
+            onError={() => setBannerBroken(true)}
+            className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="grid size-full place-items-center bg-linear-to-br from-surface to-raised">
+            <span className="font-mono text-[22px] tracking-[0.12em] text-muted uppercase">
+              {hackathon.name?.slice(0, 2) || '—'}
+            </span>
+          </div>
+        )}
+
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-canvas/70 via-transparent to-transparent" />
+
+        <div className="absolute top-3.5 left-3.5 flex flex-wrap gap-2">
+          <span className={`${BADGE} ${TONES[hackathon.status] || BADGE_NEUTRAL}`}>
+            {hackathon.status_label}
+          </span>
+          {hackathon.team_mode_label && (
+            <span className={`${BADGE} ${BADGE_NEUTRAL}`}>{hackathon.team_mode_label}</span>
+          )}
         </div>
-        <span className={`${BADGE} ${status.tone}`}>{status.label}</span>
       </div>
 
-      <p className="my-[18px] mt-5 border-y border-hairline py-3.5 font-mono text-[20px] tracking-[-0.01em] text-ink tabular-nums">
-        <time
-          dateTime={new Date(hackathon.deadline).toISOString()}
-          aria-label={describeRemaining(remaining)}
-        >
-          {formatRemaining(remaining)}
-        </time>
-        {/* "left" is a word, not a number — sans, not mono. */}
-        <small className="ml-2 font-sans text-[13px] tracking-normal text-muted">left</small>
-      </p>
+      <div className="flex flex-1 flex-col p-[22px]">
+        <h3 className="text-[18px] font-semibold tracking-[-0.015em] text-ink">{hackathon.name}</h3>
+        {hackathon.featured_round?.title && (
+          <p className="mt-[5px] truncate text-[13.5px] text-muted">
+            {hackathon.featured_round.title}
+          </p>
+        )}
 
-      <dl className="mb-[18px] grid grid-cols-2 gap-3.5">
-        <div>
-          <dt className={META_LABEL}>Team size</dt>
-          <dd className="mt-[5px] text-[14.5px] text-ink">{hackathon.team}</dd>
+        <div className="my-5 border-y border-hairline py-3.5">
+          <p className="font-mono text-[15px] tracking-[-0.01em] text-ink tabular-nums">
+            <time dateTime={hackathon.start_date}>{formatDate(hackathon.start_date)}</time>
+            <span className="mx-2 text-muted" aria-hidden="true">
+              –
+            </span>
+            <time dateTime={hackathon.end_date}>{formatDate(hackathon.end_date)}</time>
+          </p>
+          {showEndsIn && (
+            <p className="mt-2 text-[13.5px] font-medium text-volt-ink">
+              Ends in <span className={MONO}>{endsIn}</span> day{endsIn === 1 ? '' : 's'}
+            </p>
+          )}
         </div>
-        <div>
-          <dt className={META_LABEL}>Prize</dt>
-          <dd className="mt-[5px] font-mono text-[15px] text-ink tabular-nums">{hackathon.prize}</dd>
-        </div>
-      </dl>
 
-      <p className="mt-auto flex items-center gap-2 border-t border-hairline pt-4 text-[13.5px] text-muted">
-        <IconUsers width={15} height={15} />
-        <span>
-          <span className={MONO}>
-            {hackathon.entrants.toLocaleString('en-US')}
-          </span>{' '}
-          building
-        </span>
-      </p>
-    </article>
+        <dl className="mb-[18px] grid grid-cols-2 gap-3.5">
+          <div>
+            <dt className={META_LABEL}>Team size</dt>
+            <dd className="mt-[5px] text-[14.5px] text-ink">{teamSize || 'Not set'}</dd>
+          </div>
+          <div>
+            <dt className={META_LABEL}>Top prize</dt>
+            <dd className="mt-[5px] truncate font-mono text-[15px] text-ink tabular-nums">
+              {hackathon.prizes?.winner || 'TBA'}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-hairline pt-4">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
+            {themes.slice(0, THEME_LIMIT).map((theme) => (
+              <span
+                key={theme.id ?? theme.name}
+                className={`${BADGE} ${BADGE_NEUTRAL} max-w-[15ch] overflow-hidden text-ellipsis`}
+              >
+                {theme.name}
+              </span>
+            ))}
+            {extraThemes > 0 && (
+              <span className={`${BADGE} ${BADGE_NEUTRAL}`}>+{extraThemes}</span>
+            )}
+          </div>
+          <IconArrow
+            width={16}
+            height={16}
+            className="shrink-0 text-muted transition-transform duration-150 group-hover:translate-x-[3px] group-hover:text-ink"
+          />
+        </div>
+      </div>
+    </Link>
   )
 }
 
-export default function HackathonBoard() {
-  const [filter, setFilter] = useState('all')
-  const now = useNow()
+/** Placeholder cards at the real card's height, so nothing jumps on arrival. */
+function CardSkeleton() {
+  return (
+    <div className={`${CARD_SHELL} animate-pulse`} aria-hidden="true">
+      <div className="h-[168px] bg-raised" />
+      <div className="flex flex-col gap-3 p-[22px]">
+        <div className="h-[18px] w-1/2 rounded bg-raised" />
+        <div className="h-[13px] w-1/3 rounded bg-raised" />
+        <div className="my-2 h-[15px] w-2/3 rounded bg-raised" />
+        <div className="h-[36px] rounded bg-raised" />
+      </div>
+    </div>
+  )
+}
 
-  const visible = HACKATHONS.map((hackathon) => ({
-    hackathon,
-    remaining: Math.max(0, hackathon.deadline - now),
-  })).filter(({ hackathon, remaining }) => matches(filter, hackathon, remaining))
+function BoardNotice({ children }) {
+  return (
+    <div className="rounded-drop border border-dashed border-hairline px-6 py-14 text-center text-muted">
+      {children}
+    </div>
+  )
+}
+
+export default function HackathonBoard({ hackathons = [], loading = false, error = null, onRetry }) {
+  const [filter, setFilter] = useState('all')
+
+  const filtered = hackathons.filter((hackathon) => matches(filter, hackathon))
+  const visible = filtered.slice(0, PREVIEW_LIMIT)
+
+  // The board keeps showing finished events so there is something to browse
+  // between hackathons — but it can't call a wall of Closed cards "live".
+  const anyLive = hackathons.some(isAccepting)
 
   return (
     <section className="pt-2 pb-11 md:py-18" id="hackathons" aria-labelledby="drop-board-title">
@@ -184,11 +210,13 @@ export default function HackathonBoard() {
             id="drop-board-title"
             className="text-2xl font-semibold tracking-[-0.025em] text-ink md:text-[32px]"
           >
-            Live right now
+            {anyLive || loading ? 'Live right now' : 'Hackathons on Drop'}
           </h2>
-          <p className="font-mono text-[13px] text-muted tabular-nums" aria-live="polite">
-            {visible.length} of {TOTAL_LIVE} live
-          </p>
+          {!loading && !error && hackathons.length > 0 && (
+            <p className="font-mono text-[13px] text-muted tabular-nums" aria-live="polite">
+              {visible.length} of {filtered.length}
+            </p>
+          )}
         </div>
 
         <div
@@ -205,8 +233,10 @@ export default function HackathonBoard() {
                 filter === option.id
                   ? 'border-muted/50 bg-raised text-ink'
                   : 'border-hairline text-muted hover:border-muted/50 hover:text-ink',
+                'disabled:pointer-events-none disabled:opacity-50',
               ].join(' ')}
               aria-pressed={filter === option.id}
+              disabled={loading || Boolean(error)}
               onClick={() => setFilter(option.id)}
             >
               {option.label}
@@ -214,16 +244,32 @@ export default function HackathonBoard() {
           ))}
         </div>
 
-        {visible.length > 0 ? (
+        {loading ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {visible.map(({ hackathon, remaining }) => (
-              <HackathonCard key={hackathon.id} hackathon={hackathon} remaining={remaining} />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+        ) : error ? (
+          <BoardNotice>
+            <p className="text-ink">We couldn&rsquo;t load the hackathon board.</p>
+            <p className="mt-2 text-[14px]">{error.message}</p>
+            {onRetry && (
+              <button type="button" className={`${BTN_GHOST} mt-6`} onClick={onRetry}>
+                Try again
+              </button>
+            )}
+          </BoardNotice>
+        ) : hackathons.length === 0 ? (
+          <BoardNotice>No hackathons are open yet.</BoardNotice>
+        ) : visible.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {visible.map((hackathon) => (
+              <HackathonCard key={hackathon.id} hackathon={hackathon} />
             ))}
           </div>
         ) : (
-          <p className="rounded-drop border border-dashed border-hairline px-6 py-14 text-center text-muted">
-            Nothing matches that filter. Try another.
-          </p>
+          <BoardNotice>Nothing matches that filter. Try another.</BoardNotice>
         )}
 
         <p className="mt-8">

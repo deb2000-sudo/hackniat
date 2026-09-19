@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { resolveApiUrl } from '../../api/client'
@@ -9,6 +7,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { usePolling } from '../../hooks/usePolling'
 import {
   draftFromScorecard,
+  getGithubMetric,
   getScorecard,
   previewScorecard,
   submissionLinkForGroup,
@@ -16,6 +15,7 @@ import {
 import { formatDateTime } from '../../utils/format'
 import { BTN_GHOST, EYEBROW, WRAP_APP } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
+import RichText from '../../components/ui/RichText'
 import Accordion from '../../components/ui/Accordion'
 import Badge, { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -24,6 +24,7 @@ import Icon from '../../components/ui/Icon'
 import Spinner, { LoadingBlock } from '../../components/ui/Spinner'
 import AdminReviewCard from '../../components/evaluation/AdminReviewCard'
 import AiMetricsPanel from '../../components/evaluation/AiMetricsPanel'
+import GithubAiPanel from '../../components/evaluation/GithubAiPanel'
 import ManualScoreForms from '../../components/evaluation/ManualScoreForms'
 import ScorecardBar from '../../components/evaluation/ScorecardBar'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
@@ -35,7 +36,9 @@ export default function AdminSubmissionDetailPage() {
     [submissionId],
   )
   const { data: submission, loading, error, restart: restartPolling } = usePolling(fetcher, {
-    isDone: (item) => ['completed', 'failed'].includes(item?.status),
+    isDone: (item) =>
+      ['completed', 'failed'].includes(item?.status) &&
+      item?.github_ai_status !== 'processing',
     interval: 3000,
   })
   const { data: hackathon } = useAsync(
@@ -52,6 +55,8 @@ export default function AdminSubmissionDetailPage() {
   const [reviewOverride, setReviewOverride] = useState(null)
   const [actionMessage, setActionMessage] = useState('')
   const [showDetailReport, setShowDetailReport] = useState(false)
+  const [githubAiStarting, setGithubAiStarting] = useState(false)
+  const [githubAiError, setGithubAiError] = useState('')
   const [draftByFieldKey, setDraftByFieldKey] = useState({})
 
   const reportPublished = publishOverride ?? submission?.report_published ?? false
@@ -62,6 +67,27 @@ export default function AdminSubmissionDetailPage() {
     () => reviewOverride?.scorecard || getScorecard(submission),
     [reviewOverride, submission],
   )
+
+
+  // Re-seed the GitHub metric when an analysis completes.
+  //
+  // The effect above seeds the draft once, on first load. A GitHub AI run
+  // finishes later, so without this the panel would show a score the scorecard
+  // form below never picked up. Only this one field_key is replaced — any edits
+  // in progress on other metrics survive — and the evaluator can still change
+  // it afterwards, so a manual value always wins.
+  const lastGithubAiStatus = useRef(null)
+  useEffect(() => {
+    const status = submission?.github_ai_status
+    const previous = lastGithubAiStatus.current
+    lastGithubAiStatus.current = status
+    if (status !== 'completed' || previous === 'completed' || previous == null) return
+    if (!scorecardBase) return
+    const metric = getGithubMetric(scorecardBase)
+    const seeded = metric ? draftFromScorecard(scorecardBase)[metric.field_key] : null
+    if (!seeded) return
+    setDraftByFieldKey((current) => ({ ...current, [metric.field_key]: seeded }))
+  }, [submission?.github_ai_status, scorecardBase])
 
   const preview = useMemo(
     () => previewScorecard(scorecardBase, draftByFieldKey),
@@ -88,7 +114,37 @@ export default function AdminSubmissionDetailPage() {
       )
     : ''
 
+  // Round config as a second signal. The submission carries a snapshot of the
+  // round's flag, but that snapshot is absent on submissions created before the
+  // flag was switched on — and then the panel vanished with no explanation.
+  // The hackathon is already loaded here, so read the round directly too.
+  const submissionRound = hackathon?.timeline?.[Number(submission?.round_index) || 0]
+  const githubAiEnabled =
+    Boolean(submission?.github_ai_evaluation) ||
+    Boolean(submissionRound?.github_ai_evaluation) ||
+    Boolean(submission?.show_github_ai_evaluation_button) ||
+    (submission?.github_ai_status && submission.github_ai_status !== 'none')
+
   const githubLink = submissionLinkForGroup(submission, 'github')
+
+  /** Same trigger as the evaluator view; the existing poll reports progress. */
+  const runGithubAi = async () => {
+    setGithubAiStarting(true)
+    setGithubAiError('')
+    try {
+      await evaluationApi.evaluateGithubWithAi(submissionId)
+      restartPolling()
+    } catch (err) {
+      // 409 means it is already running — start watching, do not report it.
+      if (err?.status === 409) {
+        restartPolling()
+        return
+      }
+      setGithubAiError(err?.message || 'Could not start the GitHub AI evaluation.')
+    } finally {
+      setGithubAiStarting(false)
+    }
+  }
   const mvpLink = submissionLinkForGroup(submission, 'mvp')
   const publishedAt =
     publishedAtOverride === undefined ? submission?.published_at : publishedAtOverride
@@ -200,7 +256,10 @@ export default function AdminSubmissionDetailPage() {
         <Link
           to={
             submission?.hackathon_id
-              ? `/admin/submissions/hackathons/${submission.hackathon_id}`
+              ? /* Carry the round back so the queue reopens where it was left. */
+                `/admin/submissions/hackathons/${submission.hackathon_id}?round=${
+                  Number(submission.round_index) || 0
+                }`
               : '/admin/submissions'
           }
           className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}
@@ -243,9 +302,10 @@ export default function AdminSubmissionDetailPage() {
             icon="shield"
             defaultOpen={false}
           >
-            <div className="markdown-body hackathon-guidelines text-ink">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
-            </div>
+            <RichText
+              className="markdown-body hackathon-guidelines text-ink"
+              value={evaluatorGuidelines}
+            />
           </Accordion>
         </div>
       ) : null}
@@ -358,6 +418,19 @@ export default function AdminSubmissionDetailPage() {
                 <AiMetricsPanel scorecard={preview} />
               )}
             </Accordion>
+          )}
+
+          {githubAiEnabled && (
+            <GithubAiPanel
+              githubLink={githubLink}
+              status={submission?.github_ai_status}
+              result={submission?.github_ai_result}
+              error={submission?.github_ai_error}
+              canStart={Boolean(submission?.show_github_ai_evaluation_button)}
+              starting={githubAiStarting}
+              actionError={githubAiError}
+              onStart={runGithubAi}
+            />
           )}
 
           {completed && scorecardBase && (

@@ -69,6 +69,44 @@ export function getCsrfToken() {
 
 csrfTokenMemory = readSessionCsrf()
 
+/* ------------------------------ Session expiry ---------------------------- */
+
+/**
+ * Signing out deliberately: the cookie is meant to be gone, so a 401 here is
+ * the expected answer rather than a session dying under the user.
+ */
+const SIGN_OUT_PATH = '/auth/logout'
+
+const sessionExpiryHandlers = new Set()
+
+/**
+ * Subscribe to "a request that needed a live session came back 401".
+ *
+ * The session cookie carries a Firebase ID token that expires after an hour,
+ * and the backend has no refresh flow — so a 401 is the *only* notice the SPA
+ * ever gets that the user is signed out. Nothing pushes it; without this the
+ * app keeps rendering a dashboard against an API refusing every call.
+ *
+ * Subscribers decide whether a given 401 matters: while logged out it is just
+ * the answer to "am I logged in?" and must be ignored.
+ *
+ * @returns {() => void} unsubscribe
+ */
+export function onSessionExpired(handler) {
+  sessionExpiryHandlers.add(handler)
+  return () => sessionExpiryHandlers.delete(handler)
+}
+
+function notifySessionExpired(path) {
+  sessionExpiryHandlers.forEach((handler) => {
+    try {
+      handler(path)
+    } catch {
+      // A listener that throws must not replace the caller's own API error.
+    }
+  })
+}
+
 /**
  * Re-fetch a CSRF token after the stored one is rejected. The GET response is
  * captured by `request` itself, so this only reports whether a token landed.
@@ -214,6 +252,14 @@ export async function request(path, options = {}) {
   const data = await parseBody(res)
 
   if (!res.ok) {
+    // 401 is the only shape an expired cookie ever takes — whether the backend
+    // says "Not authenticated" (cookie gone) or "ID token has expired" (cookie
+    // present, JWT stale). 403 is deliberately excluded: that is a CSRF or a
+    // role check, and neither means the session is dead.
+    if (res.status === 401 && !path.startsWith(SIGN_OUT_PATH)) {
+      notifySessionExpired(path)
+    }
+
     let message = extractMessage(data, `Request failed (${res.status})`)
 
     // A stored token goes stale whenever the backend rotates its CSRF secret

@@ -1,5 +1,20 @@
 import { api } from './client'
+import { EVALUATION_STATUS } from '../utils/constants'
 import { uploadVideoToStorage } from '../utils/videoUpload'
+
+/**
+ * A 404 on a collection endpoint means "nothing here", not a failure. Anything
+ * else still throws — a 500 is a real server problem and must not be dressed up
+ * as an empty list, or an outage would read as "no data" to an admin.
+ */
+async function emptyOn404(promise) {
+  try {
+    return await promise
+  } catch (err) {
+    if (err?.status === 404) return []
+    throw err
+  }
+}
 
 function normalizeSubmission(submission) {
   if (!submission) return submission
@@ -27,12 +42,41 @@ function normalizeSubmission(submission) {
     final_score: submission.final_score ?? null,
     auto_ai_evaluation: Boolean(submission.auto_ai_evaluation),
     show_ai_evaluation_button: Boolean(submission.show_ai_evaluation_button),
+    // GitHub AI is independent of the video AI fields above: a round can have
+    // either, both, or neither. `github_ai_result` / `github_ai_error` are
+    // staff-only and simply absent for students.
+    github_ai_evaluation: Boolean(submission.github_ai_evaluation),
+    github_ai_status: submission.github_ai_status || 'none',
+    github_ai_result: submission.github_ai_result ?? null,
+    github_ai_error: submission.github_ai_error ?? null,
+    show_github_ai_evaluation_button: Boolean(submission.show_github_ai_evaluation_button),
     scorecard:
       submission.scorecard ??
       analysis?.scorecard ??
       evaluation?.scorecard ??
       null,
   }
+}
+
+/**
+ * The hackathon a submission belongs to. The admin feed has carried this under
+ * more than one key, so resolve them all — a miss silently counted as zero.
+ */
+function submissionHackathonId(submission) {
+  return submission?.hackathon_id || submission?.hackathon?.id || submission?.hackathonId || ''
+}
+
+/**
+ * A submission that has been evaluated.
+ *
+ * Not just `status === 'completed'`: that only tracks the AI pipeline, so a
+ * submission an admin had scored and published still counted as unevaluated.
+ */
+export function isSubmissionEvaluated(submission) {
+  if (submission?.report_published) return true
+  if (submission?.final_score != null) return true
+  if (submission?.evaluator_score != null) return true
+  return submission?.status === EVALUATION_STATUS.COMPLETED
 }
 
 export const evaluationApi = {
@@ -47,16 +91,60 @@ export const evaluationApi = {
 
   /** Admin review queue containing every student submission. */
   listAllSubmissions: async (options) => {
-    const submissions = await api.get('/submissions/admin/all', options)
+    const submissions = await emptyOn404(api.get('/submissions/admin/all', options))
     if (!Array.isArray(submissions)) {
       throw new Error('The admin submissions API returned an unsupported response format.')
     }
     return submissions.map(normalizeSubmission)
   },
 
+  /**
+   * Admin Submissions landing screen payload.
+   *
+   * Lives here rather than in the page because the login prefetch warms the
+   * same cache key: two producers writing different shapes to one key meant a
+   * prefetched raw array made the page render "No hackathons available".
+   *
+   * The hackathon list is essential; the submissions feed only supplies counts,
+   * so a failure there degrades the numbers instead of the whole screen.
+   */
+  loadSubmissionHackathonsWithCounts: async (options) => {
+    const [hackathonsResult, submissionsResult] = await Promise.allSettled([
+      evaluationApi.listSubmissionHackathons(options),
+      evaluationApi.listAllSubmissions(options),
+    ])
+    if (hackathonsResult.status === 'rejected') throw hackathonsResult.reason
+    const hackathons = hackathonsResult.value
+    const submissions = submissionsResult.status === 'fulfilled' ? submissionsResult.value : []
+
+    const statsByHackathon = submissions.reduce((counts, submission) => {
+      const id = submissionHackathonId(submission)
+      if (!id) return counts
+      const entry = counts.get(id) || { total: 0, evaluated: 0 }
+      entry.total += 1
+      if (isSubmissionEvaluated(submission)) entry.evaluated += 1
+      counts.set(id, entry)
+      return counts
+    }, new Map())
+
+    return {
+      hackathons: hackathons.map((hackathon) => {
+        const stats = statsByHackathon.get(hackathon.hackathon_id) || { total: 0, evaluated: 0 }
+        const total = Number(hackathon.submission_count ?? stats.total) || stats.total
+        return {
+          ...hackathon,
+          submission_count: total,
+          evaluated_count: stats.evaluated,
+          awaiting_count: Math.max(0, total - stats.evaluated),
+        }
+      }),
+      countsUnavailable: submissionsResult.status === 'rejected',
+    }
+  },
+
   /** Admin Submissions landing screen: hackathons with submission counts. */
   listSubmissionHackathons: async (options) => {
-    const hackathons = await api.get('/submissions/admin/hackathons', options)
+    const hackathons = await emptyOn404(api.get('/submissions/admin/hackathons', options))
     if (!Array.isArray(hackathons)) {
       throw new Error('The submission hackathons API returned an unsupported response format.')
     }
@@ -64,10 +152,24 @@ export const evaluationApi = {
   },
 
   /** Admin queue for one hackathon. */
-  listHackathonSubmissions: async (hackathonId, options) => {
-    const submissions = await api.get(
-      `/submissions/admin/hackathons/${encodeURIComponent(hackathonId)}`,
+  /**
+   * Push every submission in this hackathon into its linked Google Sheet,
+   * creating the sheet on the first sync. One tab per timeline round plus a
+   * summary; text-only submissions are included with blank video columns.
+   *
+   * Returns the sheet's `spreadsheet_url`, which is also readable afterwards
+   * from GET /hackathons/{id} as `export_spreadsheet_url`.
+   */
+  syncHackathonToGoogleSheet: (hackathonId, options) =>
+    api.post(
+      `/submissions/admin/hackathons/${encodeURIComponent(hackathonId)}/export/google-sheet`,
+      undefined,
       options,
+    ),
+
+  listHackathonSubmissions: async (hackathonId, options) => {
+    const submissions = await emptyOn404(
+      api.get(`/submissions/admin/hackathons/${encodeURIComponent(hackathonId)}`, options),
     )
     if (!Array.isArray(submissions)) {
       throw new Error('The hackathon submissions API returned an unsupported response format.')
@@ -194,6 +296,8 @@ export const evaluationApi = {
 
     const baseBody = {
       hackathon_id: details.hackathon_id,
+      // 0-based timeline round. Legacy submissions without one are read as 0.
+      round_index: Number(details.round_index) || 0,
       theme_id: details.theme_id,
       problem_statement: details.problem_statement,
       solution_description: details.solution_description,
@@ -262,6 +366,20 @@ export const evaluationApi = {
   },
 
   /** Start AI evaluation for an existing submission. */
+  /**
+   * Run the GitHub repository analysis for one submission. Admin or the
+   * assigned evaluator only; 202 + the updated submission, which then reports
+   * `github_ai_status: 'processing'` until the analyzer returns.
+   */
+  evaluateGithubWithAi: async (submissionId, options) => {
+    const submission = await api.post(
+      `/submissions/${encodeURIComponent(submissionId)}/evaluate-github-ai`,
+      undefined,
+      options,
+    )
+    return normalizeSubmission(submission)
+  },
+
   evaluateSubmission: async (submissionId, evaluationCriteria, options) => {
     const submission = await api.post(
       `/submissions/${encodeURIComponent(submissionId)}/evaluate`,
@@ -289,6 +407,17 @@ export const evaluationApi = {
     )
     return normalizeSubmission(submission)
   },
+
+  /**
+   * Roster behind a submission: every member's name, email and user id, with
+   * the leader flagged. Solo rounds return the single student as one member.
+   *
+   * Scoped to the submission rather than the team id because that is what the
+   * admin table already holds — and it inherits the submission's own access
+   * rules rather than inventing a second set.
+   */
+  getSubmissionTeam: (submissionId, options) =>
+    api.get(`/submissions/${encodeURIComponent(submissionId)}/team`, options),
 
   /** Fetch the completed submission's checklist and Markdown analysis report. */
   getSubmissionReport: (submissionId, options) =>

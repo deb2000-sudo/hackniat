@@ -9,6 +9,8 @@ export const queryKeys = {
   submission: (id) => `submission:${id}`,
   submissionReport: (id) => `submission-report:${id}`,
   hackathons: 'hackathons:list',
+  hackathonCatalog: (includeClosed = true) =>
+    `hackathons:catalog:${includeClosed ? 'all' : 'open'}`,
   hackathon: (id) => `hackathon:${id}`,
   themes: 'themes:list',
   evaluationRequirements: 'evaluation-requirements:list',

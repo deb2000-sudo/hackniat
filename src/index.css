@@ -620,6 +620,24 @@ code {
   overflow: hidden;
 }
 
+/* Append affordance, sitting under the last field card. Dashed so it reads as
+   "room for another one" rather than as a card in its own right.
+
+   Hooked on [data-btn] rather than the bare class: Button.module.css sits in
+   this same cascade layer, so a one-class selector would be a coin flip
+   against its own `border` shorthand. */
+[data-btn].requirement-add-field {
+  padding-block: 14px;
+  border-style: dashed;
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+[data-btn].requirement-add-field:hover:not(:disabled) {
+  border-color: var(--brand-500);
+  color: var(--heading);
+}
+
 .requirement-field-card__header {
   background: var(--surface-2);
 }
@@ -921,8 +939,11 @@ code {
   margin-bottom: 24px;
 }
 
+/* No max-width: the results fill the page container, matching the evaluator
+   and admin views of the same report. Capping this at 760px inside a wider
+   container would strand the scorecard against the left margin. */
 .student-eval-results {
-  max-width: 760px;
+  width: 100%;
 }
 
 .student-final-score [data-card-body] {
@@ -993,6 +1014,8 @@ code {
   font-size: 1rem;
   font-weight: 600;
 }
+
+.student-final-score__rank { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 11px; border-radius: 999px; background: var(--brand-50); color: var(--brand-700); font-size: .78rem; font-weight: 650; }
 
 .student-final-score__empty {
   color: var(--text-subtle) !important;
@@ -4007,7 +4030,7 @@ code {
 
 .hackathon-form-stepper {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
@@ -4081,6 +4104,7 @@ code {
 
 .hackathon-form-stepper li.is-active {
   background: var(--brand-50);
+  border-radius: calc(var(--radius) - 4px);
 }
 
 .hackathon-form-stepper li.is-active button {
@@ -4678,8 +4702,77 @@ code {
 .selected-file-row strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .84rem; }
 .selected-file-row small { color: var(--success-600); font-size: .7rem; }
 .timeline-round-editor { padding: 20px; border-radius: 14px; background: linear-gradient(135deg,#fbfbff,#f8fafc); }
-.hackathon-form-actions { position: sticky; bottom: 16px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.92); box-shadow: 0 12px 38px rgba(15,23,42,.13); backdrop-filter: blur(12px); }
+/* Docked action bar. Width is capped and centred so it reads as a control
+   attached to the form rather than a full-bleed band spanning the whole page;
+   `margin-inline` only touches the sides, leaving .stack-lg's top gap intact. */
+.hackathon-form-actions { position: sticky; bottom: 16px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 16px; width: min(100%, 68rem); margin-inline: auto; padding: 13px 15px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.92); box-shadow: 0 12px 38px rgba(15,23,42,.13); backdrop-filter: blur(12px); }
 .hackathon-form-actions p { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: .78rem; }
+.hackathon-form-actions__buttons { display: flex; align-items: center; gap: 10px; }
+
+/* ---------------------------- Round leaderboard -------------------------- */
+.leaderboard { display: flex; flex-direction: column; gap: 12px; }
+.leaderboard__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.leaderboard__head h3 { font-size: 1rem; }
+.leaderboard__round { color: var(--text-muted); font-weight: 500; }
+.leaderboard__stats { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 6px; color: var(--text-muted); font-size: .78rem; }
+.leaderboard__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.leaderboard__list { display: flex; flex-direction: column; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.leaderboard__row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.leaderboard__row.is-you { border-color: var(--brand-600); background: var(--brand-50); }
+.leaderboard__rank { min-width: 44px; font-size: .92rem; font-weight: 700; }
+.leaderboard__who { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; }
+.leaderboard__who strong { overflow: hidden; font-size: .88rem; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard__who small { color: var(--text-muted); font-size: .73rem; }
+.leaderboard__score { font-size: 1rem; font-weight: 700; }
+
+/* --------------------- GitHub AI analysis (staff only) ------------------- */
+.github-ai { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.github-ai__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.github-ai__title { display: inline-flex; align-items: center; gap: 7px; font-size: .84rem; font-weight: 650; }
+.github-ai__link { display: inline-flex; align-items: center; gap: 5px; overflow: hidden; max-width: 100%; color: var(--brand-600); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.github-ai__processing { display: flex; align-items: center; gap: 9px; color: var(--text-muted); font-size: .82rem; }
+.github-ai__result { display: flex; flex-direction: column; gap: 11px; padding: 13px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.github-ai__score { display: flex; flex-wrap: wrap; align-items: baseline; gap: 9px; }
+.github-ai__score span { color: var(--text-muted); font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.github-ai__score strong { font-size: 1.35rem; }
+.github-ai__score small { color: var(--text-muted); font-size: .72rem; }
+.github-ai__segments { display: flex; flex-wrap: wrap; gap: 7px; }
+.github-ai__segment { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: .74rem; }
+.github-ai__segment span { color: var(--text-muted); text-transform: capitalize; }
+.github-ai__rationale { font-size: .84rem; line-height: 1.55; }
+.github-ai__context summary { cursor: pointer; color: var(--text-muted); font-size: .78rem; }
+.github-ai__context ul { margin: 8px 0 0; padding-left: 18px; font-size: .8rem; }
+.github-ai__context li { margin-top: 3px; }
+
+
+/* ------------------------------ Drafts inbox ---------------------------- */
+.drafts-inbox { margin-bottom: 24px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.drafts-inbox__head h2 { display: flex; align-items: center; gap: 9px; font-size: 1rem; }
+.drafts-inbox__count { display: grid; min-width: 22px; height: 22px; place-items: center; padding: 0 7px; border-radius: 999px; background: var(--surface-2); font-size: .72rem; font-weight: 700; }
+.drafts-inbox__head p { margin-top: 3px; color: var(--text-muted); font-size: .8rem; }
+.drafts-inbox__list { display: flex; flex-direction: column; gap: 10px; margin: 15px 0 0; padding: 0; list-style: none; }
+.drafts-inbox__row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.drafts-inbox__main { display: flex; min-width: 190px; flex: 1; flex-direction: column; gap: 3px; }
+.drafts-inbox__main strong { overflow: hidden; font-size: .9rem; text-overflow: ellipsis; white-space: nowrap; }
+.drafts-inbox__main small { color: var(--text-muted); font-size: .74rem; }
+.drafts-inbox__checklist { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.drafts-inbox__checklist li { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); font-size: .68rem; }
+.drafts-inbox__checklist li.is-done { border-color: var(--success-500); color: var(--success-600); }
+.drafts-inbox__actions { display: flex; align-items: center; gap: 8px; }
+.drafts-inbox__actions a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 9px; background: var(--brand-600); color: #fff; font-size: .78rem; font-weight: 600; }
+.drafts-inbox__actions button { padding: 7px 12px; border: 1px solid var(--border); border-radius: 9px; background: transparent; color: var(--text-muted); cursor: pointer; font-size: .78rem; }
+.drafts-inbox__actions button:disabled { cursor: not-allowed; opacity: .6; }
+
+.draft-review-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.draft-review-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.draft-review-row__icon { display: grid; place-items: center; color: var(--success-600); }
+.draft-review-row.is-missing .draft-review-row__icon { color: var(--warning-600, #b45309); }
+.draft-review-row__copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; }
+.draft-review-row__copy strong { font-size: .88rem; }
+.draft-review-row__copy small { color: var(--text-muted); font-size: .74rem; }
+.draft-review-row button { flex-shrink: 0; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: inherit; cursor: pointer; font-size: .78rem; }
+.draft-review-row button:hover { background: var(--surface-2); }
+
 .hackathon-form-actions p svg { color: var(--success-600); }
 .scorecard-bottom-dock {
   pointer-events: none;
@@ -4811,7 +4904,10 @@ code {
   .hackathon-detail-hero__topbar { align-items: flex-start; }
   .hackathon-detail-hero__topbar > .row { flex-direction: column; }
   .hackathon-form-actions { align-items: stretch; flex-direction: column; }
+  .hackathon-form-actions__buttons { width: 100%; flex-direction: column; align-items: stretch; }
   .hackathon-form-actions [data-btn] { width: 100%; }
+  .drafts-inbox__row { align-items: stretch; flex-direction: column; }
+  .drafts-inbox__actions a, .drafts-inbox__actions button { flex: 1; justify-content: center; text-align: center; }
 }
 
 /* rendered AI markdown report */
@@ -4836,6 +4932,163 @@ code {
 .markdown-body th { background: var(--surface-2); color: var(--heading); }
 .markdown-body input[type='checkbox'] { margin-right: 7px; accent-color: var(--brand-600); }
 .markdown-body a { text-decoration: underline; }
+
+/* -------------------------- Rich text editor ---------------------------- */
+/* Toolbar + contenteditable used for the hackathon guidelines. Deliberately
+   built on .field/.label/.field__hint so it sits in a form beside .input and
+   .textarea without looking like a different control. */
+.rich-text .rt-shell {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.rich-text .rt-shell:focus-within {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.rich-text .rt-shell--error { border-color: var(--danger-500); }
+.rich-text .rt-shell--error:focus-within { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
+.rich-text .rt-shell--disabled { opacity: 0.65; }
+
+.rt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.rt-group { display: flex; align-items: center; gap: 2px; }
+.rt-group + .rt-group { border-left: 1px solid var(--border); padding-left: 10px; }
+.rt-group--end { margin-left: auto; border-left: 0; padding-left: 0; }
+
+.rt-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.rt-tool:hover:not(:disabled) { background: var(--surface); color: var(--heading); border-color: var(--border); }
+.rt-tool.is-active { background: var(--brand-50); color: var(--brand-700); border-color: var(--brand-300); }
+.rt-tool:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.rt-select {
+  height: 30px;
+  max-width: 128px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.rt-select:disabled { cursor: not-allowed; opacity: 0.5; }
+.rt-select--list { font-family: var(--mono); }
+
+/* Colour picker: a glyph over a bar showing the colour that would be applied. */
+.rt-color { position: relative; }
+.rt-tool--color { flex-direction: column; min-width: 34px; padding: 0 4px; }
+.rt-color__glyph { font-size: 0.8rem; font-weight: 800; line-height: 1; }
+.rt-color__bar { display: block; width: 15px; height: 3px; border-radius: 2px; margin-top: 2px; }
+.rt-tool--color svg { position: absolute; right: -1px; bottom: 1px; opacity: 0.7; }
+
+.rt-color__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: 208px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+.rt-color__grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.rt-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.rt-swatch:hover { transform: scale(1.12); }
+.rt-color__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+.rt-color__reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.rt-color__reset:hover { color: var(--heading); }
+.rt-color__custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+.rt-color__custom input[type='color'] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+
+.rt-editor {
+  position: relative;
+  padding: 12px 14px;
+  font-size: 15px;
+  outline: none;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+.rt-editor[data-empty='true']::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  inset: 12px 14px auto 14px;
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+.rt-editor > *:first-child { margin-top: 0; }
+.field__hint--over { color: var(--danger-600); font-weight: 600; }
+
+@media (max-width: 640px) {
+  .rt-group + .rt-group { border-left: 0; padding-left: 0; }
+  .rt-group--end { margin-left: 0; }
+}
+
 /* Admin overview: make hackathons visible immediately after admin login. */
 .admin-overview-stats {
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -5237,6 +5490,56 @@ code {
 .manual-choice-row input {
   accent-color: var(--metric-color, var(--brand-500));
 }
+
+/* Graded levels stack rather than sit in a row: each carries a label and a
+   mark, so they need the width to stay readable. */
+.manual-choice-row--levels {
+  flex-direction: column;
+  align-items: stretch;
+}
+.manual-choice-row--levels label {
+  justify-content: flex-start;
+  padding: 8px 12px;
+}
+.manual-choice-row--levels label > span {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.manual-choice-row--levels label small {
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: .78rem;
+  font-variant-numeric: tabular-nums;
+}
+.manual-choice-row--levels label.is-active small {
+  color: var(--heading);
+}
+
+.manual-segment-cap {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.manual-metric-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: .85rem;
+}
+.manual-metric-total strong {
+  color: var(--heading);
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
 .manual-metric-card__structure {
   display: grid;
   gap: 12px;
@@ -5292,4 +5595,125 @@ code {
   margin-top: 2px;
   color: var(--text-muted);
   font-size: 0.78rem;
+}
+
+/* Same look as a row of .manual-boolean-list, but scoped to the item itself so
+   it never cascades into the radio labels of an enum segment sitting beside it
+   in a mixed-kind metric. */
+.manual-segment-check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.manual-segment-check input {
+  margin-top: 3px;
+  accent-color: var(--metric-color, var(--brand-500));
+}
+.manual-segment-check strong,
+.manual-segment-check small {
+  display: block;
+}
+.manual-segment-check small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+/* ------------------------------ Team details ------------------------------ */
+
+/* The team name doubles as the trigger for the roster dialog, so it has to read
+   as a control without turning the table cell into a wall of links. */
+.team-name-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.team-name-button strong {
+  border-bottom: 1px dashed var(--border-strong);
+}
+.team-name-button:hover strong,
+.team-name-button:focus-visible strong {
+  color: var(--brand-600);
+  border-bottom-color: currentColor;
+}
+
+.team-modal__count {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.team-member-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-member {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.team-member__avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+.team-member__body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.team-member__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.team-member__email {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.team-member__email.is-empty {
+  font-style: italic;
+}
+/* justify-self keeps the row hugging its content — the grid parent would
+   otherwise stretch it across the full width. */
+.team-member__id {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  justify-self: start;
+  margin-top: 4px;
+  font-size: 0.74rem;
+}
+.team-member__id-label {
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.team-member__id code {
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
 }

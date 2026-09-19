@@ -13,6 +13,7 @@ const DropLandingPage = lazy(() => import('./pages/DropLandingPage'))
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'))
 const EvaluatorRegisterPage = lazy(() => import('./pages/auth/EvaluatorRegisterPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'))
@@ -35,6 +36,7 @@ const EvaluatorsPage = lazy(() => import('./pages/admin/EvaluatorsPage'))
 const HackathonsPage = lazy(() => import('./pages/admin/HackathonsPage'))
 const HackathonFormPage = lazy(() => import('./pages/admin/HackathonFormPage'))
 const HackathonDetailPage = lazy(() => import('./pages/admin/HackathonDetailPage'))
+const HackathonSettingsPage = lazy(() => import('./pages/admin/HackathonSettingsPage'))
 const EvaluationRequirementsPage = lazy(
   () => import('./pages/admin/EvaluationRequirementsPage'),
 )
@@ -74,6 +76,7 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/evaluator" element={<EvaluatorRegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             </Route>
 
             <Route element={<Layout />}>
@@ -113,8 +116,21 @@ export default function App() {
               <Route element={<ProtectedRoute roles={[ROLES.ADMIN]} />}>
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/hackathons" element={<Navigate to="/hackathons" replace />} />
-                <Route path="/admin/hackathons/new" element={<HackathonFormPage />} />
+                {/* Draft-backed creation. /new is kept so old links still land
+                    in the right place. */}
+                <Route
+                  path="/admin/hackathons/create"
+                  element={<HackathonFormPage draftFlow />}
+                />
+                <Route
+                  path="/admin/hackathons/new"
+                  element={<Navigate to="/admin/hackathons/create" replace />}
+                />
                 <Route path="/admin/hackathons/:hackathonId/edit" element={<HackathonFormPage />} />
+                <Route
+                  path="/admin/hackathons/:hackathonId/settings"
+                  element={<HackathonSettingsPage />}
+                />
                 <Route path="/admin/submissions" element={<AdminSubmissionsPage />} />
                 <Route
                   path="/admin/submissions/hackathons/:hackathonId"

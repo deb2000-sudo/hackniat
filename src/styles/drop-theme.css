@@ -164,6 +164,55 @@
     color: var(--color-ink);
   }
 
+
+  /* ------------------------- Rich text editor -------------------------- */
+  /* The shell tracks .input/.textarea above; only the accents need the Drop
+     palette, since index.css hardcodes an indigo focus ring and active state. */
+  .drop .rich-text .rt-shell {
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+    border-radius: var(--radius-drop);
+  }
+
+  .drop .rich-text .rt-shell:focus-within {
+    border-color: var(--color-volt-edge);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-volt) 24%, transparent);
+  }
+
+  .drop .rich-text .rt-shell--error {
+    border-color: var(--color-missing);
+  }
+
+  .drop .rich-text .rt-shell--error:focus-within {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-missing) 18%, transparent);
+  }
+
+  .drop .rt-toolbar {
+    background: var(--color-raised);
+    border-bottom-color: var(--color-hairline);
+  }
+
+  .drop .rt-tool.is-active {
+    background: var(--color-volt-tint);
+    border-color: var(--color-volt-edge);
+    color: var(--color-volt-ink);
+  }
+
+  .drop .rt-select,
+  .drop .rt-color__menu {
+    background: var(--color-surface);
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+  }
+
+  .drop .rt-color__menu {
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+  }
+
+  .drop .rt-swatch {
+    border-color: color-mix(in srgb, var(--color-hairline) 70%, transparent);
+  }
+
   /* ------------------------------ Buttons ------------------------------ */
   .drop [data-btn] {
     border-radius: var(--radius-drop);
@@ -366,21 +415,8 @@
     background: var(--color-canvas);
   }
 
-  /* Authenticated pages: fill the content column instead of a tight strip. */
-  .drop .app-content .container {
-    max-width: 1480px;
-    padding-inline: 20px;
-  }
-
-  @media (min-width: 768px) {
-    .drop .app-content .container {
-      padding-inline: 32px;
-    }
-  }
-
-  .drop .app-content .container--narrow {
-    max-width: 760px;
-  }
+  /* Container widths live in @layer utilities at the end of this file — see the
+     note there. Putting them here let Tailwind's own .container utility win. */
 
   .drop .admin-submissions-page,
   .drop .admin-submission-detail {
@@ -1091,6 +1127,10 @@
 
   .drop .hackathon-form-stepper li.is-active {
     background: var(--color-volt-tint);
+    /* The container is padded, so the highlight is a tile floating inside it.
+       Without a radius it renders as a hard-edged rectangle fighting both the
+       card's rounded corners and the step connectors either side of it. */
+    border-radius: calc(var(--radius-drop) - 2px);
   }
 
   .drop .hackathon-form-stepper li.is-active button {
@@ -1115,6 +1155,7 @@
     border: 1px solid var(--color-hairline);
     border-radius: var(--radius-drop);
     color: var(--color-ink);
+    margin-top:15px;
   }
 
   .drop .hackathon-wizard-status > span {
@@ -1134,14 +1175,157 @@
 
   .drop .hackathon-form-actions {
     background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-    border-color: var(--color-hairline);
+    /* Deliberately heavier than the hairline used elsewhere: this bar floats
+       over scrolling form content, so it needs an edge that reads as a docked
+       control rather than another section divider. */
+    border: 1px solid var(--color-ink);
     border-radius: var(--radius-drop);
     box-shadow: none;
     backdrop-filter: blur(12px);
+    width:92%;
   }
 
   .drop .hackathon-form-actions p {
     color: var(--color-muted);
+  }
+
+  .drop .drafts-inbox {
+    border-color: var(--color-hairline);
+    background: var(--color-surface);
+  }
+
+  .drop .drafts-inbox__head h2 {
+    color: var(--color-ink);
+  }
+
+  .drop .drafts-inbox__count {
+    background: var(--color-raised);
+    color: var(--color-ink);
+  }
+
+  .drop .drafts-inbox__head p,
+  .drop .drafts-inbox__main small {
+    color: var(--color-muted);
+  }
+
+  .drop .drafts-inbox__row {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .drafts-inbox__main strong {
+    color: var(--color-ink);
+  }
+
+  .drop .drafts-inbox__checklist li {
+    border-color: var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  .drop .drafts-inbox__checklist li.is-done {
+    border-color: var(--color-passed);
+    color: var(--color-passed);
+  }
+
+  .drop .drafts-inbox__actions a {
+    background: var(--color-volt);
+    color: var(--color-on-volt);
+  }
+
+  .drop .drafts-inbox__actions button {
+    border-color: var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  .drop .student-final-score__rank {
+    background: var(--color-volt-tint);
+    color: var(--color-volt-ink);
+  }
+
+  .drop .leaderboard__row {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .leaderboard__row.is-you {
+    border-color: var(--color-volt-edge);
+    background: var(--color-volt-tint);
+  }
+
+  .drop .leaderboard__head h3,
+  .drop .leaderboard__who strong,
+  .drop .leaderboard__rank,
+  .drop .leaderboard__score {
+    color: var(--color-ink);
+  }
+
+  .drop .leaderboard__round,
+  .drop .leaderboard__stats,
+  .drop .leaderboard__who small {
+    color: var(--color-muted);
+  }
+
+  .drop .github-ai,
+  .drop .github-ai__result,
+  .drop .github-ai__segment {
+    border-color: var(--color-hairline);
+  }
+
+  .drop .github-ai {
+    background: var(--color-surface);
+  }
+
+  .drop .github-ai__result {
+    background: var(--color-raised);
+  }
+
+  .drop .github-ai__segment {
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+
+  .drop .github-ai__title,
+  .drop .github-ai__score strong,
+  .drop .github-ai__rationale {
+    color: var(--color-ink);
+  }
+
+  .drop .github-ai__link {
+    color: var(--color-volt-ink);
+  }
+
+  .drop .github-ai__processing,
+  .drop .github-ai__score span,
+  .drop .github-ai__score small,
+  .drop .github-ai__segment span,
+  .drop .github-ai__context summary {
+    color: var(--color-muted);
+  }
+
+  .drop .draft-review-row {
+    border-color: var(--color-hairline);
+    background: var(--color-raised);
+  }
+
+  .drop .draft-review-row__icon {
+    color: var(--color-passed);
+  }
+
+  .drop .draft-review-row.is-missing .draft-review-row__icon {
+    color: var(--color-missing);
+  }
+
+  .drop .draft-review-row__copy strong {
+    color: var(--color-ink);
+  }
+
+  .drop .draft-review-row button {
+    border-color: var(--color-hairline);
+    color: var(--color-ink);
+  }
+
+  .drop .draft-review-row button:hover {
+    background: var(--color-surface);
   }
 
   .drop .scorecard-bottom-dock {
@@ -1262,6 +1446,20 @@
   .drop .requirement-field-card__header {
     background: var(--color-raised);
     border-bottom: 1px solid var(--color-hairline);
+  }
+
+  /* Carries [data-btn] to outrank the generic secondary-button skin above,
+     which would otherwise repaint this border on specificity alone. */
+  .drop [data-btn].requirement-add-field {
+    border-style: dashed;
+    border-color: var(--color-hairline);
+    color: var(--color-muted);
+  }
+
+  .drop [data-btn].requirement-add-field:hover:not(:disabled) {
+    border-color: var(--color-volt-edge);
+    background: var(--color-raised);
+    color: var(--color-ink);
   }
 
   .drop .requirement-field-card__number,
@@ -1601,4 +1799,35 @@
 /* Horizontal rails: keep the scrolling, drop the scrollbar. */
 .drop-no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/*
+ * Page container widths.
+ *
+ * These MUST sit in @layer utilities, not @layer components. Tailwind ships its
+ * own `.container` utility, and cascade layers outrank specificity: a rule in
+ * `utilities` beats one in `components` however specific it is. With these in
+ * `components`, Tailwind's `.container { max-width: 40rem }` silently won and
+ * every authenticated page using `.container` rendered as a 640px strip —
+ * regardless of the 1480px intended here.
+ *
+ * Same layer, so specificity decides again, and `.drop .app-content .container`
+ * (0,3,0) beats the bare `.container` utility (0,1,0).
+ */
+@layer utilities {
+  /* Authenticated pages: fill the content column instead of a tight strip. */
+  .drop .app-content .container {
+    max-width: 1480px;
+    padding-inline: 20px;
+  }
+
+  @media (min-width: 768px) {
+    .drop .app-content .container {
+      padding-inline: 32px;
+    }
+  }
+
+  .drop .app-content .container--narrow {
+    max-width: 760px;
+  }
 }

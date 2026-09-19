@@ -10,8 +10,8 @@ import { LINK_INLINE } from '../../components/drop/theme'
  */
 export default function EvaluatorRegisterPage() {
   return (
-    <AuthShell>
-      <div className="stack-md">
+    <AuthShell wide>
+      <div className="stack-md register-page">
         <div>
           <Link to="/register" className="register-back-link">
             <Icon name="arrowLeft" size={16} />
@@ -19,8 +19,8 @@ export default function EvaluatorRegisterPage() {
           </Link>
           <h1>Evaluator registration</h1>
           <p className="text-muted">
-            Create an evaluator account with your Nxtwave email. An administrator must approve
-            your account before you can sign in.
+            Verify your Nxtwave email and mobile number to create an evaluator account. An
+            administrator must approve it before you can sign in.
           </p>
         </div>
 

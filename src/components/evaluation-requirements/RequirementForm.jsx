@@ -93,6 +93,9 @@ export default function RequirementForm({
   const initialForm = useMemo(() => normalize(initialValue), [initialValue])
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
+  // Which field card to focus on mount — set only by "Add field", so the
+  // existing cards never steal focus on load or on reorder.
+  const [focusIndex, setFocusIndex] = useState(null)
   const editing = !!initialValue
 
   const update = (property) => (event) => {
@@ -116,6 +119,9 @@ export default function RequirementForm({
   }
 
   const addField = () => {
+    // Focus the card that is about to mount: it lands below the fold the button
+    // was on, and focusing scrolls it into view as well as saving a click.
+    setFocusIndex(form.fields.length)
     setForm((current) => ({ ...current, fields: [...current.fields, { ...EMPTY_FIELD }] }))
     setErrors((current) => ({ ...current, fields: undefined, form: undefined }))
   }
@@ -198,18 +204,9 @@ export default function RequirementForm({
         </CardBody>
       </Card>
 
-      <div className="row-between wrap requirement-fields-title">
-        <div>
-          <h2>Submission fields</h2>
-          <p>Define what students must provide. Drag-free ordering keeps this editor keyboard-friendly.</p>
-        </div>
-        <Button
-          variant="secondary"
-          leftIcon={<Icon name="plus" size={17} />}
-          onClick={addField}
-        >
-          Add field
-        </Button>
+      <div className="requirement-fields-title">
+        <h2>Submission fields</h2>
+        <p>Define what students must provide. Drag-free ordering keeps this editor keyboard-friendly.</p>
       </div>
 
       <div className="stack-md">
@@ -264,6 +261,7 @@ export default function RequirementForm({
                   onChange={updateField(index, 'label')}
                   error={errors[`fields.${index}.label`]}
                   placeholder="Problem Statement"
+                  autoFocus={index === focusIndex}
                 />
                 <Select
                   label="Field type"
@@ -316,6 +314,19 @@ export default function RequirementForm({
             </CardBody>
           </Card>
         ))}
+
+        {/* Adding appends to the end, so the control belongs at the end too:
+            the new field lands where the button just was, and the button is
+            still under it for the next one. No scrolling back to a header. */}
+        <Button
+          variant="secondary"
+          block
+          className="requirement-add-field"
+          leftIcon={<Icon name="plus" size={17} />}
+          onClick={addField}
+        >
+          Add field
+        </Button>
       </div>
 
       <div className="requirement-form__actions">

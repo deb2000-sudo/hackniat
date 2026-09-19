@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
@@ -9,6 +7,7 @@ import { formatDateTime } from '../../utils/format'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Accordion from '../../components/ui/Accordion'
+import RichText from '../../components/ui/RichText'
 import Alert from '../../components/ui/Alert'
 import { AiQueueBadge, ReviewStatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -86,9 +85,10 @@ export default function EvaluatorHackathonSubmissionsPage() {
             icon="shield"
             defaultOpen={false}
           >
-            <div className="markdown-body hackathon-guidelines text-ink">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{evaluatorGuidelines}</ReactMarkdown>
-            </div>
+            <RichText
+              className="markdown-body hackathon-guidelines text-ink"
+              value={evaluatorGuidelines}
+            />
           </Accordion>
         </div>
       ) : null}

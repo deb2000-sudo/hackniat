@@ -1,23 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
-import { RecaptchaVerifier, signInWithPhoneNumber, signOut } from 'firebase/auth'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Input, { PasswordInput } from '../ui/Input'
-import OtpInput from './OtpInput'
+import Input from '../ui/Input'
 import Button from '../ui/Button'
 import Alert from '../ui/Alert'
-import Icon from '../ui/Icon'
+import MobileField from './MobileField'
+import OtpRow from './OtpRow'
+import PasswordFields from './PasswordFields'
 import { authApi } from '../../api/auth'
+import { authErrorField, authErrorMessage } from '../../api/authErrors'
 import { setCsrfToken } from '../../api/client'
 import { useAuth } from '../../hooks/useAuth'
-import { getFirebaseAuth } from '../../lib/firebase'
+import { VERIFY, useRegistrationVerification } from '../../hooks/useRegistrationVerification'
+import { RECAPTCHA_CONTAINER_ID } from '../../lib/firebasePhone'
 import { ROLE_HOME } from '../../utils/constants'
-import {
-  isE164,
-  isEmail,
-  passwordStrength,
-  toE164,
-  validateStudentForm,
-} from '../../utils/validators'
+import { validateStudentForm } from '../../utils/validators'
 
 const INITIAL = {
   first_name: '',
@@ -31,147 +27,6 @@ const INITIAL = {
   confirm_password: '',
 }
 
-const COUNTRY_CODES = [
-  { value: '+91', label: '+91 IN' },
-  { value: '+1', label: '+1 US' },
-  { value: '+44', label: '+44 UK' },
-  { value: '+971', label: '+971 AE' },
-  { value: '+65', label: '+65 SG' },
-  { value: '+61', label: '+61 AU' },
-]
-
-const IDLE = 'idle'
-const SENDING = 'sending'
-const AWAITING = 'awaiting_code'
-const VERIFYING = 'verifying'
-const VERIFIED = 'verified'
-const ERROR = 'error'
-
-/**
- * Turn a Firebase Auth error into something a user can act on.
- *
- * Phone Auth failures are nearly always configuration rather than user error,
- * and the raw strings ("Firebase: Error (auth/invalid-app-credential).") tell
- * the person filling in the form nothing.
- */
-function firebasePhoneMessage(err) {
-  switch (err?.code) {
-    case 'auth/invalid-app-credential':
-    case 'auth/captcha-check-failed':
-      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-        return (
-          'Phone verification does not work on localhost. Open http://127.0.0.1:5173 ' +
-          '(not localhost), add 127.0.0.1 in Firebase → Authentication → Authorized domains, ' +
-          'or test on staging (challzo.vercel.app).'
-        )
-      }
-      return (
-        'Phone verification could not start (reCAPTCHA). Refresh and try again. ' +
-        'If it keeps failing, add this domain in Firebase → Authentication → Authorized domains, ' +
-        'or use a test phone number under Sign-in method → Phone.'
-      )
-    case 'auth/unauthorized-domain':
-      return 'This domain is not authorised for phone sign-in in the Firebase project.'
-    case 'auth/operation-not-allowed':
-      return 'Phone sign-in is not enabled for this Firebase project.'
-    case 'auth/invalid-phone-number':
-      return 'That mobile number is not valid. Check the country code and try again.'
-    case 'auth/too-many-requests':
-      return 'Too many attempts from this device. Wait a few minutes before trying again.'
-    case 'auth/quota-exceeded':
-      return 'The SMS quota for this project has been used up. Try again later.'
-    default:
-      return err?.message || 'Could not send SMS code'
-  }
-}
-
-function MatchedHint() {
-  return (
-    <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600">
-      <Icon name="checkCircle" size={14} />
-      Password matched
-    </span>
-  )
-}
-
-function OtpRow({
-  label,
-  code,
-  onCodeChange,
-  onVerify,
-  onConfirm,
-  onResend,
-  state,
-  error,
-  cooldown,
-  canStart,
-  extra,
-  sentTo,
-}) {
-  const showOtp = state === AWAITING || state === VERIFYING || state === ERROR || state === SENDING
-  return (
-    <div className="stack-sm">
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1">{extra}</div>
-        {state === VERIFIED ? (
-          <span className="mb-2 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-600/30 bg-emerald-600/10 px-3 py-1.5 text-sm font-semibold text-emerald-600">
-            <Icon name="checkCircle" size={17} />
-            Verified
-          </span>
-        ) : (
-          <Button
-            type="button"
-            variant="secondary"
-            className="mb-2 shrink-0"
-            loading={state === SENDING}
-            disabled={state === SENDING || state === VERIFYING || !canStart}
-            onClick={onVerify}
-          >
-            Verify
-          </Button>
-        )}
-      </div>
-      {showOtp && state !== VERIFIED && (
-        <div className="stack-sm rounded-drop border border-hairline bg-surface p-3">
-          <span className="label">{label} code</span>
-          {(state === AWAITING || state === VERIFYING) && sentTo && (
-            <p className="flex items-center gap-1.5 text-sm text-emerald-600">
-              <Icon name="checkCircle" size={15} />
-              Code sent to {sentTo}
-            </p>
-          )}
-          <OtpInput
-            label={`${label} code`}
-            value={code}
-            onChange={onCodeChange}
-            disabled={state === VERIFYING}
-            invalid={Boolean(error)}
-          />
-          {error && <p className="text-sm text-missing">{error}</p>}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="accent"
-              loading={state === VERIFYING}
-              disabled={String(code || '').length !== 6 || state === VERIFYING}
-              onClick={onConfirm}
-            >
-              Confirm code
-            </Button>
-            {cooldown > 0 ? (
-              <span className="text-sm text-muted">Resend in {cooldown}s</span>
-            ) : (
-              <button type="button" className="text-sm underline" onClick={onResend}>
-                Resend code
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function StudentRegisterForm() {
   const navigate = useNavigate()
   const { refresh } = useAuth()
@@ -180,47 +35,15 @@ export default function StudentRegisterForm() {
   const [submitError, setSubmitError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const [sessionId, setSessionId] = useState('')
-  // Mirrors sessionId for the async send → confirm handoff. The confirm step
-  // runs in a later tick than the send that bound the session, so reading
-  // state there risks posting a stale (or empty) session_id.
-  const sessionIdRef = useRef('')
-  const [sessionEmail, setSessionEmail] = useState('')
-  const [sessionPhone, setSessionPhone] = useState('')
+  const verification = useRegistrationVerification({
+    email: form.email,
+    countryCode: form.country_code,
+    mobileNational: form.mobile_national,
+    onFieldError: (field, message) => setErrors((prev) => ({ ...prev, [field]: message })),
+  })
 
-  const [emailState, setEmailState] = useState(IDLE)
-  const [emailError, setEmailError] = useState('')
-  const [emailCode, setEmailCode] = useState('')
-  const [emailCooldown, setEmailCooldown] = useState(0)
-
-  const [phoneState, setPhoneState] = useState(IDLE)
-  const [phoneError, setPhoneError] = useState('')
-  const [phoneCode, setPhoneCode] = useState('')
-  const [phoneCooldown, setPhoneCooldown] = useState(0)
-  const confirmationRef = useRef(null)
-  const recaptchaRef = useRef(null)
-
-  const phoneE164 = toE164(form.country_code, form.mobile_national)
-  const strength = passwordStrength(form.password)
   const fieldErrors = validateStudentForm(form)
-  const passwordsMatch =
-    Boolean(form.password) && Boolean(form.confirm_password) && form.password === form.confirm_password
-  const canSubmit =
-    emailState === VERIFIED &&
-    phoneState === VERIFIED &&
-    Object.keys(fieldErrors).length === 0
-
-  useEffect(() => {
-    if (emailCooldown <= 0) return undefined
-    const id = setTimeout(() => setEmailCooldown((s) => s - 1), 1000)
-    return () => clearTimeout(id)
-  }, [emailCooldown])
-
-  useEffect(() => {
-    if (phoneCooldown <= 0) return undefined
-    const id = setTimeout(() => setPhoneCooldown((s) => s - 1), 1000)
-    return () => clearTimeout(id)
-  }, [phoneCooldown])
+  const canSubmit = verification.bothVerified && Object.keys(fieldErrors).length === 0
 
   const update = (key) => (event) => {
     const value = event.target.value
@@ -228,192 +51,20 @@ export default function StudentRegisterForm() {
     setErrors((prev) => ({ ...prev, [key]: undefined }))
     setSubmitError('')
     // Editing an identifier drops only ITS OWN verification. Do not touch the
-    // session here: ensureSession() compares the live pair against
-    // sessionEmail/sessionPhone on the next send and resets both channels if
-    // the pair actually moved. Clearing sessionId on every keystroke instead
-    // wiped the id out from under an in-flight OTP — verify mobile, start
-    // typing while waiting for the SMS, and the confirm posted an empty
-    // session_id — and it silently dropped the other channel's badge.
-    if (key === 'email' && emailState === VERIFIED) {
-      setEmailState(IDLE)
-      setEmailCode('')
-      setEmailError('')
+    // session here: the hook compares the live pair against the bound one on
+    // the next send and resets both channels if the pair actually moved.
+    // Clearing the session id on every keystroke instead wiped the id out from
+    // under an in-flight OTP — verify mobile, start typing while waiting for
+    // the SMS, and the confirm posted an empty session_id — and it silently
+    // dropped the other channel's badge.
+    if (key === 'email' && verification.emailState === VERIFY.VERIFIED) {
+      verification.resetEmailVerification()
     }
-    if ((key === 'mobile_national' || key === 'country_code') && phoneState === VERIFIED) {
-      setPhoneState(IDLE)
-      setPhoneCode('')
-      setPhoneError('')
-    }
-  }
-
-  const bindSession = async ({ email, mobile }) => {
-    const payload = {}
-    if (sessionId) payload.session_id = sessionId
-    if (email) payload.email = email
-    if (mobile) payload.mobile_number = mobile
-    const { session_id: nextId } = await authApi.registerStart(payload)
-    sessionIdRef.current = nextId
-    setSessionId(nextId)
-    if (email) setSessionEmail(email)
-    if (mobile) setSessionPhone(mobile)
-    return nextId
-  }
-
-  const ensureEmailSession = async () => {
-    const email = form.email.trim().toLowerCase()
-    if (!isEmail(email)) {
-      setErrors((prev) => ({ ...prev, email: 'Enter a valid email' }))
-      throw new Error('Enter a valid email to receive a verification code.')
-    }
-    if (sessionId && sessionEmail === email) {
-      return sessionId
-    }
-    if (sessionId && sessionEmail && sessionEmail !== email) {
-      setEmailState(IDLE)
-      setEmailCode('')
-    }
-    const mobile = isE164(phoneE164) ? phoneE164 : undefined
-    return bindSession({ email, mobile })
-  }
-
-  const ensurePhoneSession = async () => {
-    if (!isE164(phoneE164)) {
-      setErrors((prev) => ({ ...prev, mobile_national: 'Enter a valid mobile number' }))
-      throw new Error('Enter a valid mobile number to receive an SMS code.')
-    }
-    if (sessionId && sessionPhone === phoneE164) {
-      return sessionId
-    }
-    if (sessionId && sessionPhone && sessionPhone !== phoneE164) {
-      setPhoneState(IDLE)
-      setPhoneCode('')
-    }
-    const email = isEmail(form.email) ? form.email.trim().toLowerCase() : undefined
-    return bindSession({ email, mobile: phoneE164 })
-  }
-
-  const ensureFullSession = async () => {
-    const email = form.email.trim().toLowerCase()
-    if (!isEmail(email) || !isE164(phoneE164)) {
-      throw new Error('Enter a valid email and mobile number before creating your account.')
-    }
-    return bindSession({ email, mobile: phoneE164 })
-  }
-
-  const sendEmailOtp = async () => {
-    setEmailError('')
-    setEmailState(SENDING)
-    try {
-      const id = await ensureEmailSession()
-      await authApi.sendEmailOtp({ session_id: id, email: form.email.trim().toLowerCase() })
-      setEmailState(AWAITING)
-      setEmailCooldown(60)
-    } catch (err) {
-      setEmailState(ERROR)
-      setEmailError(err.message || 'Could not send email code')
-    }
-  }
-
-  const confirmEmailOtp = async () => {
-    setEmailError('')
-    setEmailState(VERIFYING)
-    try {
-      await authApi.verifyEmailOtp({ session_id: sessionIdRef.current || sessionId, code: emailCode })
-      setEmailState(VERIFIED)
-    } catch (err) {
-      setEmailState(ERROR)
-      setEmailError(err.message || 'Invalid code')
-    }
-  }
-
-  /**
-   * Tear down any existing reCAPTCHA widget.
-   *
-   * `clear()` unregisters it with grecaptcha; dropping the ref alone leaves the
-   * rendered widget in the container, and the next verifier built on the same
-   * element then produces a token Firebase rejects.
-   */
-  const resetRecaptcha = () => {
-    if (recaptchaRef.current) {
-      try {
-        recaptchaRef.current.clear()
-      } catch {
-        // Already torn down (e.g. the container unmounted) — nothing to undo.
-      }
-      recaptchaRef.current = null
-    }
-    const host = document.getElementById('recaptcha-container')
-    if (host) host.innerHTML = ''
-  }
-
-  /**
-   * Build a FRESH verifier for every send.
-   *
-   * An invisible reCAPTCHA token is single-use: signInWithPhoneNumber consumes
-   * it, so reusing the same verifier for "Resend code" (or after a failed
-   * attempt) fails with auth/invalid-app-credential.
-   */
-  const prepareRecaptcha = async () => {
-    const auth = getFirebaseAuth()
-    resetRecaptcha()
-    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-    })
-    await verifier.render()
-    recaptchaRef.current = verifier
-    return verifier
-  }
-
-  // Drop the widget when the form unmounts so a remount starts clean.
-  useEffect(() => () => resetRecaptcha(), [])
-
-  const sendPhoneOtp = async () => {
-    setPhoneError('')
-    setPhoneState(SENDING)
-    try {
-      await ensurePhoneSession()
-      const auth = getFirebaseAuth()
-      const verifier = await prepareRecaptcha()
-      confirmationRef.current = await signInWithPhoneNumber(auth, phoneE164, verifier)
-      setPhoneState(AWAITING)
-      setPhoneCooldown(60)
-    } catch (err) {
-      resetRecaptcha()
-      setPhoneState(ERROR)
-      setPhoneError(firebasePhoneMessage(err))
-    }
-  }
-
-  const confirmPhoneOtp = async () => {
-    setPhoneError('')
-    setPhoneState(VERIFYING)
-    try {
-      const confirmation = confirmationRef.current
-      if (!confirmation) {
-        throw new Error('Request a new mobile code')
-      }
-      const credential = await confirmation.confirm(phoneCode)
-      const firebaseIdToken = await credential.user.getIdToken()
-      await authApi.verifyPhoneToken({
-        session_id: sessionIdRef.current || sessionId,
-        firebase_id_token: firebaseIdToken,
-        mobile_number: phoneE164,
-      })
-      try {
-        await signOut(getFirebaseAuth())
-      } catch {
-        /* temp Phone Auth session is discarded server-side */
-      }
-      setPhoneState(VERIFIED)
-    } catch (err) {
-      setPhoneState(ERROR)
-      setPhoneError(
-        err?.code === 'auth/invalid-verification-code'
-          ? 'That code is not correct. Check the SMS and try again.'
-          : err?.code === 'auth/code-expired'
-            ? 'That code expired. Request a new one.'
-            : firebasePhoneMessage(err),
-      )
+    if (
+      (key === 'mobile_national' || key === 'country_code') &&
+      verification.phoneState === VERIFY.VERIFIED
+    ) {
+      verification.resetPhoneVerification()
     }
   }
 
@@ -425,15 +76,17 @@ export default function StudentRegisterForm() {
     setLoading(true)
     setSubmitError('')
     try {
-      await ensureFullSession()
+      // Use the id this call returns: a rebind can rotate it, and the state
+      // copy is still the previous value in this tick.
+      const sessionId = await verification.ensureFullSession()
       const data = await authApi.registerComplete({
         session_id: sessionId,
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
-        email: form.email.trim().toLowerCase(),
+        email: verification.email,
         university_name: form.university_name.trim(),
         niat_id: form.niat_id.trim(),
-        mobile_number: phoneE164,
+        mobile_number: verification.phoneE164,
         password: form.password,
         confirm_password: form.confirm_password,
       })
@@ -441,14 +94,16 @@ export default function StudentRegisterForm() {
       await refresh()
       navigate(ROLE_HOME.student, { replace: true })
     } catch (err) {
-      setSubmitError(err.message || 'Registration failed. Please try again.')
+      const field = authErrorField(err)
+      if (field) setErrors((prev) => ({ ...prev, [field]: authErrorMessage(err) }))
+      else setSubmitError(authErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {
       setLoading(false)
     }
   }
 
   const disabledReason = !canSubmit
-    ? emailState !== VERIFIED || phoneState !== VERIFIED
+    ? !verification.bothVerified
       ? 'Verify both email and mobile number to create your account.'
       : 'Fill every required field and match the password rules.'
     : ''
@@ -460,67 +115,40 @@ export default function StudentRegisterForm() {
       {/* Email and mobile verify independently; both required before submit. */}
       <OtpRow
         label="Mobile"
-        state={phoneState}
-        code={phoneCode}
-        error={phoneError}
-        cooldown={phoneCooldown}
-        canStart={isE164(phoneE164)}
-        onCodeChange={setPhoneCode}
-        sentTo={phoneE164}
-        onVerify={sendPhoneOtp}
-        onConfirm={confirmPhoneOtp}
-        onResend={sendPhoneOtp}
+        state={verification.phoneState}
+        code={verification.phoneCode}
+        error={verification.phoneError}
+        cooldown={verification.phoneCooldown}
+        canStart={verification.phoneReady}
+        onCodeChange={verification.setPhoneCode}
+        sentTo={verification.phoneE164}
+        onVerify={verification.sendPhoneOtp}
+        onConfirm={verification.confirmPhoneOtp}
+        onResend={verification.sendPhoneOtp}
         extra={
-          <div className="field">
-            <label className="label">
-              Mobile number
-              <span className="req">*</span>
-            </label>
-            <div className="flex gap-2">
-              <select
-                className="input w-[7.5rem] shrink-0"
-                value={form.country_code}
-                disabled={phoneState === VERIFIED}
-                onChange={update('country_code')}
-                aria-label="Country code"
-              >
-                {COUNTRY_CODES.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-              <input
-                className={`input ${errors.mobile_national ? 'input--error' : ''}`}
-                inputMode="tel"
-                autoComplete="tel-national"
-                placeholder="9876543210"
-                value={form.mobile_national}
-                disabled={phoneState === VERIFIED}
-                readOnly={phoneState === VERIFIED}
-                onChange={update('mobile_national')}
-              />
-            </div>
-            {errors.mobile_national && (
-              <span className="field__error">{errors.mobile_national}</span>
-            )}
-          </div>
+          <MobileField
+            countryCode={form.country_code}
+            mobileNational={form.mobile_national}
+            onChange={update}
+            error={errors.mobile_national}
+            locked={verification.phoneState === VERIFY.VERIFIED}
+          />
         }
       />
-      <div id="recaptcha-container" />
+      <div id={RECAPTCHA_CONTAINER_ID} />
 
       <OtpRow
         label="Email"
-        state={emailState}
-        code={emailCode}
-        error={emailError}
-        cooldown={emailCooldown}
-        canStart={isEmail(form.email)}
-        onCodeChange={setEmailCode}
-        sentTo={form.email.trim().toLowerCase()}
-        onVerify={sendEmailOtp}
-        onConfirm={confirmEmailOtp}
-        onResend={sendEmailOtp}
+        state={verification.emailState}
+        code={verification.emailCode}
+        error={verification.emailError}
+        cooldown={verification.emailCooldown}
+        canStart={verification.emailReady}
+        onCodeChange={verification.setEmailCode}
+        sentTo={verification.email}
+        onVerify={verification.sendEmailOtp}
+        onConfirm={verification.confirmEmailOtp}
+        onResend={verification.sendEmailOtp}
         extra={
           <Input
             label="Email"
@@ -530,8 +158,8 @@ export default function StudentRegisterForm() {
             value={form.email}
             onChange={update('email')}
             error={errors.email}
-            disabled={emailState === VERIFIED}
-            readOnly={emailState === VERIFIED}
+            disabled={verification.emailState === VERIFY.VERIFIED}
+            readOnly={verification.emailState === VERIFY.VERIFIED}
           />
         }
       />
@@ -570,29 +198,12 @@ export default function StudentRegisterForm() {
         error={errors.niat_id}
       />
 
-      <PasswordInput
-        label="Password"
-        required
-        autoComplete="new-password"
-        value={form.password}
-        onChange={update('password')}
-        error={errors.password}
-        hint={
-          form.password
-            ? `Must include 8+ characters${strength.hasLetter ? '' : ', a letter'}${
-                strength.hasNumber ? '' : ', a number'
-              }`
-            : 'At least 8 characters, with a letter and a number'
-        }
-      />
-      <PasswordInput
-        label="Confirm password"
-        required
-        autoComplete="new-password"
-        value={form.confirm_password}
-        onChange={update('confirm_password')}
-        error={errors.confirm_password}
-        hint={passwordsMatch ? <MatchedHint /> : undefined}
+      <PasswordFields
+        password={form.password}
+        confirmPassword={form.confirm_password}
+        onPasswordChange={update('password')}
+        onConfirmPasswordChange={update('confirm_password')}
+        errors={errors}
       />
 
       <Button type="submit" variant="accent" block loading={loading} disabled={!canSubmit}>

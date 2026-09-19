@@ -12,7 +12,7 @@ import { LINK_INLINE } from '../../components/drop/theme'
 const initial = { email: '', password: '' }
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, sessionExpired } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [form, setForm] = useState(initial)
@@ -53,8 +53,20 @@ export default function LoginPage() {
         </div>
 
         {submitError && <Alert variant="danger">{submitError}</Alert>}
+        {/* Sessions last an hour and cannot be renewed, so say so plainly —
+            otherwise being dropped here looks like the app losing your work. */}
+        {sessionExpired && !submitError && (
+          <Alert variant="warning" title="Your session expired">
+            Sessions last one hour. Sign in again to pick up where you left off.
+          </Alert>
+        )}
         {location.state?.passwordChanged && (
           <Alert variant="success">Password changed successfully. Sign in with your new password.</Alert>
+        )}
+        {location.state?.passwordReset && (
+          <Alert variant="success">
+            {location.state.message || 'Password reset successfully. Please log in.'}
+          </Alert>
         )}
 
         <form className="stack-md" onSubmit={handleSubmit} noValidate>
@@ -77,6 +89,11 @@ export default function LoginPage() {
             onChange={update('password')}
             error={errors.password}
           />
+          <div className="-mt-1 text-right">
+            <Link to="/forgot-password" className={LINK_INLINE}>
+              Forgot password?
+            </Link>
+          </div>
           <Button type="submit" variant="accent" block loading={loading}>
             Sign in
           </Button>
