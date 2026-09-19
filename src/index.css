@@ -4753,12 +4753,53 @@ code {
   letter-spacing: .06em;
   text-transform: uppercase;
 }
+/* No text-transform: values are humanized in JS so acronyms stay uppercase. */
 .github-ai__facts dd {
   margin: 0;
   color: var(--heading);
   font-size: .82rem;
-  text-transform: capitalize;
 }
+/* One card per rubric. The analyser returns a single flattened paragraph, so
+   without this the evaluator reads a wall of text to find one verdict. */
+.github-ai__rubrics { display: grid; gap: 8px; }
+.github-ai__rubrics-title {
+  color: var(--text-muted);
+  font-size: .68rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.github-ai__rubric {
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand-400);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.github-ai__rubric header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.github-ai__rubric header strong { font-size: .86rem; }
+.github-ai__rubric header span {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: .68rem;
+}
+.github-ai__rubric p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: .82rem;
+  line-height: 1.6;
+}
+
 .github-ai__rationale { font-size: .84rem; line-height: 1.55; }
 .github-ai__context summary { cursor: pointer; color: var(--text-muted); font-size: .78rem; }
 .github-ai__context ul { margin: 8px 0 0; padding-left: 18px; font-size: .8rem; }
