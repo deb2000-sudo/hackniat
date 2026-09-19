@@ -24,6 +24,44 @@ function ResultSegment({ segment }) {
 }
 
 /**
+ * Extras the analyser reports alongside the score.
+ *
+ * The backend already folds these into `rationale`, but as a run-on sentence
+ * ("… AI: generated Architecture: full-stack …") — pulled out as labelled
+ * facts they are actually scannable.
+ */
+function analyzerFacts(result) {
+  const payload = result?.external_response?.result
+  if (!payload || typeof payload !== 'object') return []
+
+  const facts = []
+
+  const classification = payload.ai?.classification
+  if (classification) {
+    facts.push({ label: 'AI classification', value: String(classification) })
+  }
+
+  const applicationType = payload.architecture?.application_type
+  if (applicationType) {
+    facts.push({ label: 'Application type', value: String(applicationType) })
+  }
+
+  // The backend usually emits visibility as a scored segment already; only add
+  // it here when it didn't, so the panel never shows it twice.
+  const hasVisibilitySegment = (result.segments || []).some(
+    (segment) => segment?.key === 'visibility',
+  )
+  if (!hasVisibilitySegment && typeof payload.access?.is_public === 'boolean') {
+    facts.push({
+      label: 'Repository',
+      value: payload.access.is_public ? 'Public' : 'Private',
+    })
+  }
+
+  return facts
+}
+
+/**
  * GitHub repository AI analysis for one submission.
  *
  * Entirely separate from the video AI evaluation on the same page: it has its
@@ -47,6 +85,7 @@ export default function GithubAiPanel({
   const processing = status === 'processing'
   const completed = status === 'completed'
   const failed = status === 'failed'
+  const facts = completed && result ? analyzerFacts(result) : []
 
   return (
     <section className="github-ai">
@@ -103,6 +142,17 @@ export default function GithubAiPanel({
                 <ResultSegment key={segment?.key || index} segment={segment} />
               ))}
             </div>
+          )}
+
+          {!!facts.length && (
+            <dl className="github-ai__facts">
+              {facts.map((fact) => (
+                <div key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
           )}
 
           {result.rationale && <p className="github-ai__rationale">{result.rationale}</p>}

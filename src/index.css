@@ -4739,6 +4739,26 @@ code {
 .github-ai__segments { display: flex; flex-wrap: wrap; gap: 7px; }
 .github-ai__segment { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: .74rem; }
 .github-ai__segment span { color: var(--text-muted); text-transform: capitalize; }
+/* Analyser extras, pulled out of the run-on rationale so they can be scanned. */
+.github-ai__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+}
+.github-ai__facts div { display: grid; gap: 1px; }
+.github-ai__facts dt {
+  color: var(--text-muted);
+  font-size: .68rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.github-ai__facts dd {
+  margin: 0;
+  color: var(--heading);
+  font-size: .82rem;
+  text-transform: capitalize;
+}
 .github-ai__rationale { font-size: .84rem; line-height: 1.55; }
 .github-ai__context summary { cursor: pointer; color: var(--text-muted); font-size: .78rem; }
 .github-ai__context ul { margin: 8px 0 0; padding-left: 18px; font-size: .8rem; }
