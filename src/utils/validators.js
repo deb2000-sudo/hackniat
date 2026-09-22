@@ -34,6 +34,16 @@ export function isNiatId(value) {
   return NIAT_ID_RE.test(String(value || '').trim().toUpperCase())
 }
 
+/**
+ * Employee ID — 9 characters: `NW` followed by seven letters or digits, as in
+ * NW0003800. Shape only, like {@link isNiatId}.
+ */
+const EMPLOYEE_ID_RE = /^NW[A-Z0-9]{7}$/
+
+export function isEmployeeId(value) {
+  return EMPLOYEE_ID_RE.test(String(value || '').trim().toUpperCase())
+}
+
 export function isMobile(value) {
   const digits = String(value || '').replace(/\D/g, '')
   return digits.length >= 10 && digits.length <= 15
@@ -98,6 +108,9 @@ export function validateEvaluatorForm(form) {
   if (!required(form.first_name)) errors.first_name = 'First name is required'
   if (!required(form.last_name)) errors.last_name = 'Last name is required'
   if (!required(form.employee_id)) errors.employee_id = 'Employee ID is required'
+  else if (!isEmployeeId(form.employee_id)) {
+    errors.employee_id = 'An employee ID is 9 characters starting with NW, like NW0003800'
+  }
   if (!isNxtwaveEmail(form.email)) errors.email = 'Use your @nxtwave.co.in email address'
   const phone = toE164(form.country_code, form.mobile_national)
   if (!isE164(phone)) errors.mobile_national = 'Enter a valid mobile number'
