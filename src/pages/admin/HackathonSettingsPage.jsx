@@ -2,21 +2,22 @@ import { Link, useParams } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
 import { formatDate } from '../../utils/format'
-import { PANEL, WRAP_APP } from '../../components/drop/theme'
+import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
+import VideoAnalysisPromptsPanel from '../../components/hackathons/VideoAnalysisPromptsPanel'
+import Accordion from '../../components/ui/Accordion'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
-import EmptyState from '../../components/ui/EmptyState'
 import Icon from '../../components/ui/Icon'
 import { LoadingBlock } from '../../components/ui/Spinner'
 
 /**
- * Per-hackathon settings.
+ * Per-hackathon settings. Admin only — the route sits behind the admin guard,
+ * and so do the endpoints behind each section.
  *
- * Scaffold only: the controls that belong here (publishing the hackathon, and
- * the other hackathon-level switches) are still to be built. It loads the
- * hackathon so the page is addressable and titled correctly, and so a bad id
- * reports itself here rather than under a half-rendered form.
+ * Sections open on demand so the page itself stays one request: the prompts
+ * below are only fetched once an admin actually opens them. The remaining
+ * hackathon-level switches (publishing and the rest) still belong here.
  */
 export default function HackathonSettingsPage() {
   const { hackathonId } = useParams()
@@ -73,12 +74,17 @@ export default function HackathonSettingsPage() {
         }
       />
 
-      <section className={`${PANEL} p-8`}>
-        <EmptyState
-          icon="settings"
-          title="No settings here yet"
-          description="Hackathon-level configuration — publishing the hackathon and the rest — will live on this page."
-        />
+      <section className="flex flex-col gap-4">
+        <Accordion
+          icon="sparkles"
+          title="Video Analysis Prompt"
+          description="The templates used to analyse this hackathon's submissions."
+          lazy
+        >
+          {/* Keyed by hackathon so opening a different one starts from its own
+              prompts rather than the previous hackathon's drafts. */}
+          <VideoAnalysisPromptsPanel key={hackathonId} hackathonId={hackathonId} />
+        </Accordion>
       </section>
     </div>
   )

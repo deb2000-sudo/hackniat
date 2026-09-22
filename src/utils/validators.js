@@ -59,7 +59,7 @@ export function validateStudentForm(form) {
   if (!required(form.first_name)) errors.first_name = 'First name is required'
   if (!required(form.last_name)) errors.last_name = 'Last name is required'
   if (!isEmail(form.email)) errors.email = 'Enter a valid email'
-  if (!required(form.university_name)) errors.university_name = 'University is required'
+  if (!required(form.university_id)) errors.university_id = 'Select your university'
   if (!required(form.niat_id)) errors.niat_id = 'NIAT ID is required'
   const phone = toE164(form.country_code, form.mobile_national)
   if (!isE164(phone)) errors.mobile_national = 'Enter a valid mobile number'

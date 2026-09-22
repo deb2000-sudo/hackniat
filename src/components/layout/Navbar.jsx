@@ -32,6 +32,9 @@ const NAV_BY_ROLE = {
       children: [
         { to: '/admin/users', label: 'Student Management', icon: 'user' },
         { to: '/admin/evaluators', label: 'Evaluator Management', icon: 'shield' },
+        // Campuses students pick from at registration — kept beside the people
+        // pages because an unlisted campus blocks their sign-up.
+        { to: '/admin/universities', label: 'Universities', icon: 'university' },
       ],
     },
     { to: '/admin/settings', label: 'Application Settings', icon: 'settings' },

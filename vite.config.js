@@ -13,6 +13,7 @@ const proxyPrefixes = [
   '/ai-evaluation-metric-scoring',
   '/ai-evaluation-prompts',
   '/themes',
+  '/universities',
 ]
 
 function apiProxy(target) {

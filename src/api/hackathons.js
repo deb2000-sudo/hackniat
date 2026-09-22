@@ -20,6 +20,11 @@ function roundPath(hackathonId, roundIndex) {
   return `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${Number(roundIndex) || 0}`
 }
 
+/** Admin-only Video Analysis prompt overrides for one hackathon. */
+function promptsPath(hackathonId) {
+  return `/hackathons/${encodeURIComponent(hackathonId)}/video-analysis-prompts`
+}
+
 export const hackathonsApi = {
   list: (options) => api.get('/hackathons', options),
 
@@ -149,4 +154,25 @@ export const hackathonsApi = {
   /** Leader refreshes the join code; the previous one is invalidated. */
   refreshJoinCode: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/teams/join-code`, undefined, options),
+
+  /* --------------------- Video Analysis prompts (admin) ------------------- */
+  // Per-hackathon copies of the Application → Video Analysis templates. A
+  // hackathon runs on the global prompts until an admin saves one here, so
+  // these endpoints — never /ai-evaluation-prompts — are what the hackathon
+  // Settings page writes to.
+  //
+  // All three return the same payload: every prompt with its effective
+  // `template`, the `global_template` a reset restores, and `is_overridden`.
+
+  /** Both prompts for one hackathon, each resolved to what evaluation will use. */
+  videoAnalysisPrompts: (hackathonId, options) =>
+    api.get(promptsPath(hackathonId), options),
+
+  /** Save one or both prompts. `prompts` is `[{ key, template }]`. */
+  saveVideoAnalysisPrompts: (hackathonId, prompts, options) =>
+    api.put(promptsPath(hackathonId), { prompts }, options),
+
+  /** Drop one override (`checklist` / `analyze_video`) back to the global template. */
+  resetVideoAnalysisPrompt: (hackathonId, key, options) =>
+    api.delete(`${promptsPath(hackathonId)}/${encodeURIComponent(key)}`, options),
 }

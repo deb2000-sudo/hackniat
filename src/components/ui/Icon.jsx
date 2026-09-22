@@ -44,6 +44,12 @@ const paths = {
       <path d="m9 12 2 2 4-4" />
     </>
   ),
+  university: (
+    <>
+      <path d="M12 4 22 9l-10 5L2 9l10-5z" />
+      <path d="M6 11.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-4.5" />
+    </>
+  ),
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />

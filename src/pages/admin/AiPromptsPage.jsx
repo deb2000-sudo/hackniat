@@ -1,24 +1,12 @@
 import { useEffect, useState } from 'react'
 import { aiPromptsApi } from '../../api/aiPrompts'
+import { PROMPT_META } from '../../components/evaluation/promptMeta'
 import { WRAP_APP, EYEBROW, PANEL, MONO } from '../../components/drop/theme'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import { Textarea } from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
-
-const PROMPT_META = {
-  checklist: {
-    title: 'Validity checklist',
-    description: 'Template used to validate problem and solution text before scoring.',
-    placeholders: ['{problem_statement}', '{solution_description}'],
-  },
-  analyze_video: {
-    title: 'Video analysis',
-    description: 'Template used when a working demo video is present.',
-    placeholders: ['{context}'],
-  },
-}
 
 export default function AiPromptsPage() {
   const [templates, setTemplates] = useState({
