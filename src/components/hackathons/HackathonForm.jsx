@@ -56,11 +56,16 @@ const GUIDELINE_MAX_LENGTH = 10000
 function guidelineBlank(value) {
   return isRichTextEmpty(value)
 }
+// Mirrors the API's own ceiling (MAX_ROUND_TEAM_SIZE): 1 is Solo, 2–5 are team
+// rounds, and 6 is rejected. Every size uses the same enrollment path — the
+// leader creates the team, members join with the code, and only the leader
+// submits once it is full — so a new size needs nothing but this entry.
 const TEAM_SIZE_OPTIONS = [
   { value: '1', label: 'Solo' },
   { value: '2', label: '2 Members' },
   { value: '3', label: '3 Members' },
   { value: '4', label: '4 Members' },
+  { value: '5', label: '5 Members' },
 ]
 // Round 1 is the hackathon itself, so it is always present and cannot be
 // removed. Everything from round 2 onwards is optional and deletable.
