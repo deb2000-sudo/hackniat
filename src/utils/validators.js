@@ -20,6 +20,20 @@ export function minLength(value, len) {
   return String(value ?? '').length >= len
 }
 
+/**
+ * NIAT ID — 11 characters: an `N` followed by ten letters or digits, as in
+ * N26K01A0021.
+ *
+ * Shape only. The backend accepts any 1–50 character string and checks that it
+ * is unique, so this catches typos at the form rather than enforcing a rule the
+ * API would also apply.
+ */
+const NIAT_ID_RE = /^N[A-Z0-9]{10}$/
+
+export function isNiatId(value) {
+  return NIAT_ID_RE.test(String(value || '').trim().toUpperCase())
+}
+
 export function isMobile(value) {
   const digits = String(value || '').replace(/\D/g, '')
   return digits.length >= 10 && digits.length <= 15
@@ -61,6 +75,9 @@ export function validateStudentForm(form) {
   if (!isEmail(form.email)) errors.email = 'Enter a valid email'
   if (!required(form.university_id)) errors.university_id = 'Select your university'
   if (!required(form.niat_id)) errors.niat_id = 'NIAT ID is required'
+  else if (!isNiatId(form.niat_id)) {
+    errors.niat_id = 'A NIAT ID is 11 characters starting with N, like N26K01A0021'
+  }
   const phone = toE164(form.country_code, form.mobile_national)
   if (!isE164(phone)) errors.mobile_national = 'Enter a valid mobile number'
   const strength = passwordStrength(form.password)

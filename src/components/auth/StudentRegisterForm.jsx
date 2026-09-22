@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Input, { Select } from '../ui/Input'
 import Button from '../ui/Button'
 import Alert from '../ui/Alert'
+import Icon from '../ui/Icon'
+import { MONO } from '../drop/theme'
 import MobileField from './MobileField'
 import OtpRow from './OtpRow'
 import PasswordFields from './PasswordFields'
@@ -16,7 +18,13 @@ import { VERIFY, useRegistrationVerification } from '../../hooks/useRegistration
 import { queryKeys } from '../../lib/queryKeys'
 import { RECAPTCHA_CONTAINER_ID } from '../../lib/firebasePhone'
 import { ROLE_HOME } from '../../utils/constants'
-import { validateStudentForm } from '../../utils/validators'
+import { isNiatId, validateStudentForm } from '../../utils/validators'
+
+/** An ID is exactly this long, so the field stops accepting more. */
+const NIAT_ID_LENGTH = 11
+
+/** Shown as the placeholder and the worked example under the field. */
+const NIAT_ID_SAMPLE = 'N25H05F9974'
 
 const INITIAL = {
   first_name: '',
@@ -64,6 +72,21 @@ export default function StudentRegisterForm() {
 
   const fieldErrors = validateStudentForm(form)
   const canSubmit = verification.bothVerified && Object.keys(fieldErrors).length === 0
+
+  const niatId = form.niat_id.trim()
+  const niatValid = isNiatId(niatId)
+
+  /**
+   * IDs are written in upper case, and the backend matches them exactly when
+   * checking that one is not already taken — so fold the case here rather than
+   * letting "n26k01a0021" register as a second, different student.
+   */
+  const updateNiatId = (event) => {
+    const value = event.target.value.toUpperCase()
+    setForm((current) => ({ ...current, niat_id: value }))
+    setErrors((prev) => ({ ...prev, niat_id: undefined }))
+    setSubmitError('')
+  }
 
   const update = (key) => (event) => {
     const value = event.target.value
@@ -248,13 +271,47 @@ export default function StudentRegisterForm() {
           </button>
         </Alert>
       )}
-      <Input
-        label="NIAT ID"
-        required
-        value={form.niat_id}
-        onChange={update('niat_id')}
-        error={errors.niat_id}
-      />
+      <div>
+        <Input
+          id="niat-id"
+          label="NIAT ID"
+          required
+          value={form.niat_id}
+          onChange={updateNiatId}
+          error={errors.niat_id}
+          maxLength={NIAT_ID_LENGTH}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={NIAT_ID_SAMPLE}
+          aria-invalid={niatId ? !niatValid : undefined}
+          aria-describedby="niat-id-status niat-id-format"
+        />
+        {/* Always mounted so a screen reader announces the change rather than
+            the region appearing already filled in. */}
+        <p
+          id="niat-id-status"
+          aria-live="polite"
+          className={
+            niatId
+              ? `mt-1.5 flex items-center gap-1.5 text-[13px] font-medium ${
+                  niatValid ? 'text-passed' : 'text-missing'
+                }`
+              : 'sr-only'
+          }
+        >
+          {niatId ? (
+            <>
+              <Icon name={niatValid ? 'checkCircle' : 'xCircle'} size={15} />
+              {niatValid ? 'Verified' : 'Not verified'}
+            </>
+          ) : (
+            ''
+          )}
+        </p>
+        <p id="niat-id-format" className="mt-1 text-[12.5px] text-muted">
+          It looks like this: <span className={MONO}>{NIAT_ID_SAMPLE}</span>
+        </p>
+      </div>
 
       <PasswordFields
         password={form.password}

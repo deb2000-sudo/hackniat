@@ -20,6 +20,11 @@ function roundPath(hackathonId, roundIndex) {
   return `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${Number(roundIndex) || 0}`
 }
 
+/** Admin-only report auto-publishing settings for one hackathon. */
+function reportPublishingPath(hackathonId) {
+  return `/hackathons/${encodeURIComponent(hackathonId)}/report-publishing`
+}
+
 /** Admin-only Video Analysis prompt overrides for one hackathon. */
 function promptsPath(hackathonId) {
   return `/hackathons/${encodeURIComponent(hackathonId)}/video-analysis-prompts`
@@ -154,6 +159,27 @@ export const hackathonsApi = {
   /** Leader refreshes the join code; the previous one is invalidated. */
   refreshJoinCode: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/teams/join-code`, undefined, options),
+
+  /* ----------------------- Report publishing (admin) ---------------------- */
+  // Approval and publishing are separate: approving records the decision,
+  // publishing is what students can actually see. With auto-publish on, an
+  // approval releases the report straight away.
+
+  /** Auto-publish state plus approved / hidden / published counts. */
+  reportPublishing: (hackathonId, options) =>
+    api.get(`${reportPublishingPath(hackathonId)}`, options),
+
+  /**
+   * Flip auto-publishing. Turning it ON releases every approved-but-hidden
+   * report in the same request — the response's `published_now_count` says how
+   * many — and turning it off leaves already-visible reports alone.
+   */
+  updateReportPublishing: (hackathonId, autoPublishReports, options) =>
+    api.put(
+      reportPublishingPath(hackathonId),
+      { auto_publish_reports: autoPublishReports },
+      options,
+    ),
 
   /* --------------------- Video Analysis prompts (admin) ------------------- */
   // Per-hackathon copies of the Application → Video Analysis templates. A

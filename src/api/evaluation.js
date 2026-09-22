@@ -270,10 +270,18 @@ export const evaluationApi = {
   },
 
   /** Admin only: approve an evaluator review and publish the final result. */
-  approveEvaluatorReview: async (submissionId, reviewNotes, options) => {
+  /**
+   * Approving no longer shows the report to the student — publishing does.
+   *
+   * `publishNow` does both in one call, which is what the "Publish now" action
+   * sends while a review is still pending. A hackathon with auto-publish on
+   * releases the report on approval regardless, so the response is the source
+   * of truth for whether it ended up visible.
+   */
+  approveEvaluatorReview: async (submissionId, reviewNotes, publishNow = false, options) => {
     const submission = await api.post(
       `/submissions/${encodeURIComponent(submissionId)}/approve-evaluation`,
-      { review_notes: reviewNotes || null },
+      { review_notes: reviewNotes || null, publish_now: publishNow },
       options,
     )
     return normalizeSubmission(submission)

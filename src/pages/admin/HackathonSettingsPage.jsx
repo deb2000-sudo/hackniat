@@ -4,6 +4,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { formatDate } from '../../utils/format'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
+import ReportPublishingPanel from '../../components/hackathons/ReportPublishingPanel'
 import VideoAnalysisPromptsPanel from '../../components/hackathons/VideoAnalysisPromptsPanel'
 import Accordion from '../../components/ui/Accordion'
 import Alert from '../../components/ui/Alert'
@@ -75,6 +76,10 @@ export default function HackathonSettingsPage() {
       />
 
       <section className="flex flex-col gap-4">
+        {/* Loads with the page rather than on expand: the counts are the
+            reason an admin opens Settings after a review round. */}
+        <ReportPublishingPanel key={hackathonId} hackathonId={hackathonId} />
+
         <Accordion
           icon="sparkles"
           title="Video Analysis Prompt"
