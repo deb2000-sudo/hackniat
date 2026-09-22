@@ -109,7 +109,7 @@ export default function UniversitiesPage() {
     <div className={`${WRAP_APP} py-7 md:py-10`}>
       <PageHeader
         eyebrow="Administration"
-        title="Universities"
+        title="University Management"
         description="Campuses students choose from when they register."
         actions={
           <Button variant="accent" onClick={openCreate} leftIcon={<Icon name="plus" size={17} />}>

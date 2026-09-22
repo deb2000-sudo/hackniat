@@ -27,14 +27,14 @@ const NAV_BY_ROLE = {
     { to: '/admin/evaluation-requirements', label: 'Requirements', icon: 'clipboard' },
     { to: '/admin/ai-prompts', label: 'Video Analysis', icon: 'sparkles' },
     {
-      label: 'User Management',
+      label: 'General Management',
       icon: 'users',
       children: [
         { to: '/admin/users', label: 'Student Management', icon: 'user' },
         { to: '/admin/evaluators', label: 'Evaluator Management', icon: 'shield' },
         // Campuses students pick from at registration — kept beside the people
         // pages because an unlisted campus blocks their sign-up.
-        { to: '/admin/universities', label: 'Universities', icon: 'university' },
+        { to: '/admin/universities', label: 'University Management', icon: 'university' },
       ],
     },
     { to: '/admin/settings', label: 'Application Settings', icon: 'settings' },
