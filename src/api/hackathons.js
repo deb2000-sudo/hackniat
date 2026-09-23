@@ -20,6 +20,11 @@ function roundPath(hackathonId, roundIndex) {
   return `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${Number(roundIndex) || 0}`
 }
 
+/** Admin-only per-round submission cap for one hackathon. */
+function submissionLimitPath(hackathonId) {
+  return `/hackathons/${encodeURIComponent(hackathonId)}/submission-limit`
+}
+
 /** Admin-only report auto-publishing settings for one hackathon. */
 function reportPublishingPath(hackathonId) {
   return `/hackathons/${encodeURIComponent(hackathonId)}/report-publishing`
@@ -159,6 +164,16 @@ export const hackathonsApi = {
   /** Leader refreshes the join code; the previous one is invalidated. */
   refreshJoinCode: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/teams/join-code`, undefined, options),
+
+  /* ------------------------ Submission limit (admin) ---------------------- */
+  // How many times one student or team may submit, 1–3. The cap is per round,
+  // so spending round 1's attempts leaves round 2 untouched.
+
+  submissionLimit: (hackathonId, options) =>
+    api.get(submissionLimitPath(hackathonId), options),
+
+  updateSubmissionLimit: (hackathonId, maxSubmissions, options) =>
+    api.put(submissionLimitPath(hackathonId), { max_submissions: maxSubmissions }, options),
 
   /* ----------------------- Report publishing (admin) ---------------------- */
   // Approval and publishing are separate: approving records the decision,

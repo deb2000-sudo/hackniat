@@ -14,6 +14,7 @@ import { participationErrorCode, participationErrorMessage, shouldRefetchPartici
 import {
   isRoundAwaitingRelease,
   isRoundLive,
+  isSubmissionLimitReached,
   roundDisplayName,
   roundOpensText,
   roundPendingReleaseText,
@@ -148,11 +149,33 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
     </div>
   )
 
+  // Attempts are counted per round, and a first submission does not
+  // necessarily mean the last: `already_submitted` stays true while more are
+  // allowed, so the cap is read from these three fields instead.
+  const maxSubmissions = Number(data.max_submissions) || 0
+  const submissionCount = Number(data.submission_count) || 0
+  const limitReached = isSubmissionLimitReached(data)
+
   return (
     <section className="stack-md rounded-drop border border-hairline bg-surface p-5">
       {header}
 
-      {isRoundLive(round) && (
+      {enrolled && maxSubmissions > 0 && data.round_open !== false && (
+        <p className="text-sm text-muted">
+          Submissions: <strong className="text-ink">{submissionCount}</strong> of {maxSubmissions}
+        </p>
+      )}
+
+      {/* Stands in for the submit action, which the caller drops once the cap
+          is spent. The wording differs for a member, so it comes from the
+          backend rather than being composed here. */}
+      {enrolled && limitReached && (
+        <Alert variant="warning">
+          {data.block_reason || 'You cannot resubmit. You have exhausted the submission limit.'}
+        </Alert>
+      )}
+
+      {isRoundLive(round) && !limitReached && (
         <Alert variant="success" title={`${roundName} is live now`}>
           You can do your submission for this round.
         </Alert>

@@ -8,6 +8,7 @@ import { BADGE, MONO } from '../drop/theme'
 import ParticipationPanel from './ParticipationPanel'
 import {
   canParticipateInRound,
+  isSubmissionLimitReached,
   roundOpensText,
   roundStatusBadge,
   roundStatusKeyClosed,
@@ -38,6 +39,9 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
   const canContinue = participation
     ? participation.can_continue_to_demo ?? participation.can_submit
     : false
+  // Out of attempts for this round — the panel shows the reason, so the submit
+  // action is dropped rather than left to explain itself on click.
+  const limitReached = isSubmissionLimitReached(participation)
 
   return (
     <article className="stack-md rounded-drop border border-hairline bg-surface p-5">
@@ -93,8 +97,10 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
 
       {/* Submitting needs can_continue_to_demo — a full team AND an open
           round. Clicking while blocked surfaces block_reason instead of the
-          button quietly not being there. Members never get the action at all. */}
-      {participation?.enrolled && participation.role !== 'member' && (
+          button quietly not being there. Members never get the action at all.
+          A spent submission cap is the one case where the action goes away
+          entirely: the panel above has already said why. */}
+      {participation?.enrolled && participation.role !== 'member' && !limitReached && (
         <div className="stack-sm">
           <Button
             type="button"

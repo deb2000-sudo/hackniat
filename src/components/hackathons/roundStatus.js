@@ -127,3 +127,19 @@ export function roundOpensText(round) {
 export function roundDisplayName(round, roundIndex = 0) {
   return round?.title?.trim() || `Round ${Number(roundIndex) + 1}`
 }
+
+/**
+ * Has this student — or their team — used every submission for the round?
+ *
+ * Read from the attempt counters rather than `already_submitted`, which stays
+ * true from the first submission onward even while more are still allowed.
+ * `can_submit` alone is not enough either: an incomplete team is blocked too,
+ * and that one is fixable.
+ */
+export function isSubmissionLimitReached(participation) {
+  return (
+    participation?.can_submit === false &&
+    Number(participation?.max_submissions) > 0 &&
+    Number(participation?.submissions_remaining) <= 0
+  )
+}
