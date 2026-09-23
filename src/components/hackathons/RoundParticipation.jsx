@@ -30,7 +30,12 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
 
   const teamLabel =
     participation?.team_mode_label ||
-    (Number(round.max_team_size || 1) === 1 ? 'Solo' : `${round.max_team_size} Members`)
+    round.team_mode_label ||
+    // Fallback for a round that predates the label: a team round is the range
+    // "2-5 Members", never a single headcount.
+    (Number(round.max_team_size || 1) === 1
+      ? 'Solo'
+      : `${Number(round.min_team_size) || 2}-${round.max_team_size} Members`)
   const videoRequired =
     participation?.working_demo_video_required ?? round.working_demo_video_required !== false
   const status = roundStatusBadge(round)

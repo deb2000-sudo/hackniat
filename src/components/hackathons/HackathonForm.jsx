@@ -56,17 +56,19 @@ const GUIDELINE_MAX_LENGTH = 10000
 function guidelineBlank(value) {
   return isRichTextEmpty(value)
 }
-// Mirrors the API's own ceiling (MAX_ROUND_TEAM_SIZE): 1 is Solo, 2–5 are team
-// rounds, and 6 is rejected. Every size uses the same enrollment path — the
-// leader creates the team, members join with the code, and only the leader
-// submits once it is full — so a new size needs nothing but this entry.
+// A team round is one flexible size rather than a fixed headcount: the API
+// stores any 2–5 choice as 5 and lets the leader submit from 2 members up. So
+// the editor offers the two real choices instead of sizes that all mean the
+// same thing.
 const TEAM_SIZE_OPTIONS = [
   { value: '1', label: 'Solo' },
-  { value: '2', label: '2 Members' },
-  { value: '3', label: '3 Members' },
-  { value: '4', label: '4 Members' },
-  { value: '5', label: '5 Members' },
+  { value: '5', label: '2-5 Members' },
 ]
+
+/** Older rounds stored 2, 3 or 4; they are all the flexible team round now. */
+function teamSizeChoice(value) {
+  return Number(value) > 1 ? '5' : '1'
+}
 // Round 1 is the hackathon itself, so it is always present and cannot be
 // removed. Everything from round 2 onwards is optional and deletable.
 const REQUIRED_ROUNDS = 1
@@ -116,7 +118,7 @@ function createInitialForm(initialValue) {
         evaluation_requirement_id: round.evaluation_requirement_id || '',
         // Backward compatibility: rounds saved before per-round settings
         // existed inherit the hackathon-level flags.
-        max_team_size: String(round.max_team_size || initialValue.max_team_size || 1),
+        max_team_size: teamSizeChoice(round.max_team_size || initialValue.max_team_size || 1),
         published: round.published === true,
         round_status: round.round_status || '',
         working_demo_video_required:
@@ -990,7 +992,7 @@ export default function HackathonForm({
                   label="Team size"
                   value={round.max_team_size}
                   onChange={updateRound(index, 'max_team_size')}
-                  hint="Solo lets each student submit alone. Larger sizes need a team leader who submits for the team; the count includes the leader."
+                  hint="Solo lets each student submit alone. A team round takes 2 to 5 members including the leader, and the leader can submit once there are at least 2."
                 >
                   {TEAM_SIZE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>

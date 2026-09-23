@@ -152,6 +152,12 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
   // Attempts are counted per round, and a first submission does not
   // necessarily mean the last: `already_submitted` stays true while more are
   // allowed, so the cap is read from these three fields instead.
+  // A team round is a range, not a headcount: any size from min to max may
+  // submit, and the roster only counts as full at the top of it.
+  const minTeamSize = Number(data.min_team_size) || 1
+  const maxTeamSize = Number(data.max_team_size) || 1
+  const teamSizeRange = minTeamSize > 1 ? `${minTeamSize} to ${maxTeamSize}` : `${maxTeamSize}`
+
   const maxSubmissions = Number(data.max_submissions) || 0
   const submissionCount = Number(data.submission_count) || 0
   const limitReached = isSubmissionLimitReached(data)
@@ -205,7 +211,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
       {showRoleChoice && (
         <div className="stack-sm">
           <p className="text-sm text-muted">
-            Teams of up to {data.max_team_size} (the leader included). How are you taking part?
+            Teams of {teamSizeRange} (the leader included). How are you taking part?
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="accent" onClick={() => setChoice('leader')}>
@@ -318,7 +324,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
             </div>
           )}
 
-          <TeamRoster team={team} />
+          <TeamRoster team={team} minMembers={minTeamSize} />
 
           {role === 'leader' && !team.is_full && (
             <JoinCodePanel
@@ -346,8 +352,10 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
 
       {enrolled && pendingAction === 'complete_team' && (
         <Alert variant="warning" title="Team not complete">
+          {/* The gap is to the minimum, not the maximum: a team of two can
+              submit and still add people afterwards. */}
           {data.block_reason ||
-            `Add ${Math.max(0, Number(data.max_team_size || 0) - Number(team?.member_count || 0))} more teammate(s) before you can submit. Share the join code below.`}
+            `Add at least one teammate. A team must have ${minTeamSize} to ${maxTeamSize} members before you can submit. Share the join code below.`}
         </Alert>
       )}
 
