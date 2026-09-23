@@ -375,9 +375,13 @@ export default function HackathonDetailPage() {
                               only visible inside the edit wizard. */}
                           <span className={`${ROUND_PILL} ${ROUND_PILL_NEUTRAL}`}>
                             <Icon name="users" size={15} />
-                            {Number(round.max_team_size) > 1
-                              ? `Team of ${round.max_team_size}`
-                              : 'Solo'}
+                            {/* The API's own label ("2-5 Members") when it
+                                sends one — a team round is a range, not a
+                                fixed headcount. */}
+                            {round.team_mode_label ||
+                              (Number(round.max_team_size) > 1
+                                ? `Team of ${Number(round.min_team_size) || 2}-${round.max_team_size}`
+                                : 'Solo')}
                           </span>
                           {(round.start_date || round.end_date) && (
                             <span className={`${ROUND_PILL} ${ROUND_PILL_NEUTRAL}`}>
