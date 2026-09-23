@@ -5,6 +5,7 @@ import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
 import { hackathonsApi } from '../../api/hackathons'
 import ParticipationPanel from '../../components/hackathons/ParticipationPanel'
 import { participationErrorMessage } from '../../components/hackathons/errorCodes'
+import { isSubmissionLimitReached } from '../../components/hackathons/roundStatus'
 import { useAsync } from '../../hooks/useAsync'
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateQueries } from '../../lib/queryCache'
@@ -686,7 +687,10 @@ export default function NewEvaluationPage() {
                   }}
                 />
 
-                {!canSubmitHackathon && participation && (
+                {/* Silent when the cap is the reason: the panel above already
+                    says so, and "complete the participation step" would send
+                    the student looking for something to fix that isn't there. */}
+                {!canSubmitHackathon && participation && !isSubmissionLimitReached(participation) && (
                   <p className="text-sm text-muted">
                     {participation.role === 'member'
                       ? 'Your team leader fills in and submits this round. You will see the result once it is published.'

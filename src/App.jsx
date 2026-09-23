@@ -51,6 +51,7 @@ const AdminHackathonSubmissionsPage = lazy(
   () => import('./pages/admin/AdminHackathonSubmissionsPage'),
 )
 const ThemesPage = lazy(() => import('./pages/admin/ThemesPage'))
+const UniversitiesPage = lazy(() => import('./pages/admin/UniversitiesPage'))
 const AiPromptsPage = lazy(() => import('./pages/admin/AiPromptsPage'))
 const ApplicationSettingsPage = lazy(() => import('./pages/admin/ApplicationSettingsPage'))
 const ChangePasswordPage = lazy(() => import('./pages/settings/ChangePasswordPage'))
@@ -138,6 +139,7 @@ export default function App() {
                 />
                 <Route path="/admin/submissions/:submissionId" element={<AdminSubmissionDetailPage />} />
                 <Route path="/admin/themes" element={<ThemesPage />} />
+                <Route path="/admin/universities" element={<UniversitiesPage />} />
                 <Route path="/admin/ai-prompts" element={<AiPromptsPage />} />
                 <Route path="/admin/evaluation-requirements" element={<EvaluationRequirementsPage />} />
                 <Route

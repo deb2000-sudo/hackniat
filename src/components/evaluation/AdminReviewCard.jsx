@@ -28,9 +28,14 @@ export default function AdminReviewCard({
   onReviewNotesChange,
   onApprove,
   onRequestChanges,
+  onPublish,
   approving,
   requestingChanges,
+  publishing,
+  /** Hackathon setting: approving already releases the report to students. */
+  autoPublish = false,
 }) {
+  const busy = approving || requestingChanges || publishing
   const aiMetrics = (scorecard?.metrics || []).filter((metric) => metric.scoring_mode === 'ai')
   const overriddenMetrics = aiMetrics.filter(
     (metric) => metric.source === 'evaluator_override',
@@ -103,14 +108,14 @@ export default function AdminReviewCard({
               maxLength={5000}
               value={reviewNotes}
               onChange={(event) => onReviewNotesChange(event.target.value)}
-              disabled={approving || requestingChanges}
+              disabled={busy}
             />
             <div className="admin-review-actions">
               <Button
                 variant="secondary"
                 block
                 loading={requestingChanges}
-                disabled={approving}
+                disabled={approving || publishing}
                 onClick={onRequestChanges}
                 leftIcon={<Icon name="refresh" size={17} />}
               >
@@ -120,13 +125,38 @@ export default function AdminReviewCard({
                 variant="success"
                 block
                 loading={approving}
-                disabled={requestingChanges}
+                disabled={requestingChanges || publishing}
                 onClick={onApprove}
                 leftIcon={<Icon name="check" size={17} />}
               >
-                Approve & publish
+                Approve
               </Button>
             </div>
+            {/* With auto-publish on, approving already releases the report, so
+                a second action here would only say the same thing twice. */}
+            {autoPublish ? (
+              <p className="submit-for-review-card__hint">
+                Auto publishing is on for this hackathon — approving makes the report visible to
+                the student straight away.
+              </p>
+            ) : (
+              <>
+                <Button
+                  variant="accent"
+                  block
+                  loading={publishing}
+                  disabled={approving || requestingChanges}
+                  onClick={onPublish}
+                  leftIcon={<Icon name="upload" size={17} />}
+                >
+                  Publish now
+                </Button>
+                <p className="submit-for-review-card__hint">
+                  Approve records your decision; the student sees nothing until the report is
+                  published.
+                </p>
+              </>
+            )}
           </>
         ) : null}
 
@@ -134,6 +164,23 @@ export default function AdminReviewCard({
           <p className="submit-for-review-card__hint">
             Approved final score: <strong>{formatScore(finalScore)}/100</strong>
           </p>
+        ) : null}
+
+        {reviewStatus === 'approved' && !reportPublished ? (
+          <>
+            <Button
+              variant="accent"
+              block
+              loading={publishing}
+              onClick={onPublish}
+              leftIcon={<Icon name="upload" size={17} />}
+            >
+              Publish
+            </Button>
+            <p className="submit-for-review-card__hint">
+              Approved, but still hidden. Publish to make the report visible to the student.
+            </p>
+          </>
         ) : null}
 
         <div className="admin-review-card__visibility stack-sm">

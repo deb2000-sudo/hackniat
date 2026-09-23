@@ -20,6 +20,21 @@ function roundPath(hackathonId, roundIndex) {
   return `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${Number(roundIndex) || 0}`
 }
 
+/** Admin-only per-round submission cap for one hackathon. */
+function submissionLimitPath(hackathonId) {
+  return `/hackathons/${encodeURIComponent(hackathonId)}/submission-limit`
+}
+
+/** Admin-only report auto-publishing settings for one hackathon. */
+function reportPublishingPath(hackathonId) {
+  return `/hackathons/${encodeURIComponent(hackathonId)}/report-publishing`
+}
+
+/** Admin-only Video Analysis prompt overrides for one hackathon. */
+function promptsPath(hackathonId) {
+  return `/hackathons/${encodeURIComponent(hackathonId)}/video-analysis-prompts`
+}
+
 export const hackathonsApi = {
   list: (options) => api.get('/hackathons', options),
 
@@ -149,4 +164,56 @@ export const hackathonsApi = {
   /** Leader refreshes the join code; the previous one is invalidated. */
   refreshJoinCode: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/teams/join-code`, undefined, options),
+
+  /* ------------------------ Submission limit (admin) ---------------------- */
+  // How many times one student or team may submit, 1–3. The cap is per round,
+  // so spending round 1's attempts leaves round 2 untouched.
+
+  submissionLimit: (hackathonId, options) =>
+    api.get(submissionLimitPath(hackathonId), options),
+
+  updateSubmissionLimit: (hackathonId, maxSubmissions, options) =>
+    api.put(submissionLimitPath(hackathonId), { max_submissions: maxSubmissions }, options),
+
+  /* ----------------------- Report publishing (admin) ---------------------- */
+  // Approval and publishing are separate: approving records the decision,
+  // publishing is what students can actually see. With auto-publish on, an
+  // approval releases the report straight away.
+
+  /** Auto-publish state plus approved / hidden / published counts. */
+  reportPublishing: (hackathonId, options) =>
+    api.get(`${reportPublishingPath(hackathonId)}`, options),
+
+  /**
+   * Flip auto-publishing. Turning it ON releases every approved-but-hidden
+   * report in the same request — the response's `published_now_count` says how
+   * many — and turning it off leaves already-visible reports alone.
+   */
+  updateReportPublishing: (hackathonId, autoPublishReports, options) =>
+    api.put(
+      reportPublishingPath(hackathonId),
+      { auto_publish_reports: autoPublishReports },
+      options,
+    ),
+
+  /* --------------------- Video Analysis prompts (admin) ------------------- */
+  // Per-hackathon copies of the Application → Video Analysis templates. A
+  // hackathon runs on the global prompts until an admin saves one here, so
+  // these endpoints — never /ai-evaluation-prompts — are what the hackathon
+  // Settings page writes to.
+  //
+  // All three return the same payload: every prompt with its effective
+  // `template`, the `global_template` a reset restores, and `is_overridden`.
+
+  /** Both prompts for one hackathon, each resolved to what evaluation will use. */
+  videoAnalysisPrompts: (hackathonId, options) =>
+    api.get(promptsPath(hackathonId), options),
+
+  /** Save one or both prompts. `prompts` is `[{ key, template }]`. */
+  saveVideoAnalysisPrompts: (hackathonId, prompts, options) =>
+    api.put(promptsPath(hackathonId), { prompts }, options),
+
+  /** Drop one override (`checklist` / `analyze_video`) back to the global template. */
+  resetVideoAnalysisPrompt: (hackathonId, key, options) =>
+    api.delete(`${promptsPath(hackathonId)}/${encodeURIComponent(key)}`, options),
 }

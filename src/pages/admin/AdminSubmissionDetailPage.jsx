@@ -164,13 +164,21 @@ export default function AdminSubmissionDetailPage() {
     }
   }
 
-  const decideEvaluatorReview = async (decision) => {
+  /**
+   * Record the review decision.
+   *
+   * Approving no longer shows anything to the student: `publishNow` is what
+   * releases the report, and a hackathon with auto-publish on releases it on
+   * approval anyway. Either way the response says whether it ended up visible,
+   * so the message is read from that rather than assumed.
+   */
+  const decideEvaluatorReview = async (decision, { publishNow = false } = {}) => {
     setAction(decision)
     setActionError('')
     setActionMessage('')
     try {
       const updated = decision === 'approving'
-        ? await evaluationApi.approveEvaluatorReview(submission.id, reviewNotes.trim())
+        ? await evaluationApi.approveEvaluatorReview(submission.id, reviewNotes.trim(), publishNow)
         : await evaluationApi.requestEvaluatorChanges(submission.id, reviewNotes.trim())
       const nextStatus = updated.review_status ||
         (decision === 'approving' ? 'approved' : 'changes_requested')
@@ -180,15 +188,51 @@ export default function AdminSubmissionDetailPage() {
         scorecard: updated.scorecard || getScorecard(updated) || scorecardBase,
       })
       if (decision === 'approving') {
-        setPublishOverride(updated.report_published ?? true)
-        setPublishedAtOverride(updated.published_at ?? new Date().toISOString())
-        setActionMessage('Evaluation approved. The final score and report are now visible to the student.')
+        const published = Boolean(updated.report_published)
+        setPublishOverride(published)
+        setPublishedAtOverride(updated.published_at ?? null)
+        setActionMessage(
+          published
+            ? 'Evaluation approved. The final score and report are now visible to the student.'
+            : 'Evaluation approved. Publish the report when you want the student to see it.',
+        )
       } else {
         setPublishOverride(updated.report_published ?? false)
         setActionMessage('Changes requested. The evaluator can update and resubmit their review.')
       }
     } catch (reviewError) {
       setActionError(reviewError.message || 'Unable to update the evaluator review.')
+    } finally {
+      setAction('')
+    }
+  }
+
+  /**
+   * Release the report to the student.
+   *
+   * A review still pending approval is approved and published in one call;
+   * one already approved only needs the publish endpoint, which the backend
+   * rejects until the review is approved.
+   */
+  const publishReport = async () => {
+    setAction('publishing')
+    setActionError('')
+    setActionMessage('')
+    try {
+      const updated =
+        reviewStatus === 'approved'
+          ? await evaluationApi.publishSubmissionReport(submission.id, true)
+          : await evaluationApi.approveEvaluatorReview(submission.id, reviewNotes.trim(), true)
+      setReviewOverride({
+        ...updated,
+        review_status: updated.review_status || 'approved',
+        scorecard: updated.scorecard || getScorecard(updated) || scorecardBase,
+      })
+      setPublishOverride(updated.report_published ?? true)
+      setPublishedAtOverride(updated.published_at ?? new Date().toISOString())
+      setActionMessage('Report published. The student can now see the final score and report.')
+    } catch (publishError) {
+      setActionError(publishError.message || 'Unable to publish this report.')
     } finally {
       setAction('')
     }
@@ -551,8 +595,11 @@ export default function AdminSubmissionDetailPage() {
               onReviewNotesChange={setReviewNotes}
               onApprove={() => decideEvaluatorReview('approving')}
               onRequestChanges={() => decideEvaluatorReview('requesting_changes')}
+              onPublish={publishReport}
               approving={action === 'approving'}
               requestingChanges={action === 'requesting_changes'}
+              publishing={action === 'publishing'}
+              autoPublish={Boolean(hackathon?.auto_publish_reports)}
             />
           )}
         </aside>

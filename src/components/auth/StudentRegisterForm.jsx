@@ -1,25 +1,38 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Input from '../ui/Input'
+import Input, { Select } from '../ui/Input'
 import Button from '../ui/Button'
 import Alert from '../ui/Alert'
+import Icon from '../ui/Icon'
+import { MONO } from '../drop/theme'
 import MobileField from './MobileField'
 import OtpRow from './OtpRow'
 import PasswordFields from './PasswordFields'
 import { authApi } from '../../api/auth'
-import { authErrorField, authErrorMessage } from '../../api/authErrors'
+import { AUTH_ERROR, authErrorCode, authErrorField, authErrorMessage } from '../../api/authErrors'
 import { setCsrfToken } from '../../api/client'
+import { universitiesApi } from '../../api/universities'
+import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { VERIFY, useRegistrationVerification } from '../../hooks/useRegistrationVerification'
+import { queryKeys } from '../../lib/queryKeys'
 import { RECAPTCHA_CONTAINER_ID } from '../../lib/firebasePhone'
 import { ROLE_HOME } from '../../utils/constants'
-import { validateStudentForm } from '../../utils/validators'
+import { isNiatId, validateStudentForm } from '../../utils/validators'
+
+/** An ID is exactly this long, so the field stops accepting more. */
+const NIAT_ID_LENGTH = 11
+
+/** Shown as the placeholder and the worked example under the field. */
+const NIAT_ID_SAMPLE = 'N25H05F9974'
 
 const INITIAL = {
   first_name: '',
   last_name: '',
   email: '',
-  university_name: '',
+  // The campus is chosen by id: the backend owns the label, so a typed name
+  // would only be a second spelling of something it already knows.
+  university_id: '',
   niat_id: '',
   country_code: '+91',
   mobile_national: '',
@@ -35,6 +48,21 @@ export default function StudentRegisterForm() {
   const [submitError, setSubmitError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Public list — this runs before the student has any session.
+  const {
+    data: universityData,
+    loading: universitiesLoading,
+    error: universitiesError,
+    reload: reloadUniversities,
+  } = useAsync((options) => universitiesApi.list(options), {
+    key: queryKeys.universities,
+    staleTime: 60_000,
+  })
+  // Array-checked rather than `|| []`: a misrouted request answers with the
+  // SPA's own HTML, and rendering options off a string would take the page down.
+  const universities = Array.isArray(universityData) ? universityData : []
+  const noUniversities = !universitiesLoading && !universitiesError && universities.length === 0
+
   const verification = useRegistrationVerification({
     email: form.email,
     countryCode: form.country_code,
@@ -44,6 +72,21 @@ export default function StudentRegisterForm() {
 
   const fieldErrors = validateStudentForm(form)
   const canSubmit = verification.bothVerified && Object.keys(fieldErrors).length === 0
+
+  const niatId = form.niat_id.trim()
+  const niatValid = isNiatId(niatId)
+
+  /**
+   * IDs are written in upper case, and the backend matches them exactly when
+   * checking that one is not already taken — so fold the case here rather than
+   * letting "n26k01a0021" register as a second, different student.
+   */
+  const updateNiatId = (event) => {
+    const value = event.target.value.toUpperCase()
+    setForm((current) => ({ ...current, niat_id: value }))
+    setErrors((prev) => ({ ...prev, niat_id: undefined }))
+    setSubmitError('')
+  }
 
   const update = (key) => (event) => {
     const value = event.target.value
@@ -84,7 +127,7 @@ export default function StudentRegisterForm() {
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         email: verification.email,
-        university_name: form.university_name.trim(),
+        university_id: form.university_id,
         niat_id: form.niat_id.trim(),
         mobile_number: verification.phoneE164,
         password: form.password,
@@ -94,6 +137,13 @@ export default function StudentRegisterForm() {
       await refresh()
       navigate(ROLE_HOME.student, { replace: true })
     } catch (err) {
+      // The campus was deleted between loading the form and submitting it.
+      // Drop the stale choice and reload the list so the student picks again
+      // from what still exists.
+      if (authErrorCode(err) === AUTH_ERROR.UNKNOWN_UNIVERSITY) {
+        setForm((current) => ({ ...current, university_id: '' }))
+        reloadUniversities({ force: true })
+      }
       const field = authErrorField(err)
       if (field) setErrors((prev) => ({ ...prev, [field]: authErrorMessage(err) }))
       else setSubmitError(authErrorMessage(err, 'Registration failed. Please try again.'))
@@ -103,9 +153,11 @@ export default function StudentRegisterForm() {
   }
 
   const disabledReason = !canSubmit
-    ? !verification.bothVerified
-      ? 'Verify both email and mobile number to create your account.'
-      : 'Fill every required field and match the password rules.'
+    ? noUniversities
+      ? 'Universities are not available yet. Ask an admin to add your campus.'
+      : !verification.bothVerified
+        ? 'Verify both email and mobile number to create your account.'
+        : 'Fill every required field and match the password rules.'
     : ''
 
   return (
@@ -183,20 +235,83 @@ export default function StudentRegisterForm() {
         />
       </div>
 
-      <Input
+      {/* Chosen from the catalogue, never typed: the value posted is the id and
+          the label is whatever the backend composed for it. */}
+      <Select
         label="University name"
         required
-        value={form.university_name}
-        onChange={update('university_name')}
-        error={errors.university_name}
-      />
-      <Input
-        label="NIAT ID"
-        required
-        value={form.niat_id}
-        onChange={update('niat_id')}
-        error={errors.niat_id}
-      />
+        value={form.university_id}
+        onChange={update('university_id')}
+        error={errors.university_id}
+        disabled={universitiesLoading || noUniversities}
+        hint={
+          noUniversities
+            ? 'Universities are not available yet. Ask an admin to add your campus.'
+            : undefined
+        }
+      >
+        <option value="" disabled>
+          {universitiesLoading ? 'Loading universities…' : 'Select university'}
+        </option>
+        {universities.map((university) => (
+          <option key={university.id} value={university.id}>
+            {university.display_label}
+          </option>
+        ))}
+      </Select>
+      {universitiesError && (
+        <Alert variant="warning">
+          The university list could not be loaded.{' '}
+          <button
+            type="button"
+            className="link-btn"
+            onClick={() => reloadUniversities({ force: true })}
+          >
+            Try again
+          </button>
+        </Alert>
+      )}
+      <div>
+        <Input
+          id="niat-id"
+          label="NIAT ID"
+          required
+          value={form.niat_id}
+          onChange={updateNiatId}
+          error={errors.niat_id}
+          maxLength={NIAT_ID_LENGTH}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={NIAT_ID_SAMPLE}
+          aria-invalid={niatId ? !niatValid : undefined}
+          aria-describedby="niat-id-status niat-id-format"
+        />
+        {/* Always mounted so a screen reader announces the change rather than
+            the region appearing already filled in. */}
+        <p
+          id="niat-id-status"
+          aria-live="polite"
+          className={
+            niatId
+              ? `mt-1.5 flex items-center gap-1.5 text-[13px] font-medium ${
+                  niatValid ? 'text-passed' : 'text-missing'
+                }`
+              : 'sr-only'
+          }
+        >
+          {niatId ? (
+            <>
+              <Icon name={niatValid ? 'checkCircle' : 'xCircle'} size={15} />
+              {niatValid ? 'Verified' : 'Not verified'}
+            </>
+          ) : (
+            ''
+          )}
+        </p>
+        <p id="niat-id-format" className="mt-1 text-[12.5px] text-muted">
+          It looks like this: <span className={MONO}>{NIAT_ID_SAMPLE}</span>
+        </p>
+      </div>
 
       <PasswordFields
         password={form.password}

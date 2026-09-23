@@ -13,6 +13,7 @@ export const queryKeys = {
     `hackathons:catalog:${includeClosed ? 'all' : 'open'}`,
   hackathon: (id) => `hackathon:${id}`,
   themes: 'themes:list',
+  universities: 'universities:list',
   evaluationRequirements: 'evaluation-requirements:list',
   acceptedVideoTypes: 'submissions:accepted-video-types',
   adminUsers: 'admin:users',

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
 import Alert from '../ui/Alert'
+import Icon from '../ui/Icon'
+import { MONO } from '../drop/theme'
 import MobileField from './MobileField'
 import OtpRow from './OtpRow'
 import PasswordFields from './PasswordFields'
@@ -11,7 +13,13 @@ import { AUTH_ERROR, authErrorCode, authErrorField, authErrorMessage } from '../
 import { VERIFY, useRegistrationVerification } from '../../hooks/useRegistrationVerification'
 import { RECAPTCHA_CONTAINER_ID } from '../../lib/firebasePhone'
 import { ROLES } from '../../utils/constants'
-import { isNxtwaveEmail, validateEvaluatorForm } from '../../utils/validators'
+import { isEmployeeId, isNxtwaveEmail, validateEvaluatorForm } from '../../utils/validators'
+
+/** An employee ID is exactly this long, so the field stops accepting more. */
+const EMPLOYEE_ID_LENGTH = 9
+
+/** Shown as the placeholder and the worked example under the field. */
+const EMPLOYEE_ID_SAMPLE = 'NW0003800'
 
 const INITIAL = {
   first_name: '',
@@ -52,6 +60,21 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
 
   const fieldErrors = validateEvaluatorForm(form)
   const canSubmit = verification.bothVerified && Object.keys(fieldErrors).length === 0
+
+  const employeeId = form.employee_id.trim()
+  const employeeIdValid = isEmployeeId(employeeId)
+
+  /**
+   * Employee IDs are written in upper case, and the backend matches them
+   * exactly when checking one is not already registered — so fold the case
+   * here rather than letting "nw0003800" through as a second evaluator.
+   */
+  const updateEmployeeId = (event) => {
+    const value = event.target.value.toUpperCase()
+    setForm((current) => ({ ...current, employee_id: value }))
+    setErrors((prev) => ({ ...prev, employee_id: undefined }))
+    setSubmitError('')
+  }
 
   const update = (key) => (event) => {
     const value = event.target.value
@@ -161,13 +184,47 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
         />
       </div>
 
-      <Input
-        label="Employee ID"
-        required
-        value={form.employee_id}
-        onChange={update('employee_id')}
-        error={errors.employee_id}
-      />
+      <div>
+        <Input
+          id="employee-id"
+          label="Employee ID"
+          required
+          value={form.employee_id}
+          onChange={updateEmployeeId}
+          error={errors.employee_id}
+          maxLength={EMPLOYEE_ID_LENGTH}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={EMPLOYEE_ID_SAMPLE}
+          aria-invalid={employeeId ? !employeeIdValid : undefined}
+          aria-describedby="employee-id-status employee-id-format"
+        />
+        {/* Always mounted so a screen reader announces the change rather than
+            the region appearing already filled in. */}
+        <p
+          id="employee-id-status"
+          aria-live="polite"
+          className={
+            employeeId
+              ? `mt-1.5 flex items-center gap-1.5 text-[13px] font-medium ${
+                  employeeIdValid ? 'text-passed' : 'text-missing'
+                }`
+              : 'sr-only'
+          }
+        >
+          {employeeId ? (
+            <>
+              <Icon name={employeeIdValid ? 'checkCircle' : 'xCircle'} size={15} />
+              {employeeIdValid ? 'Verified' : 'Not verified'}
+            </>
+          ) : (
+            ''
+          )}
+        </p>
+        <p id="employee-id-format" className="mt-1 text-[12.5px] text-muted">
+          It looks like this: <span className={MONO}>{EMPLOYEE_ID_SAMPLE}</span>
+        </p>
+      </div>
 
       {/* Email and mobile verify independently; both required before submit. */}
       <OtpRow

@@ -38,10 +38,11 @@ export default function SessionTable({
                     <div style={{ fontWeight: 600 }}>
                       {s.team_name || s.title || s.source_filename || 'Submission'}
                     </div>
-                    <div className="text-xs text-subtle">
-                      {[s.theme_name || s.theme_chosen, s.source_filename].filter(Boolean).join(' · ')}
-                    </div>
-                    <div className="text-xs text-subtle mono">{s.id.slice(0, 12)}…</div>
+                    {/* Theme only. The stored video filename and the truncated
+                        id gave a student nothing they could act on. */}
+                    {(s.theme_name || s.theme_chosen) && (
+                      <div className="text-xs text-subtle">{s.theme_name || s.theme_chosen}</div>
+                    )}
                   </div>
                 </div>
               </td>

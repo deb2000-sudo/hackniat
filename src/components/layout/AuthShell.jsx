@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom'
+import { hackathonsApi } from '../../api/hackathons'
+import { useAsync } from '../../hooks/useAsync'
+import { queryKeys } from '../../lib/queryKeys'
 import { IconPassed } from '../drop/icons'
 import ThemeToggle from '../drop/ThemeToggle'
+import { isAccepting } from '../drop/useHackathonCatalog'
 import { useDropSurface } from '../drop/useDropSurface'
 import { MONO, PILL_VOLT } from '../drop/theme'
 
@@ -14,6 +18,16 @@ const HIGHLIGHTS = [
 export default function AuthShell({ children, wide = false }) {
   useDropSurface()
 
+  // Same catalog entry the landing page fills, so arriving from there costs no
+  // request — and no poll here, because a login screen is not a live board.
+  // A number on this panel is a claim, so it is only made once the real count
+  // is in and it is not zero.
+  const { data: catalog } = useAsync(
+    (options) => hackathonsApi.catalog({ includeClosed: true, ...options }),
+    { key: queryKeys.hackathonCatalog(true), staleTime: 60_000 },
+  )
+  const liveCount = (Array.isArray(catalog) ? catalog : []).filter(isAccepting).length
+
   return (
     <div className="drop grid min-h-screen lg:grid-cols-2">
       {/* Promo aside — hidden on small screens so the form leads on a phone. */}
@@ -23,14 +37,23 @@ export default function AuthShell({ children, wide = false }) {
         </Link>
 
         <div>
-          <p className={PILL_VOLT}>
-            <span className="size-1.5 shrink-0 rounded-full bg-volt" aria-hidden="true" />
-            <span>
-              <span className={MONO}>14</span> hackathons live right now
-            </span>
-          </p>
+          {liveCount > 0 && (
+            <p className={PILL_VOLT}>
+              <span className="size-1.5 shrink-0 rounded-full bg-volt" aria-hidden="true" />
+              <span>
+                <span className={MONO}>{liveCount}</span> hackathon{liveCount === 1 ? '' : 's'} live
+                right now
+              </span>
+            </p>
+          )}
 
-          <h2 className="mt-7 max-w-[16ch] text-[40px] leading-[1.05] font-semibold tracking-[-0.03em] text-ink">
+          {/* Without the pill the heading leads the panel, so it drops the gap
+              that only existed to sit under it. */}
+          <h2
+            className={`${
+              liveCount > 0 ? 'mt-7 ' : ''
+            }max-w-[16ch] text-[40px] leading-[1.05] font-semibold tracking-[-0.03em] text-ink`}
+          >
             Build. Ship. Drop.
           </h2>
           <p className="mt-4 max-w-[44ch] text-[17px] text-muted">

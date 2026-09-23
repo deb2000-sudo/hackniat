@@ -20,6 +20,8 @@ export const AUTH_ERROR = {
   RATE_LIMITED: 'RATE_LIMITED',
   SESSION_NOT_FOUND: 'SESSION_NOT_FOUND',
   SESSION_EXPIRED: 'SESSION_EXPIRED',
+  // The campus was deleted between loading the register form and submitting it.
+  UNKNOWN_UNIVERSITY: 'UNKNOWN_UNIVERSITY',
   // Password reset only.
   ACCOUNT_NOT_FOUND: 'ACCOUNT_NOT_FOUND',
   PHONE_NOT_ON_FILE: 'PHONE_NOT_ON_FILE',
@@ -59,6 +61,8 @@ const MESSAGES = {
   [AUTH_ERROR.RATE_LIMITED]: 'Too many requests. Wait a few minutes and try again.',
   [AUTH_ERROR.SESSION_NOT_FOUND]: 'That session is no longer available. Start again.',
   [AUTH_ERROR.SESSION_EXPIRED]: 'That session has expired. Start again.',
+  [AUTH_ERROR.UNKNOWN_UNIVERSITY]:
+    'That campus is no longer available. Choose your university again.',
 }
 
 /** Human-readable text for a registration failure. */
@@ -76,6 +80,7 @@ const FIELD_BY_CODE = {
   [AUTH_ERROR.EMPLOYEE_ID_TAKEN]: 'employee_id',
   [AUTH_ERROR.EMAIL_MISMATCH]: 'email',
   [AUTH_ERROR.PHONE_MISMATCH]: 'mobile_national',
+  [AUTH_ERROR.UNKNOWN_UNIVERSITY]: 'university_id',
 }
 
 /** Form field a failure should be reported against, or '' for form-level. */

@@ -20,6 +20,30 @@ export function minLength(value, len) {
   return String(value ?? '').length >= len
 }
 
+/**
+ * NIAT ID — 11 characters: an `N` followed by ten letters or digits, as in
+ * N26K01A0021.
+ *
+ * Shape only. The backend accepts any 1–50 character string and checks that it
+ * is unique, so this catches typos at the form rather than enforcing a rule the
+ * API would also apply.
+ */
+const NIAT_ID_RE = /^N[A-Z0-9]{10}$/
+
+export function isNiatId(value) {
+  return NIAT_ID_RE.test(String(value || '').trim().toUpperCase())
+}
+
+/**
+ * Employee ID — 9 characters: `NW` followed by seven letters or digits, as in
+ * NW0003800. Shape only, like {@link isNiatId}.
+ */
+const EMPLOYEE_ID_RE = /^NW[A-Z0-9]{7}$/
+
+export function isEmployeeId(value) {
+  return EMPLOYEE_ID_RE.test(String(value || '').trim().toUpperCase())
+}
+
 export function isMobile(value) {
   const digits = String(value || '').replace(/\D/g, '')
   return digits.length >= 10 && digits.length <= 15
@@ -59,8 +83,11 @@ export function validateStudentForm(form) {
   if (!required(form.first_name)) errors.first_name = 'First name is required'
   if (!required(form.last_name)) errors.last_name = 'Last name is required'
   if (!isEmail(form.email)) errors.email = 'Enter a valid email'
-  if (!required(form.university_name)) errors.university_name = 'University is required'
+  if (!required(form.university_id)) errors.university_id = 'Select your university'
   if (!required(form.niat_id)) errors.niat_id = 'NIAT ID is required'
+  else if (!isNiatId(form.niat_id)) {
+    errors.niat_id = 'A NIAT ID is 11 characters starting with N, like N26K01A0021'
+  }
   const phone = toE164(form.country_code, form.mobile_national)
   if (!isE164(phone)) errors.mobile_national = 'Enter a valid mobile number'
   const strength = passwordStrength(form.password)
@@ -81,6 +108,9 @@ export function validateEvaluatorForm(form) {
   if (!required(form.first_name)) errors.first_name = 'First name is required'
   if (!required(form.last_name)) errors.last_name = 'Last name is required'
   if (!required(form.employee_id)) errors.employee_id = 'Employee ID is required'
+  else if (!isEmployeeId(form.employee_id)) {
+    errors.employee_id = 'An employee ID is 9 characters starting with NW, like NW0003800'
+  }
   if (!isNxtwaveEmail(form.email)) errors.email = 'Use your @nxtwave.co.in email address'
   const phone = toE164(form.country_code, form.mobile_national)
   if (!isE164(phone)) errors.mobile_national = 'Enter a valid mobile number'
