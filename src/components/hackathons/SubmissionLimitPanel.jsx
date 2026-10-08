@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { hackathonsApi } from '../../api/hackathons'
-import { PANEL } from '../drop/theme'
 import Alert from '../ui/Alert'
-import Icon from '../ui/Icon'
 import { Select } from '../ui/Input'
 import { LoadingBlock } from '../ui/Spinner'
 
@@ -84,29 +82,9 @@ export default function SubmissionLimitPanel({ hackathonId }) {
   }
 
   return (
-    <section className={`${PANEL} p-4 sm:p-5`}>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-ink">Submissions</h2>
-          <p className="mt-1 text-[13.5px] text-muted">
-            How many times a student or team may submit for a round.
-          </p>
-        </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-volt-ink">
-          <Icon name="upload" size={18} />
-        </span>
-      </div>
-
-      {actionError && (
-        <div className="mb-4">
-          <Alert variant="danger">{actionError}</Alert>
-        </div>
-      )}
-      {message && (
-        <div className="mb-4">
-          <Alert variant="success">{message}</Alert>
-        </div>
-      )}
+    <div className="stack-md">
+      {actionError && <Alert variant="danger">{actionError}</Alert>}
+      {message && <Alert variant="success">{message}</Alert>}
 
       <div className="max-w-[260px]">
         <Select
@@ -123,6 +101,6 @@ export default function SubmissionLimitPanel({ hackathonId }) {
           ))}
         </Select>
       </div>
-    </section>
+    </div>
   )
 }

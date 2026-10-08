@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { hackathonsApi } from '../../api/hackathons'
-import { MONO, PANEL } from '../drop/theme'
+import { MONO } from '../drop/theme'
 import Alert from '../ui/Alert'
-import Icon from '../ui/Icon'
 import { LoadingBlock } from '../ui/Spinner'
 
 /**
@@ -94,31 +93,9 @@ export default function ReportPublishingPanel({ hackathonId }) {
   const published = Number(state?.published_count) || 0
 
   return (
-    <section className={`${PANEL} p-4 sm:p-5`}>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-ink">
-            Report publishing
-          </h2>
-          <p className="mt-1 text-[13.5px] text-muted">
-            Approving records your decision. Publishing is what students can see.
-          </p>
-        </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-drop border border-hairline bg-raised text-volt-ink">
-          <Icon name="upload" size={18} />
-        </span>
-      </div>
-
-      {actionError && (
-        <div className="mb-4">
-          <Alert variant="danger">{actionError}</Alert>
-        </div>
-      )}
-      {message && (
-        <div className="mb-4">
-          <Alert variant="success">{message}</Alert>
-        </div>
-      )}
+    <div className="stack-md">
+      {actionError && <Alert variant="danger">{actionError}</Alert>}
+      {message && <Alert variant="success">{message}</Alert>}
 
       <label className="hackathon-video-toggle">
         <input
@@ -140,10 +117,10 @@ export default function ReportPublishingPanel({ hackathonId }) {
         </span>
       </label>
 
-      <p className="mt-3 text-[12.5px] text-muted">
+      <p className="text-[12.5px] text-muted">
         <span className={MONO}>{published}</span> report{published === 1 ? '' : 's'} visible to
         students.
       </p>
-    </section>
+    </div>
   )
 }

@@ -167,14 +167,39 @@ export const evaluationApi = {
       options,
     ),
 
-  listHackathonSubmissions: async (hackathonId, options) => {
-    const submissions = await emptyOn404(
-      api.get(`/submissions/admin/hackathons/${encodeURIComponent(hackathonId)}`, options),
+  /**
+   * One page of a hackathon's submissions for the admin queue.
+   *
+   * `params` are `page` (1-based), `page_size`, and the optional filters
+   * `round_index`, `status` and `q`. A backend that pages answers with
+   * `{ items, total, page, page_size, round_summary }`; one that does not yet
+   * ignores the params and returns every submission as a plain array. Both come
+   * back tagged so the caller knows whether it still has to page locally.
+   */
+  listHackathonSubmissionsPage: async (hackathonId, params = {}, options) => {
+    const search = new URLSearchParams()
+    Object.entries(params).forEach(([name, value]) => {
+      if (value !== undefined && value !== null && value !== '') search.set(name, String(value))
+    })
+    const query = search.toString()
+    const payload = await emptyOn404(
+      api.get(
+        `/submissions/admin/hackathons/${encodeURIComponent(hackathonId)}${query ? `?${query}` : ''}`,
+        options,
+      ),
     )
-    if (!Array.isArray(submissions)) {
+    if (Array.isArray(payload)) {
+      return { paginated: false, items: payload.map(normalizeSubmission) }
+    }
+    if (!Array.isArray(payload?.items)) {
       throw new Error('The hackathon submissions API returned an unsupported response format.')
     }
-    return submissions.map(normalizeSubmission)
+    return {
+      paginated: true,
+      items: payload.items.map(normalizeSubmission),
+      total: Number(payload.total) || 0,
+      roundSummary: Array.isArray(payload.round_summary) ? payload.round_summary : [],
+    }
   },
 
   /** Evaluator landing screen: hackathons containing assigned submissions. */
@@ -211,6 +236,16 @@ export const evaluationApi = {
     )
     return normalizeSubmission(submission)
   },
+
+  /**
+   * Admin only: delete an unassigned submission — answers, video, AI analysis,
+   * scores and report — and free its round slot so the student or team can
+   * submit again while the round is open. Answers `{ id, withdrawn: true }`.
+   * Once an evaluator is assigned it fails with 409 SUBMISSION_ASSIGNED and
+   * deletes nothing.
+   */
+  withdrawSubmission: (submissionId, options) =>
+    api.post(`/submissions/${encodeURIComponent(submissionId)}/withdraw`, undefined, options),
 
   /** Admin only: distribute selected submissions among approved evaluators. */
   assignHackathonSubmissionsEqually: async (

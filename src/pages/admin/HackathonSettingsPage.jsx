@@ -4,6 +4,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { formatDate } from '../../utils/format'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
+import ManageEvaluatorsPanel from '../../components/hackathons/ManageEvaluatorsPanel'
 import ReportPublishingPanel from '../../components/hackathons/ReportPublishingPanel'
 import SubmissionLimitPanel from '../../components/hackathons/SubmissionLimitPanel'
 import VideoAnalysisPromptsPanel from '../../components/hackathons/VideoAnalysisPromptsPanel'
@@ -77,11 +78,32 @@ export default function HackathonSettingsPage() {
       />
 
       <section className="flex flex-col gap-4">
-        {/* Loads with the page rather than on expand: the counts are the
-            reason an admin opens Settings after a review round. */}
-        <SubmissionLimitPanel key={`limit-${hackathonId}`} hackathonId={hackathonId} />
+        <Accordion
+          icon="upload"
+          title="Submissions"
+          description="How many times a student or team may submit for a round."
+          lazy
+        >
+          <SubmissionLimitPanel key={`limit-${hackathonId}`} hackathonId={hackathonId} />
+        </Accordion>
 
-        <ReportPublishingPanel key={hackathonId} hackathonId={hackathonId} />
+        <Accordion
+          icon="eye"
+          title="Report publishing"
+          description="Approving records your decision. Publishing is what students can see."
+          lazy
+        >
+          <ReportPublishingPanel key={hackathonId} hackathonId={hackathonId} />
+        </Accordion>
+
+        <Accordion
+          icon="users"
+          title="Manage Evaluators"
+          description="Choose which approved evaluators can be assigned to submissions for this hackathon."
+          lazy
+        >
+          <ManageEvaluatorsPanel key={`evaluators-${hackathonId}`} hackathonId={hackathonId} />
+        </Accordion>
 
         <Accordion
           icon="sparkles"

@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { queryKeys } from '../../lib/queryKeys'
+import { richTextToPlainText } from '../../lib/richText'
 import { ROLES } from '../../utils/constants'
 import { formatDate } from '../../utils/format'
 import { getHackathonDuration, getHackathonStatus } from '../../utils/hackathons'
@@ -38,6 +39,124 @@ function statusBadge(key) {
   return BADGE_CLOSED
 }
 
+/** Theme chips shown on a card; the rest collapse into "+N more". */
+const CARD_THEME_LIMIT = 2
+
+const THEME_CHIP =
+  'rounded-full border border-volt-edge bg-volt-tint px-2.5 py-1 text-[11.5px] font-medium text-volt-ink'
+
+/**
+ * One line of theme chips, always the same height: the first two themes
+ * (truncated if long) and a "+N more" chip whose tooltip lists the rest.
+ * An empty row still takes its line so cards without themes stay level.
+ */
+function ThemeChips({ themes = [] }) {
+  const shown = themes.slice(0, CARD_THEME_LIMIT)
+  const hidden = themes.slice(CARD_THEME_LIMIT)
+  return (
+    <div className="flex min-h-[28px] min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden">
+      {shown.map((theme) => (
+        <span
+          key={theme.id ?? theme.name}
+          className={`${THEME_CHIP} min-w-0 truncate`}
+          title={theme.name}
+        >
+          {theme.name}
+        </span>
+      ))}
+      {hidden.length > 0 && (
+        <span
+          className={`${THEME_CHIP} shrink-0`}
+          title={hidden.map((theme) => theme.name).join(', ')}
+        >
+          +{hidden.length} more
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** Everything a search should match on a hackathon, lower-cased once. */
+function searchText(hackathon) {
+  return [
+    hackathon.name,
+    richTextToPlainText(hackathon.description),
+    hackathon.team_mode_label,
+    ...(hackathon.themes || []).map((theme) => theme.name),
+    ...(hackathon.timeline || []).map((round) => round.title),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
+/**
+ * Pill search box in the filter row's style. "/" focuses it from anywhere on
+ * the page (unless you are already typing), and Escape clears it.
+ */
+function HackathonSearch({ value, onChange }) {
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target
+      const typing =
+        target instanceof HTMLElement &&
+        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      if (typing) return
+      event.preventDefault()
+      inputRef.current?.focus()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  return (
+    <div role="search" className="relative w-full sm:max-w-[420px] sm:flex-1">
+      <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted">
+        <Icon name="search" size={17} />
+      </span>
+      <input
+        ref={inputRef}
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && value) {
+            event.preventDefault()
+            onChange('')
+          }
+        }}
+        placeholder="Search by name, theme or round"
+        aria-label="Search hackathons"
+        autoComplete="off"
+        className="h-[42px] w-full appearance-none rounded-full border border-hairline bg-surface pr-11 pl-11 text-[14.5px] text-ink transition-[border-color,box-shadow] duration-150 outline-none placeholder:text-muted hover:border-muted/50 focus:border-volt-edge focus:shadow-[0_0_0_4px_rgba(204,255,0,0.18)] [&::-webkit-search-cancel-button]:hidden"
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => {
+            onChange('')
+            inputRef.current?.focus()
+          }}
+          className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-muted transition-colors hover:bg-raised hover:text-ink"
+          aria-label="Clear search"
+        >
+          <Icon name="x" size={15} />
+        </button>
+      ) : (
+        <kbd
+          className="pointer-events-none absolute top-1/2 right-3.5 hidden -translate-y-1/2 rounded-md border border-hairline bg-raised px-1.5 font-mono text-[11px] leading-[18px] text-muted sm:block"
+          aria-hidden="true"
+        >
+          /
+        </kbd>
+      )}
+    </div>
+  )
+}
+
 export default function HackathonsPage() {
   const { user } = useAuth()
   const isAdmin = user?.role === ROLES.ADMIN
@@ -46,6 +165,9 @@ export default function HackathonsPage() {
     { key: queryKeys.hackathons, staleTime: 60_000 },
   )
   const [filter, setFilter] = useState('all')
+  const [query, setQuery] = useState('')
+  // Keeps typing responsive while a long grid of cards re-filters.
+  const needle = useDeferredValue(query.trim().toLowerCase())
 
   // Admin-only: unfinished hackathon drafts, listed above the live events so an
   // abandoned wizard is visible rather than silently stranded.
@@ -77,9 +199,13 @@ export default function HackathonsPage() {
       (data || [])
         .map((hackathon) => ({ ...hackathon, eventStatus: getHackathonStatus(hackathon) }))
         .filter((hackathon) => filter === 'all' || hackathon.eventStatus.key === filter)
+        .filter((hackathon) => !needle || searchText(hackathon).includes(needle))
         .sort((a, b) => a.start_date.localeCompare(b.start_date)),
-    [data, filter],
+    [data, filter, needle],
   )
+  const totalCount = data?.length || 0
+  const narrowed = Boolean(needle) || filter !== 'all'
+  const filterLabel = FILTERS.find((item) => item.key === filter)?.label
 
   return (
     <div className={`${WRAP_APP} py-7 md:py-10`}>
@@ -89,7 +215,7 @@ export default function HackathonsPage() {
             <Icon name="trophy" size={22} />
           </span>
           <div>
-            <span className={EYEBROW}>Drop events</span>
+            <span className={EYEBROW}>Challazo events</span>
             <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
               Build. Compete. Make an impact.
             </h1>
@@ -133,37 +259,47 @@ export default function HackathonsPage() {
         <DraftsInbox drafts={drafts} onDiscard={discardDraft} discardingId={discardingId} />
       )}
 
-      <div className="mb-5 flex flex-col gap-4 sm:mb-7 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-ink md:text-[24px]">
-            Explore hackathons
-          </h2>
-          <p className="mt-1 text-[13.5px] text-muted">
-            <span className={MONO}>{data?.length || 0}</span> event
-            {data?.length === 1 ? '' : 's'} available
-          </p>
-        </div>
-        <div
-          className="drop-no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:px-0"
-          role="group"
-          aria-label="Filter hackathons"
-        >
-          {FILTERS.map((item) => (
-            <button
-              type="button"
-              key={item.key}
-              className={[
-                'shrink-0 rounded-full border px-4 py-[9px] text-sm whitespace-nowrap transition-colors',
-                filter === item.key
-                  ? 'border-muted/50 bg-raised text-ink'
-                  : 'border-hairline text-muted hover:border-muted/50 hover:text-ink',
-              ].join(' ')}
-              aria-pressed={filter === item.key}
-              onClick={() => setFilter(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
+      <div className="mb-5 sm:mb-7">
+        <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-ink md:text-[24px]">
+          Explore hackathons
+        </h2>
+        <p className="mt-1 text-[13.5px] text-muted" aria-live="polite">
+          {narrowed ? (
+            <>
+              <span className={MONO}>{hackathons.length}</span> of{' '}
+              <span className={MONO}>{totalCount}</span> event{totalCount === 1 ? '' : 's'}
+            </>
+          ) : (
+            <>
+              <span className={MONO}>{totalCount}</span> event{totalCount === 1 ? '' : 's'} available
+            </>
+          )}
+        </p>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <HackathonSearch value={query} onChange={setQuery} />
+          <div
+            className="drop-no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:px-0"
+            role="group"
+            aria-label="Filter hackathons"
+          >
+            {FILTERS.map((item) => (
+              <button
+                type="button"
+                key={item.key}
+                className={[
+                  'shrink-0 rounded-full border px-4 py-[9px] text-sm whitespace-nowrap transition-colors',
+                  filter === item.key
+                    ? 'border-muted/50 bg-raised text-ink'
+                    : 'border-hairline text-muted hover:border-muted/50 hover:text-ink',
+                ].join(' ')}
+                aria-pressed={filter === item.key}
+                onClick={() => setFilter(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -200,7 +336,11 @@ export default function HackathonsPage() {
 
                 <div className="flex flex-1 flex-col gap-4 p-5">
                   <div>
-                    <h3 className="text-[18px] font-semibold tracking-[-0.02em] text-ink">
+                    {/* Two lines reserved, so a short name and a long one end at the same height. */}
+                    <h3
+                      className="line-clamp-2 min-h-[2lh] text-[18px] leading-snug font-semibold tracking-[-0.02em] text-ink"
+                      title={hackathon.name}
+                    >
                       {hackathon.name}
                     </h3>
                     <div className="mt-2.5 flex flex-col gap-1.5 text-[13px] text-muted">
@@ -216,33 +356,23 @@ export default function HackathonsPage() {
                         <Icon name="chart" size={15} />
                         {hackathon.timeline?.length || 0} rounds
                       </span>
-                      {hackathon.team_mode_label && (
-                        <span className="flex items-center gap-1.5">
-                          <Icon name="users" size={15} />
-                          {hackathon.team_mode_label}
-                        </span>
-                      )}
+                      {/* Always takes its line, so cards without a team mode stay level. */}
+                      <span
+                        className={`flex items-center gap-1.5 ${hackathon.team_mode_label ? '' : 'invisible'}`}
+                        aria-hidden={!hackathon.team_mode_label}
+                      >
+                        <Icon name="users" size={15} />
+                        {hackathon.team_mode_label || 'Team mode'}
+                      </span>
                     </div>
                   </div>
 
-                  {hackathon.description ? (
-                    <p className="line-clamp-2 text-[13.5px] leading-relaxed text-muted">
-                      {hackathon.description}
-                    </p>
-                  ) : null}
+                  <p className="line-clamp-2 min-h-[2lh] text-[13.5px] leading-relaxed text-muted">
+                    {/* Plain words only: a two-line preview has no room for formatting. */}
+                    {richTextToPlainText(hackathon.description)}
+                  </p>
 
-                  {!!hackathon.themes?.length && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {hackathon.themes.map((theme) => (
-                        <span
-                          key={theme.id}
-                          className="rounded-full border border-volt-edge bg-volt-tint px-2.5 py-1 text-[11.5px] font-medium text-volt-ink"
-                        >
-                          {theme.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <ThemeChips themes={hackathon.themes} />
 
                   <div className="mt-auto flex items-center justify-between gap-3 border-t border-hairline pt-4">
                     <div className="min-w-0">
@@ -266,6 +396,30 @@ export default function HackathonsPage() {
         </div>
       ) : (
         <div className={`${PANEL} border-dashed p-8`}>
+          {needle ? (
+            <EmptyState
+              icon="search"
+              title={`No hackathons match “${query.trim()}”`}
+              description={
+                filter === 'all'
+                  ? 'Try another name, theme or round.'
+                  : `Nothing under ${filterLabel} matches. Try another word, or search all events.`
+              }
+              action={
+                <button
+                  type="button"
+                  className={BTN_GHOST}
+                  onClick={() => {
+                    setQuery('')
+                    setFilter('all')
+                  }}
+                >
+                  <Icon name="x" size={17} />
+                  Clear search
+                </button>
+              }
+            />
+          ) : (
           <EmptyState
             icon="calendar"
             title={filter === 'all' ? 'No hackathons yet' : `No ${filter} hackathons`}
@@ -283,6 +437,7 @@ export default function HackathonsPage() {
               ) : undefined
             }
           />
+          )}
         </div>
       )}
     </div>

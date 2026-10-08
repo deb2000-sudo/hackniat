@@ -1,0 +1,72 @@
+/*
+ * Challazo mark — shared by the public pages and the signed-in app.
+ *
+ * Unlayered like the landing page CSS, so it wins over the layered app styles.
+ * Light theme: dark tile, lime art. Dark theme: lime tile, dark art. The
+ * `is-on-dark` modifier pins the lime tile for bands that are always dark.
+ */
+:root {
+  --czm-tile: #0b0d0c;
+  --czm-art: #ccff00;
+  --czm-ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+html[data-theme='dark'] {
+  --czm-tile: #ccff00;
+  --czm-art: #0b0d0c;
+}
+
+.czm { display: block; flex: none; }
+.czm.is-on-dark { --czm-tile: #ccff00; --czm-art: #0b0d0c; }
+.czm .czm-tile { fill: var(--czm-tile); }
+.czm .czm-ring { stroke: var(--czm-art); opacity: 0.3; }
+.czm .czm-glyph { stroke: var(--czm-art); }
+.czm .czm-dot { fill: var(--czm-art); transform-box: fill-box; transform-origin: 50% 50%; }
+.czm .czm-sweep {
+  stroke: var(--czm-art);
+  stroke-dasharray: 82;
+  stroke-dashoffset: 82;
+  transform: rotate(-90deg);
+  transform-origin: 20px 20px;
+}
+
+/* Signed-out mark: the arrow drops through the tile while the ring sweeps. */
+.czm.is-animated .czm-arrow {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: czm-drop 3.6s var(--czm-ease) infinite;
+}
+.czm.is-animated.is-arrow .czm-sweep { animation: czm-sweep-loop 3.6s linear infinite; }
+
+/* Signed-in mark: the C draws once, the dot drops into its opening, then it rests. */
+.czm.is-animated .czm-c {
+  stroke-dasharray: 44;
+  stroke-dashoffset: 44;
+  animation: czm-draw 0.8s var(--czm-ease) 0.1s forwards;
+}
+.czm.is-animated .czm-dot { opacity: 0; animation: czm-dot-in 0.5s var(--czm-ease) 0.75s forwards; }
+
+@keyframes czm-drop {
+  0%, 52% { transform: translateY(0); opacity: 1; }
+  64% { transform: translateY(9px); opacity: 0; }
+  65% { transform: translateY(-9px); opacity: 0; }
+  80%, 100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes czm-sweep-loop { 0% { stroke-dashoffset: 82; } 70%, 100% { stroke-dashoffset: 0; } }
+@keyframes czm-dot-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes czm-draw { to { stroke-dashoffset: 0; } }
+
+.czm-wordmark {
+  font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .czm .czm-arrow, .czm .czm-sweep, .czm .czm-c, .czm .czm-dot { animation: none !important; }
+  .czm .czm-c { stroke-dashoffset: 0; }
+  .czm .czm-dot { opacity: 1; }
+}
