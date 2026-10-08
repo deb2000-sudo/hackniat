@@ -48,6 +48,9 @@ const FORM_STEPS = DRAFT_STEPS
 const REVIEW_INDEX = FORM_STEPS.length - 1
 const BASICS_FIELDS = ['name', 'description', 'start_date', 'end_date', 'hackathon_url']
 const GUIDELINE_FIELDS = ['guidelines', 'evaluator_guidelines']
+/** Fields written in the rich-text editor: blank means no words, and the
+ *  length limit counts the formatting too. */
+const RICH_TEXT_FIELDS = ['description', ...GUIDELINE_FIELDS]
 // Both guideline fields are rich text, so what is stored is HTML and the cap
 // has to count the markup the toolbar adds, not just the words on screen.
 const GUIDELINE_MAX_LENGTH = 10000
@@ -157,7 +160,7 @@ function clampTimelineDates(timeline, hackathonStart, hackathonEnd) {
 function validate(form, banner, { editing = false, initialForm = null } = {}) {
   const errors = {}
   SCALAR_FIELDS.forEach((field) => {
-    const blank = GUIDELINE_FIELDS.includes(field)
+    const blank = RICH_TEXT_FIELDS.includes(field)
       ? guidelineBlank(form[field])
       : !String(form[field] || '').trim()
     if (blank) errors[field] = 'This field is required'
@@ -166,7 +169,7 @@ function validate(form, banner, { editing = false, initialForm = null } = {}) {
   if (needsEvaluatorGuidelines && guidelineBlank(form.evaluator_guidelines)) {
     errors.evaluator_guidelines = 'This field is required'
   }
-  GUIDELINE_FIELDS.forEach((field) => {
+  RICH_TEXT_FIELDS.forEach((field) => {
     const length = String(form[field] || '').length
     if (!errors[field] && length > GUIDELINE_MAX_LENGTH) {
       errors[field] = `Too long — ${length.toLocaleString()} characters including formatting. Trim it to ${GUIDELINE_MAX_LENGTH.toLocaleString()}.`
@@ -228,7 +231,7 @@ function validate(form, banner, { editing = false, initialForm = null } = {}) {
  */
 function completionChecks(form, { editing = false, initialForm = null } = {}) {
   const checks = SCALAR_FIELDS.map((field) =>
-    GUIDELINE_FIELDS.includes(field)
+    RICH_TEXT_FIELDS.includes(field)
       ? !guidelineBlank(form[field])
       : Boolean(String(form[field] || '').trim()),
   )
@@ -706,13 +709,16 @@ export default function HackathonForm({
             onChange={update('name')}
             error={errors.name}
           />
-          <Textarea
+          <RichTextEditor
             label="Description"
+            hint="Shown on the hackathon page. Use the toolbar for bold, colour, size, and bullet, numbered, lettered or Roman lists."
+            placeholder="What this hackathon is about, who it is for, what teams will build…"
             required
-            maxLength={10000}
+            maxLength={GUIDELINE_MAX_LENGTH}
             value={form.description}
-            onChange={update('description')}
+            onChange={updateRichText('description')}
             error={errors.description}
+            minHeight={160}
           />
           <div className="grid grid-2">
             <Input

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { resolveApiUrl } from '../../api/client'
@@ -28,6 +28,8 @@ import GithubAiPanel from '../../components/evaluation/GithubAiPanel'
 import ManualScoreForms from '../../components/evaluation/ManualScoreForms'
 import ScorecardBar from '../../components/evaluation/ScorecardBar'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
+import WithdrawSubmissionDialog from '../../components/evaluation/WithdrawSubmissionDialog'
+import { WITHDRAW_ASSIGNED_MESSAGE, canWithdraw } from '../../components/evaluation/withdraw'
 
 export default function AdminSubmissionDetailPage() {
   const { submissionId } = useParams()
@@ -46,6 +48,14 @@ export default function AdminSubmissionDetailPage() {
     { enabled: Boolean(submission?.hackathon_id) },
   )
   const evaluatorGuidelines = String(hackathon?.evaluator_guidelines || '').trim()
+  const navigate = useNavigate()
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false)
+  // Carry the round back so the queue reopens where it was left.
+  const backToQueue = submission?.hackathon_id
+    ? `/admin/submissions/hackathons/${submission.hackathon_id}?round=${
+        Number(submission.round_index) || 0
+      }`
+    : '/admin/submissions'
 
   const [reviewNotes, setReviewNotes] = useState('')
   const [action, setAction] = useState('')
@@ -297,21 +307,36 @@ export default function AdminSubmissionDetailPage() {
             <ReviewStatusBadge status={reviewStatus} />
           </div>
         </div>
-        <Link
-          to={
-            submission?.hackathon_id
-              ? /* Carry the round back so the queue reopens where it was left. */
-                `/admin/submissions/hackathons/${submission.hackathon_id}?round=${
-                  Number(submission.round_index) || 0
-                }`
-              : '/admin/submissions'
-          }
-          className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}
-        >
-          <Icon name="arrowLeft" size={17} />
-          Back to hackathon
-        </Link>
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+          {/* Only while nobody is assigned; a finished AI analysis does not hide it. */}
+          {canWithdraw(submission) && (
+            <Button
+              variant="danger"
+              onClick={() => setConfirmWithdraw(true)}
+              leftIcon={<Icon name="trash" size={17} />}
+            >
+              Withdraw
+            </Button>
+          )}
+          <Link to={backToQueue} className={`${BTN_GHOST} w-full sm:w-auto`}>
+            <Icon name="arrowLeft" size={17} />
+            Back to hackathon
+          </Link>
+        </div>
       </header>
+
+      <WithdrawSubmissionDialog
+        submission={confirmWithdraw ? submission : null}
+        onClose={() => setConfirmWithdraw(false)}
+        onWithdrawn={() => navigate(backToQueue, { replace: true })}
+        onAssigned={() => {
+          setConfirmWithdraw(false)
+          setActionMessage('')
+          setActionError(WITHDRAW_ASSIGNED_MESSAGE)
+          // Refetch so the page shows the evaluator and drops the button.
+          restartPolling()
+        }}
+      />
 
       {actionError && (
         <div className="mb-4">

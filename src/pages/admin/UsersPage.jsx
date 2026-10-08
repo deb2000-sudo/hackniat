@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { adminApi } from '../../api/admin'
 import { useAsync } from '../../hooks/useAsync'
 import { queryKeys } from '../../lib/queryKeys'
@@ -14,31 +14,86 @@ import Avatar from '../../components/ui/Avatar'
 import { RoleBadge, ApprovalBadge } from '../../components/ui/Badge'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
+import Pagination from '../../components/ui/Pagination'
 import { formatDate } from '../../utils/format'
 
-export default function UsersPage() {
-  const { data, loading, error, reload } = useAsync(
-    (opts) => adminApi.getUsers(opts),
-    { key: queryKeys.adminUsers, staleTime: 30_000 },
+/** Rows per page of the Student Management table. */
+const PAGE_SIZE = 15
+
+/** How long typing pauses before the search is sent. */
+const SEARCH_DELAY_MS = 300
+
+const matchesSearch = (user, needle) =>
+  [user.name, user.email, user.niat_id, user.employee_id, user.id].some((value) =>
+    String(value || '').toLowerCase().includes(needle),
   )
+
+/**
+ * One page of students in a single shape, whichever backend answered.
+ *
+ * A paging backend returns `{ items, total }` already filtered to students and
+ * searched, so it is used as is. An older one ignores the params and returns
+ * every user as an array; then the students are picked out, searched and
+ * sliced here, newest first like the paged response.
+ */
+function toStudentPage(payload, page, search) {
+  if (!Array.isArray(payload)) {
+    return {
+      rows: Array.isArray(payload?.items) ? payload.items : [],
+      total: Number(payload?.total) || 0,
+    }
+  }
+  const needle = search.toLowerCase()
+  const students = payload
+    .filter((user) => user.role === 'student')
+    .filter((user) => !needle || matchesSearch(user, needle))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  const start = (page - 1) * PAGE_SIZE
+  return { rows: students.slice(start, start + PAGE_SIZE), total: students.length }
+}
+
+export default function UsersPage() {
   const [query, setQuery] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+
+  // Search once typing pauses, from the first page.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(query.trim())
+      setPage(1)
+    }, SEARCH_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  // Keyed per page and search — never queryKeys.adminUsers, which the
+  // dashboard prefetch fills with the full user array.
+  const pageKey = queryKeys.adminStudentsPage(page, search)
+  const { data, loading, error, reload } = useAsync(
+    async (opts) => {
+      const payload = await adminApi.getUsersPage(
+        { page, page_size: PAGE_SIZE, role: 'student', q: search || undefined },
+        opts,
+      )
+      // Tagged with its key: on a page change useAsync keeps the previous
+      // rows without flagging a load, and the tag is how the table knows to dim.
+      return { key: pageKey, ...toStudentPage(payload, page, search) }
+    },
+    { key: pageKey, staleTime: 30_000 },
+  )
+
+  const rows = data?.rows || []
+  const total = data?.total || 0
+  const stale = Boolean(data) && data.key !== pageKey
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  // A page that emptied out (after an edit, or a smaller search) steps back
+  // to the last page that still has rows.
+  if (data && !stale && !loading && page > totalPages) setPage(totalPages)
+
   const [editing, setEditing] = useState(null)
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-
-  const filtered = useMemo(() => {
-    const users = (data || []).filter((user) => user.role === 'student')
-    const q = query.trim().toLowerCase()
-    if (!q) return users
-    return users.filter(
-      (u) =>
-        u.name?.toLowerCase().includes(q) ||
-        u.email?.toLowerCase().includes(q) ||
-        u.niat_id?.toLowerCase().includes(q) ||
-        u.employee_id?.toLowerCase().includes(q),
-    )
-  }, [data, query])
 
   const openEdit = (user) => {
     setEditing(user)
@@ -56,7 +111,8 @@ export default function UsersPage() {
     try {
       await adminApi.updateUser(editing.id, { name: name.trim() })
       setEditing(null)
-      await reload()
+      // Same page, fresh from the server — the edit may change the search match.
+      reload({ force: true })
     } catch (err) {
       setSaveError(err.message || 'Failed to update user.')
     } finally {
@@ -84,6 +140,7 @@ export default function UsersPage() {
             placeholder="Search by name, email or ID"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search students"
             style={{ paddingLeft: 38 }}
           />
           <span
@@ -103,10 +160,14 @@ export default function UsersPage() {
         </div>
       )}
 
-      {loading ? (
-        <LoadingBlock label="Loading users…" />
-      ) : filtered.length ? (
-        <div className="table-wrap">
+      {!data && loading ? (
+        <LoadingBlock label="Loading students…" />
+      ) : rows.length ? (
+        <>
+        <div
+          className={`table-wrap transition-opacity ${stale || loading ? 'opacity-60' : ''}`}
+          aria-busy={stale || loading}
+        >
           <table className="table">
             <thead>
               <tr>
@@ -119,7 +180,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
+              {rows.map((u) => (
                 <tr key={u.id}>
                   <td>
                     <div className="row" style={{ gap: 10 }}>
@@ -151,13 +212,26 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
-      ) : (
+        <Pagination
+          page={page}
+          total={total}
+          pageSize={PAGE_SIZE}
+          disabled={stale || loading}
+          label="Student pages"
+          onChange={setPage}
+        />
+        </>
+      ) : !error ? (
         <Card>
           <CardBody>
-            <EmptyState icon="users" title="No students found" description="Try a different search." />
+            <EmptyState
+              icon="users"
+              title="No students found"
+              description={search ? 'Try a different search.' : 'Registered students will appear here.'}
+            />
           </CardBody>
         </Card>
-      )}
+      ) : null}
 
       <Modal
         open={!!editing}

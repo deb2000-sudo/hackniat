@@ -1,14 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { adminApi } from '../../api/admin'
-import { evaluationApi, isSubmissionEvaluated } from '../../api/evaluation'
+import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
+import { useHackathonSubmissions } from '../../hooks/useHackathonSubmissions'
 import { formatDate, formatDateTime } from '../../utils/format'
 import { BADGE, BADGE_OPEN, BTN_VOLT, EYEBROW, MONO, PANEL, WRAP_APP } from '../../components/drop/theme'
 import { roundDisplayName, roundStatusBadge } from '../../components/hackathons/roundStatus'
 import PageHeader from '../../components/layout/PageHeader'
 import TeamDetailsModal from '../../components/evaluation/TeamDetailsModal'
+import WithdrawSubmissionDialog from '../../components/evaluation/WithdrawSubmissionDialog'
+import { WITHDRAW_ASSIGNED_MESSAGE, canWithdraw } from '../../components/evaluation/withdraw'
 import Alert from '../../components/ui/Alert'
 import Badge, { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
@@ -16,39 +18,49 @@ import Card, { CardBody } from '../../components/ui/Card'
 import EmptyState from '../../components/ui/EmptyState'
 import Icon from '../../components/ui/Icon'
 import Input, { Select } from '../../components/ui/Input'
+import Pagination from '../../components/ui/Pagination'
 import { LoadingBlock } from '../../components/ui/Spinner'
 
 /** Neutral stat pill. text-ink, not text-muted: these are numbers to read. */
 const BADGE_STAT = 'border-hairline bg-raised text-ink'
 
-/** 0-based timeline round a submission belongs to. Legacy rows carry none. */
-function submissionRoundIndex(submission) {
-  return Number(submission?.round_index) || 0
-}
+/** Rows per page of the submissions table. */
+const PAGE_SIZE = 10
+
+/** How long typing pauses before the search is sent. */
+const SEARCH_DELAY_MS = 300
 
 export default function AdminHackathonSubmissionsPage() {
   const { hackathonId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data, loading, error, reload, setData } = useAsync(async () => {
+  // The hackathon and its evaluator roster. Submissions load separately, a
+  // page at a time, so paging or filtering never refetches these.
+  const { data, error: hackathonError, reload: reloadHackathon } = useAsync(async () => {
     // Only the hackathon itself is essential — without it the page has no
-    // subject. An empty (or failing) submissions or evaluators feed should
-    // render as "nothing to review yet", not take the whole screen down.
-    const [hackathonResult, submissionsResult, evaluatorsResult] = await Promise.allSettled([
+    // subject. A failing evaluators feed should leave the dropdowns empty,
+    // not take the whole screen down.
+    const [hackathonResult, evaluatorsResult] = await Promise.allSettled([
       hackathonsApi.get(hackathonId),
-      evaluationApi.listHackathonSubmissions(hackathonId),
-      adminApi.getApprovedEvaluators(),
+      hackathonsApi.evaluators(hackathonId),
     ])
     if (hackathonResult.status === 'rejected') throw hackathonResult.reason
     return {
       hackathon: hackathonResult.value,
-      submissions:
-        submissionsResult.status === 'fulfilled' ? submissionsResult.value : [],
-      evaluators: evaluatorsResult.status === 'fulfilled' ? evaluatorsResult.value : [],
+      // Only this hackathon's roster can be assigned. Hackathons with no saved
+      // roster yet report every approved evaluator as assigned.
+      evaluators:
+        evaluatorsResult.status === 'fulfilled' && Array.isArray(evaluatorsResult.value?.evaluators)
+          ? evaluatorsResult.value.evaluators.filter((item) => item.assigned)
+          : [],
     }
   })
   const [query, setQuery] = useState('')
+  const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
-  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [page, setPage] = useState(1)
+  // Selected rows by id, holding the row itself so a selection made on one
+  // page still counts after moving to another.
+  const [selected, setSelected] = useState(() => new Map())
   const [assigningId, setAssigningId] = useState('')
   const [bulkAssigning, setBulkAssigning] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -58,61 +70,91 @@ export default function AdminHackathonSubmissionsPage() {
   const [sheetUrl, setSheetUrl] = useState('')
   const [popupBlocked, setPopupBlocked] = useState(false)
 
-  const allSubmissions = useMemo(() => data?.submissions || [], [data])
+  // Search once typing pauses, from the first page.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(query.trim())
+      setPage(1)
+    }, SEARCH_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  // The chosen round lives in the URL so refresh, back, and a shared link all
+  // land on the same queue.
+  const roundParam = searchParams.get('round')
+  const requestedRoundIndex = useMemo(() => {
+    if (roundParam === null || roundParam === '') return null
+    const parsed = Number(roundParam)
+    return Number.isInteger(parsed) && parsed >= 0 ? parsed : null
+  }, [roundParam])
+
+  const feed = useHackathonSubmissions(hackathonId, {
+    roundIndex: requestedRoundIndex,
+    status,
+    search,
+    page,
+    pageSize: PAGE_SIZE,
+  })
+  const submissions = feed.rows
+  const loading = feed.loading
+  const error = hackathonError || feed.error
 
   /**
    * One entry per round the admin can open, with its own counts.
    *
-   * Built from the hackathon's timeline, unioned with every round_index that
-   * actually appears in the feed: a submission filed against a round that was
-   * later removed from the timeline must still be reachable, or editing the
-   * timeline would quietly hide real work.
+   * Built from the hackathon's timeline, unioned with every round the counts
+   * mention: a submission filed against a round that was later removed from
+   * the timeline must still be reachable, or editing the timeline would
+   * quietly hide real work.
    */
   const rounds = useMemo(() => {
     const timeline = data?.hackathon?.timeline || []
     const indices = new Set(timeline.map((_, index) => index))
-    allSubmissions.forEach((submission) => indices.add(submissionRoundIndex(submission)))
+    feed.roundSummary.forEach((_, index) => indices.add(index))
     return [...indices]
       .sort((a, b) => a - b)
       .map((index) => {
         const round = timeline[index] || null
-        const roundSubmissions = allSubmissions.filter(
-          (submission) => submissionRoundIndex(submission) === index,
-        )
-        const evaluated = roundSubmissions.filter(isSubmissionEvaluated).length
+        const counts = feed.roundSummary.get(index) || { total: 0, evaluated: 0 }
         return {
           index,
           round,
           name: roundDisplayName(round, index),
-          total: roundSubmissions.length,
-          evaluated,
-          awaiting: roundSubmissions.length - evaluated,
+          total: counts.total,
+          evaluated: counts.evaluated,
+          awaiting: counts.total - counts.evaluated,
         }
       })
-  }, [data?.hackathon?.timeline, allSubmissions])
+  }, [data?.hackathon?.timeline, feed.roundSummary])
 
-  // The chosen round lives in the URL so refresh, back, and a shared link all
-  // land on the same queue. An index that no longer exists falls back to the
-  // round picker rather than an empty table.
-  const roundParam = searchParams.get('round')
-  const activeRoundIndex = useMemo(() => {
-    if (roundParam === null || roundParam === '') return null
-    const parsed = Number(roundParam)
-    if (!Number.isInteger(parsed)) return null
-    return rounds.some((entry) => entry.index === parsed) ? parsed : null
-  }, [roundParam, rounds])
+  // An index that no longer exists falls back to the round picker rather than
+  // an empty table.
+  const activeRoundIndex = rounds.some((entry) => entry.index === requestedRoundIndex)
+    ? requestedRoundIndex
+    : null
   const activeRound = rounds.find((entry) => entry.index === activeRoundIndex) || null
 
   // A single-round hackathon has nothing to choose between, so it goes straight
   // to its table.
   const showRoundPicker = activeRoundIndex === null && rounds.length > 1
 
+  const allSubmissionsCount = rounds.reduce((sum, entry) => sum + entry.total, 0)
+  /** Submissions in the open round — the whole hackathon when there is only one. */
+  const roundSubmissionsCount = activeRound ? activeRound.total : allSubmissionsCount
+
+  const totalPages = Math.max(1, Math.ceil(feed.total / PAGE_SIZE))
+  // A page that emptied out (filters, or the last row moved on) steps back to
+  // the last one that still has rows.
+  if (!loading && feed.loaded && page > totalPages) setPage(totalPages)
+
   // Filters and selections belong to the round that was open; carrying them
   // into the next one would hide rows there for no visible reason.
   const resetRoundView = () => {
-    setSelectedIds(new Set())
+    setSelected(new Map())
     setQuery('')
+    setSearch('')
     setStatus('all')
+    setPage(1)
   }
 
   const openRound = (index) => {
@@ -125,67 +167,39 @@ export default function AdminHackathonSubmissionsPage() {
     setSearchParams({})
   }
 
-  /** Submissions in the open round — the whole feed when there is only one. */
-  const roundSubmissions = useMemo(
-    () =>
-      activeRoundIndex === null
-        ? allSubmissions
-        : allSubmissions.filter((submission) => submissionRoundIndex(submission) === activeRoundIndex),
-    [allSubmissions, activeRoundIndex],
-  )
-
-  const submissions = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    return [...roundSubmissions]
-      .filter((submission) => status === 'all' || submission.status === status)
-      .filter((submission) => {
-        if (!needle) return true
-        return [submission.team_name, submission.theme_name || submission.theme_chosen, submission.id].some((value) =>
-          String(value || '').toLowerCase().includes(needle),
-        )
-      })
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  }, [roundSubmissions, query, status])
-
   const hackathon = data?.hackathon
-  const evaluators = data?.evaluators || []
+  const evaluators = useMemo(() => data?.evaluators || [], [data?.evaluators])
+  const evaluatorIds = useMemo(() => new Set(evaluators.map((item) => item.id)), [evaluators])
 
   const isUnassigned = (submission) => !submission?.assigned_evaluator_id
-  const selectableVisibleIds = useMemo(
-    () => submissions.filter(isUnassigned).map((submission) => submission.id),
-    [submissions],
-  )
+  const selectableVisible = useMemo(() => submissions.filter(isUnassigned), [submissions])
   const allVisibleSelected =
-    selectableVisibleIds.length > 0 &&
-    selectableVisibleIds.every((id) => selectedIds.has(id))
-  const someVisibleSelected = selectableVisibleIds.some((id) => selectedIds.has(id))
+    selectableVisible.length > 0 && selectableVisible.every((item) => selected.has(item.id))
+  const someVisibleSelected = selectableVisible.some((item) => selected.has(item.id))
 
-  const patchSubmission = (updated) => {
-    if (!updated?.id) return
-    setData((current) => ({
-      ...current,
-      submissions: current.submissions.map((submission) =>
-        submission.id === updated.id ? { ...submission, ...updated } : submission,
-      ),
-    }))
-  }
+  const unselect = (ids) =>
+    setSelected((current) => {
+      if (!ids.some((id) => current.has(id))) return current
+      const next = new Map(current)
+      ids.forEach((id) => next.delete(id))
+      return next
+    })
 
-  const toggleSelected = (submissionId) => {
-    const submission = submissions.find((item) => item.id === submissionId)
-    if (submission && !isUnassigned(submission)) return
-    setSelectedIds((current) => {
-      const next = new Set(current)
-      if (next.has(submissionId)) next.delete(submissionId)
-      else next.add(submissionId)
+  const toggleSelected = (submission) => {
+    if (!isUnassigned(submission)) return
+    setSelected((current) => {
+      const next = new Map(current)
+      if (next.has(submission.id)) next.delete(submission.id)
+      else next.set(submission.id, submission)
       return next
     })
   }
 
   const toggleAllVisible = () => {
-    setSelectedIds((current) => {
-      const next = new Set(current)
-      if (allVisibleSelected) selectableVisibleIds.forEach((id) => next.delete(id))
-      else selectableVisibleIds.forEach((id) => next.add(id))
+    setSelected((current) => {
+      const next = new Map(current)
+      if (allVisibleSelected) selectableVisible.forEach((item) => next.delete(item.id))
+      else selectableVisible.forEach((item) => next.set(item.id, item))
       return next
     })
   }
@@ -203,13 +217,8 @@ export default function AdminHackathonSubmissionsPage() {
         submissionId,
         evaluatorId || null,
       )
-      patchSubmission(updated)
-      setSelectedIds((current) => {
-        if (!current.has(submissionId)) return current
-        const next = new Set(current)
-        next.delete(submissionId)
-        return next
-      })
+      feed.patch([updated])
+      unselect([submissionId])
       if (!evaluatorId) {
         setActionMessage('Submission is now unassigned.')
       } else if (updated.status === 'processing' || updated.auto_ai_evaluation) {
@@ -228,11 +237,15 @@ export default function AdminHackathonSubmissionsPage() {
     }
   }
 
+  /** Selected rows that still need an evaluator, from every page. */
+  const selectedUnassigned = useMemo(
+    () => [...selected.values()].filter(isUnassigned),
+    [selected],
+  )
+  const selectedUnassignedCount = selectedUnassigned.length
+
   const onDivideEqually = async () => {
-    const idsToAssign = [...selectedIds].filter((id) => {
-      const submission = roundSubmissions.find((item) => item.id === id)
-      return submission && isUnassigned(submission)
-    })
+    const idsToAssign = selectedUnassigned.map((submission) => submission.id)
     if (!idsToAssign.length) return
     setBulkAssigning(true)
     setActionError('')
@@ -245,19 +258,9 @@ export default function AdminHackathonSubmissionsPage() {
       const updatedSubmissions = Array.isArray(result?.submissions)
         ? result.submissions
         : []
-      if (updatedSubmissions.length) {
-        const byId = new Map(updatedSubmissions.map((submission) => [submission.id, submission]))
-        setData((current) => ({
-          ...current,
-          submissions: current.submissions.map((submission) => {
-            const updated = byId.get(submission.id)
-            return updated ? { ...submission, ...updated } : submission
-          }),
-        }))
-      } else {
-        reload()
-      }
-      setSelectedIds(new Set())
+      if (updatedSubmissions.length) feed.patch(updatedSubmissions)
+      else feed.reload()
+      setSelected(new Map())
       const queued = Number(result?.auto_ai_evaluation_queued || 0)
       setActionMessage(
         `${result?.assigned_count ?? updatedSubmissions.length} assigned across ${
@@ -271,14 +274,33 @@ export default function AdminHackathonSubmissionsPage() {
     }
   }
 
-  const selectedUnassignedCount = useMemo(
-    () =>
-      [...selectedIds].filter((id) => {
-        const submission = roundSubmissions.find((item) => item.id === id)
-        return submission && isUnassigned(submission)
-      }).length,
-    [selectedIds, roundSubmissions],
-  )
+  // The row whose withdraw is being confirmed.
+  const [withdrawing, setWithdrawing] = useState(null)
+
+  const onWithdrawn = (submission) => {
+    setWithdrawing(null)
+    setActionError('')
+    feed.remove([submission.id])
+    unselect([submission.id])
+    setActionMessage(
+      `${submission.team_name || 'Submission'} withdrawn. They can submit again while the round is open.`,
+    )
+    // Refetch so the round counts and the page drop the withdrawn entry too.
+    feed.reload()
+  }
+
+  const onWithdrawBlocked = () => {
+    setWithdrawing(null)
+    setActionMessage('')
+    setActionError(WITHDRAW_ASSIGNED_MESSAGE)
+    // Someone assigned it meanwhile — refetch so the row shows its evaluator.
+    feed.reload()
+  }
+
+  const reloadAll = () => {
+    reloadHackathon({ force: true })
+    feed.reload()
+  }
 
   const linkedSheetUrl = sheetUrl || hackathon?.export_spreadsheet_url || ''
 
@@ -305,7 +327,7 @@ export default function AdminHackathonSubmissionsPage() {
       const opened = window.open(url, '_blank', 'noopener,noreferrer')
       if (!opened) setPopupBlocked(true)
       // Pick up export_spreadsheet_url / _synced_at for the header line.
-      reload({ force: true })
+      reloadHackathon({ force: true })
     } catch (err) {
       setExportError(err.message || 'Could not sync submissions to Google Sheets.')
     } finally {
@@ -322,8 +344,8 @@ export default function AdminHackathonSubmissionsPage() {
           hackathon
             ? `${formatDate(hackathon.start_date)} – ${formatDate(hackathon.end_date)} · ${
                 showRoundPicker
-                  ? `${rounds.length} rounds · ${allSubmissions.length} submissions`
-                  : `${roundSubmissions.length} submissions${activeRound ? ` in ${activeRound.name}` : ''}`
+                  ? `${rounds.length} rounds · ${allSubmissionsCount} submissions`
+                  : `${roundSubmissionsCount} submissions${activeRound ? ` in ${activeRound.name}` : ''}`
               }`
             : 'Review hackathon submissions.'
         }
@@ -350,7 +372,7 @@ export default function AdminHackathonSubmissionsPage() {
             </Button>
             <Button
               variant="ghost"
-              onClick={reload}
+              onClick={reloadAll}
               loading={loading}
               leftIcon={<Icon name="refresh" size={17} />}
             >
@@ -389,7 +411,7 @@ export default function AdminHackathonSubmissionsPage() {
           <div />
           <span>
             <Icon name="video" size={18} />
-            {showRoundPicker ? allSubmissions.length : roundSubmissions.length} submissions
+            {showRoundPicker ? allSubmissionsCount : roundSubmissionsCount} submissions
           </span>
         </div>
       )}
@@ -484,7 +506,10 @@ export default function AdminHackathonSubmissionsPage() {
             <Select
               aria-label="Filter submission status"
               value={status}
-              onChange={(event) => setStatus(event.target.value)}
+              onChange={(event) => {
+                setStatus(event.target.value)
+                setPage(1)
+              }}
             >
               <option value="all">All statuses</option>
               <option value="uploaded">Uploaded</option>
@@ -507,19 +532,20 @@ export default function AdminHackathonSubmissionsPage() {
           </div>
         </div>
 
-        {loading && !data ? (
+        {!feed.loaded ? (
           <LoadingBlock label="Loading hackathon submissions…" />
         ) : submissions.length ? (
-          <div className="table-wrap">
+          <>
+          <div className={`table-wrap transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
             <table className="table admin-submissions-table">
               <thead>
                 <tr>
                   <th className="admin-select-column">
                     <input
                       type="checkbox"
-                      aria-label="Select all unassigned visible submissions"
+                      aria-label="Select all unassigned submissions on this page"
                       checked={allVisibleSelected}
-                      disabled={!selectableVisibleIds.length}
+                      disabled={!selectableVisible.length}
                       ref={(input) => {
                         if (input) input.indeterminate = someVisibleSelected && !allVisibleSelected
                       }}
@@ -542,20 +568,20 @@ export default function AdminHackathonSubmissionsPage() {
                   return (
                   <tr
                     key={submission.id}
-                    className={selectedIds.has(submission.id) ? 'is-selected' : ''}
+                    className={selected.has(submission.id) ? 'is-selected' : ''}
                   >
                     <td className="admin-select-column">
                       <input
                         type="checkbox"
                         aria-label={`Select ${submission.team_name || 'submission'}`}
-                        checked={selectedIds.has(submission.id)}
+                        checked={selected.has(submission.id)}
                         disabled={!canSelect || bulkAssigning}
                         title={
                           canSelect
                             ? undefined
                             : 'Already assigned to an evaluator'
                         }
-                        onChange={() => toggleSelected(submission.id)}
+                        onChange={() => toggleSelected(submission)}
                       />
                     </td>
                     <td>
@@ -586,6 +612,14 @@ export default function AdminHackathonSubmissionsPage() {
                         onChange={(event) => onAssign(submission.id, event.target.value || null)}
                       >
                         <option value="">Unassigned</option>
+                        {/* Someone taken off the roster keeps the rows they
+                            already hold, but is not offered anywhere else. */}
+                        {submission.assigned_evaluator_id &&
+                          !evaluatorIds.has(submission.assigned_evaluator_id) && (
+                            <option value={submission.assigned_evaluator_id}>
+                              {submission.assigned_evaluator_name || 'Assigned evaluator'}
+                            </option>
+                          )}
                         {evaluators.map((evaluator) => (
                           <option key={evaluator.id} value={evaluator.id}>
                             {evaluator.name}
@@ -594,15 +628,30 @@ export default function AdminHackathonSubmissionsPage() {
                       </Select>
                     </td>
                     <td>
-                      <Button
-                        as={Link}
-                        to={`/admin/submissions/${submission.id}`}
-                        variant="ghost"
-                        size="sm"
-                        rightIcon={<Icon name="arrowRight" size={15} />}
-                      >
-                        Review
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Only while nobody is assigned; assigning hides it at once. */}
+                        {canWithdraw(submission) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-missing hover:text-missing"
+                            disabled={assigningId === submission.id || bulkAssigning}
+                            onClick={() => setWithdrawing(submission)}
+                            leftIcon={<Icon name="trash" size={15} />}
+                          >
+                            Withdraw
+                          </Button>
+                        )}
+                        <Button
+                          as={Link}
+                          to={`/admin/submissions/${submission.id}`}
+                          variant="ghost"
+                          size="sm"
+                          rightIcon={<Icon name="arrowRight" size={15} />}
+                        >
+                          Review
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                   )
@@ -610,14 +659,26 @@ export default function AdminHackathonSubmissionsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            total={feed.total}
+            pageSize={PAGE_SIZE}
+            disabled={loading}
+            label="Submissions pages"
+            onChange={(next) => {
+              setPage(next)
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+          />
+          </>
         ) : !error && !loading ? (
           <Card>
             <CardBody>
               <EmptyState
                 icon="video"
-                title={roundSubmissions.length ? 'No matching submissions' : 'No submissions yet'}
+                title={roundSubmissionsCount ? 'No matching submissions' : 'No submissions yet'}
                 description={
-                  roundSubmissions.length
+                  roundSubmissionsCount
                     ? 'Try another search or status filter.'
                     : activeRound
                       ? `New student submissions for ${activeRound.name} will appear here.`
@@ -629,6 +690,13 @@ export default function AdminHackathonSubmissionsPage() {
         ) : null}
         </>
       )}
+
+      <WithdrawSubmissionDialog
+        submission={withdrawing}
+        onClose={() => setWithdrawing(null)}
+        onWithdrawn={onWithdrawn}
+        onAssigned={onWithdrawBlocked}
+      />
 
       <TeamDetailsModal
         open={Boolean(teamSubmission)}

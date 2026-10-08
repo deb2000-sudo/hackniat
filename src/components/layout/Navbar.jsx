@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import BrandMark from '../brand/BrandMark'
 import { useAuth } from '../../hooks/useAuth'
 import { prefetchRouteData } from '../../lib/prefetch'
 import { ROLES } from '../../utils/constants'
@@ -60,8 +61,8 @@ export default function Navbar() {
     <>
       <div className="mobile-sidebar-bar">
         <Link to={`/${user.role}`} className="brand">
-          <span className="brand__mark"><Icon name="sparkles" size={19} /></span>
-          <span className="brand__name">Drop</span>
+          <BrandMark variant="c" size={32} title="Challazo" />
+          <span className="brand__name czm-wordmark">Challazo</span>
         </Link>
         <button
           type="button"
@@ -86,8 +87,8 @@ export default function Navbar() {
       <aside className={`sidebar ${open ? 'is-open' : ''}`}>
         <div className="sidebar__header">
           <Link to={`/${user.role}`} className="brand" onClick={() => setOpen(false)}>
-            <span className="brand__mark"><Icon name="sparkles" size={20} /></span>
-            <span className="brand__name">Drop</span>
+            <BrandMark variant="c" size={34} title="Challazo" />
+            <span className="brand__name czm-wordmark">Challazo</span>
           </Link>
           <button
             type="button"
@@ -101,7 +102,7 @@ export default function Navbar() {
 
         <div className="sidebar__workspace">
           <span>{user.role === ROLES.ADMIN ? 'Administration' : 'Workspace'}</span>
-          <small>{user.role === ROLES.ADMIN ? 'Manage Drop' : 'Drop portal'}</small>
+          <small>{user.role === ROLES.ADMIN ? 'Manage Challazo' : 'Challazo portal'}</small>
         </div>
 
         <nav className="sidebar__nav" aria-label="Primary navigation">
@@ -114,7 +115,7 @@ export default function Navbar() {
               return (
                 <details
                   className={`sidebar-nav-group ${groupActive ? 'is-active' : ''}`}
-                  defaultOpen={groupActive}
+                  open={groupActive || undefined}
                   key={link.label}
                 >
                   <summary className="sidebar-link">

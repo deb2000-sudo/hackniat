@@ -65,7 +65,7 @@ export default function DropNav() {
       <div className={WRAP}>
         <div className="flex h-15 items-center justify-between">
           <a href="#top" className="text-[19px] font-semibold tracking-[-0.03em]">
-            Drop
+            Challazo
           </a>
 
           <nav className="hidden items-center gap-5 md:flex" aria-label="Primary">

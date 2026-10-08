@@ -72,7 +72,7 @@ export default function ChangePasswordPage() {
       <PageHeader
         eyebrow="Settings"
         title="Change password"
-        description="Choose a new password for your Drop account. You will need to sign in again afterward."
+        description="Choose a new password for your Challazo account. You will need to sign in again afterward."
         actions={
           <Button
             variant="secondary"

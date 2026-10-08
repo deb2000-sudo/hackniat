@@ -233,7 +233,7 @@ export default function ForgotPasswordPage() {
               'Enter the email on your account. We will send a code to it, and to the mobile number registered with it.'}
             {step === STEP.VERIFY &&
               'Confirm both codes. We check the email and the mobile number already on your account.'}
-            {step === STEP.PASSWORD && 'Choose a new password for your Drop account.'}
+            {step === STEP.PASSWORD && 'Choose a new password for your Challazo account.'}
           </p>
         </div>
 

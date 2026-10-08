@@ -1,0 +1,183 @@
+/*
+ * Auth screens (sign in, register, forgot password) on the Challazo tokens.
+ *
+ * Unlayered and scoped to `.cza`, with `cza-` classes, so it overrides the
+ * layered app styles without touching any other page. The register and
+ * reset forms still use the shared UI inputs; only `.cza-field` inputs (the
+ * sign-in form) take the styles below.
+ */
+.cza {
+  --bg: #f4f6f6; --surface: #ffffff; --surface-2: #e9ecec;
+  --ink: #0b0d0c; --muted: #656e6b; --line: #dde1e1;
+  --lime: #ccff00; --lime-deep: #a9d800; --on-lime: #0b0d0c;
+  --glow: rgba(204, 255, 0, 0.5);
+  --ok: #2e9e6b; --warn: #c8761b; --bad: #d4452c;
+  --display: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+  --body: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+html[data-theme='dark'] .cza {
+  --bg: #0a0b0b; --surface: #121514; --surface-2: #1a1e1c;
+  --ink: #f1f4f2; --muted: #8c9693; --line: #232725; --glow: rgba(204, 255, 0, 0.28);
+  --ok: #4bcb8e; --warn: #e0a550; --bad: #ff7a5e;
+  color-scheme: dark;
+}
+@media (max-width: 900px) { .cza { grid-template-columns: 1fr; } }
+
+.cza *, .cza *::before, .cza *::after { box-sizing: border-box; }
+.cza a { text-decoration: none; }
+.cza :focus-visible { outline: 2px solid var(--lime-deep); outline-offset: 3px; border-radius: 6px; }
+
+.cza-up { opacity: 0; animation: cza-fadeUp 0.75s var(--ease) forwards; }
+@keyframes cza-fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+/* ---------- brand column ---------- */
+.cza-brandside {
+  background: var(--surface); border-right: 1px solid var(--line); position: relative; overflow: hidden;
+  display: flex; flex-direction: column; padding: clamp(28px, 4vw, 46px) clamp(22px, 4.5vw, 60px);
+}
+.cza-brandside::before {
+  content: ''; position: absolute; width: 520px; height: 520px; right: -24%; top: -20%; pointer-events: none;
+  background: radial-gradient(circle, var(--glow), transparent 68%); filter: blur(30px); opacity: 0.3;
+  will-change: transform; animation: cza-float 20s ease-in-out infinite alternate;
+}
+@keyframes cza-float { to { transform: translate3d(-12%, 16%, 0) scale(1.18); } }
+.cza-brandside > * { position: relative; }
+.cza-lockup { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); align-self: flex-start; }
+.cza-bmid { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-block: 34px; }
+.cza-pill {
+  display: inline-flex; align-items: center; gap: 9px; background: var(--lime); color: var(--on-lime);
+  border: 1px solid var(--lime-deep); border-radius: 999px; padding: 8px 17px 8px 13px;
+  font-family: var(--mono); font-size: 12.5px; font-weight: 500; align-self: flex-start; margin: 0;
+}
+.cza-pdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: cza-blink 1.5s steps(1, end) infinite; }
+@keyframes cza-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0.25; } }
+.cza-display {
+  font-family: var(--display); font-weight: 700; letter-spacing: -0.035em; text-wrap: balance;
+  font-size: clamp(36px, 4.6vw, 54px); line-height: 1; margin: 26px 0 0; color: var(--ink);
+}
+.cza-display:first-child { margin-top: 0; }
+.cza-bsub { color: var(--muted); margin: 20px 0 0; font-size: 17px; max-width: 34ch; }
+.cza-points { list-style: none; margin: 38px 0 0; padding: 0; display: flex; flex-direction: column; gap: 17px; }
+.cza-points li { display: flex; align-items: flex-start; gap: 14px; font-size: 15.5px; color: var(--ink); }
+.cza-points svg { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+.cza-points circle { stroke: var(--lime-deep); opacity: 0.5; }
+.cza-points path {
+  stroke: var(--lime-deep); stroke-dasharray: 22; stroke-dashoffset: 22;
+  animation: cza-draw 0.6s var(--ease) forwards;
+}
+@keyframes cza-draw { to { stroke-dashoffset: 0; } }
+.cza-bfoot { font-family: var(--mono); font-size: 12px; color: var(--muted); margin: 0; }
+@media (max-width: 900px) {
+  .cza-brandside { border-right: 0; border-bottom: 1px solid var(--line); padding-block: 26px; }
+  .cza-bmid { padding-block: 22px 4px; }
+  .cza-points, .cza-bfoot { display: none; }
+  .cza-display { margin-top: 20px; font-size: clamp(32px, 9vw, 40px); }
+  .cza-bsub { margin-top: 14px; font-size: 15.5px; }
+}
+
+/* ---------- form column ---------- */
+.cza-formside {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  padding: clamp(56px, 6vw, 64px) clamp(20px, 5vw, 56px) clamp(32px, 5vw, 56px);
+}
+.cza-toggle {
+  position: absolute; top: clamp(16px, 2.6vw, 26px); right: clamp(16px, 2.6vw, 26px);
+  width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
+  display: grid; place-items: center; cursor: pointer; color: var(--ink);
+  transition: transform 0.4s var(--ease), border-color 0.25s;
+}
+.cza-toggle:hover { transform: rotate(-18deg) scale(1.06); border-color: var(--lime-deep); }
+.cza-toggle svg { width: 17px; height: 17px; }
+.cza-formwrap { width: 100%; max-width: 400px; opacity: 0; animation: cza-fadeUp 0.8s var(--ease) 0.18s forwards; }
+.cza-formwrap.is-wide { max-width: 560px; }
+
+.cza-title {
+  font-family: var(--display); font-weight: 700; letter-spacing: -0.035em; text-wrap: balance;
+  font-size: clamp(27px, 3vw, 32px); line-height: 1.15; margin: 0; color: var(--ink);
+}
+.cza-lede { color: var(--muted); margin: 9px 0 0; font-size: 15.5px; }
+
+.cza-notice {
+  display: flex; align-items: flex-start; gap: 9px; border-radius: 12px; padding: 12px 14px; margin-top: 22px;
+  font-size: 14px; line-height: 1.45;
+}
+.cza-notice svg { flex: none; margin-top: 1px; }
+.cza-notice b { display: block; font-weight: 600; }
+.cza-notice.is-bad { background: color-mix(in srgb, var(--bad) 10%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 32%, transparent); color: var(--bad); }
+.cza-notice.is-warn { background: color-mix(in srgb, var(--warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 32%, transparent); color: var(--warn); }
+.cza-notice.is-ok { background: color-mix(in srgb, var(--ok) 10%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 32%, transparent); color: var(--ok); }
+
+.cza-form { margin-top: 30px; display: flex; flex-direction: column; gap: 19px; }
+.cza-form > .cza-notice { margin-top: 0; }
+.cza-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cza-field label { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 7px; color: var(--ink); }
+.cza-req { width: 5px; height: 5px; border-radius: 50%; background: var(--lime-deep); }
+.cza-inwrap { position: relative; display: flex; align-items: center; }
+.cza-field input {
+  width: 100%; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 13px;
+  padding: 14px 16px; color: var(--ink); font-family: var(--body); font-size: 15.5px; line-height: 1.4;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.cza-field input::placeholder { color: var(--muted); opacity: 0.7; }
+.cza-field input:focus { outline: none; border-color: var(--lime-deep); box-shadow: 0 0 0 4px rgba(204, 255, 0, 0.18); }
+.cza-field.is-bad input { border-color: var(--bad); box-shadow: 0 0 0 4px rgba(212, 69, 44, 0.12); }
+.cza-field.is-pwd input { padding-right: 50px; }
+.cza-peek {
+  position: absolute; right: 6px; width: 38px; height: 38px; border: none; background: transparent; border-radius: 10px;
+  display: grid; place-items: center; cursor: pointer; color: var(--muted); transition: color 0.25s, background 0.25s;
+}
+.cza-peek:hover { color: var(--ink); background: var(--surface-2); }
+.cza-peek svg { width: 18px; height: 18px; }
+.cza-hint { font-family: var(--mono); font-size: 11.5px; color: var(--bad); }
+.cza-caps { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 7px; }
+.cza-caps i { width: 5px; height: 5px; border-radius: 50%; background: var(--lime-deep); }
+
+.cza-forgot {
+  align-self: flex-end; margin-top: -6px; position: relative; font-size: 14.5px; color: var(--muted); transition: color 0.25s;
+}
+.cza-forgot::after, .cza-foot a::after {
+  content: ''; position: absolute; left: 0; bottom: -2px; width: 100%;
+  transform: scaleX(0); transform-origin: right; transition: transform 0.35s var(--ease);
+}
+.cza-forgot::after { height: 1px; background: var(--lime-deep); }
+.cza-forgot:hover { color: var(--ink); }
+.cza-forgot:hover::after, .cza-foot a:hover::after { transform: scaleX(1); transform-origin: left; }
+
+.cza-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-family: var(--display); font-weight: 600;
+  font-size: 15.5px; border-radius: 13px; padding: 15px 24px; border: 1px solid var(--lime-deep); cursor: pointer; width: 100%;
+  background: var(--lime); color: var(--on-lime); box-shadow: 0 4px 0 -1px var(--lime-deep); margin-top: 4px;
+  transition: transform 0.25s var(--ease), box-shadow 0.3s var(--ease);
+}
+.cza-btn:hover { transform: translateY(-1px); box-shadow: 0 11px 26px -10px var(--glow), 0 4px 0 -1px var(--lime-deep); }
+.cza-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 -1px var(--lime-deep); }
+.cza-btn:disabled { opacity: 0.8; cursor: default; transform: none; }
+.cza-spin {
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(11, 13, 12, 0.28); border-top-color: var(--on-lime);
+  animation: cza-spin 0.7s linear infinite;
+}
+@keyframes cza-spin { to { transform: rotate(360deg); } }
+
+.cza-foot { margin: 24px 0 0; text-align: center; font-size: 14.5px; color: var(--muted); }
+.cza-foot a { font-weight: 600; color: var(--ink); position: relative; }
+.cza-foot a::after { height: 2px; background: var(--lime); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cza *, .cza *::before, .cza *::after {
+    animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.001s !important;
+  }
+  .cza-up, .cza-formwrap { opacity: 1; }
+}

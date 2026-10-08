@@ -253,11 +253,12 @@ export default function HackathonDetailPage() {
           <h1 className="mt-4 text-[32px] font-semibold tracking-[-0.035em] text-ink md:text-[44px] md:leading-[1.05]">
             {hackathon.name}
           </h1>
-          {hackathon.description ? (
-            <p className="mt-3 max-w-[70ch] text-[15px] leading-relaxed text-muted md:text-[16px]">
-              {hackathon.description}
-            </p>
-          ) : null}
+          {/* Rich text since the description moved to the editor; older plain
+              descriptions still render through RichText's Markdown path. */}
+          <RichText
+            className="markdown-body hackathon-guidelines mt-3 max-w-[70ch] text-[15px] leading-relaxed text-muted md:text-[16px]"
+            value={hackathon.description}
+          />
           <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[13.5px] font-medium text-ink/90">
             <span className="inline-flex items-center gap-2">
               <Icon name="calendar" size={17} />

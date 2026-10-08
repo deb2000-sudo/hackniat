@@ -25,6 +25,11 @@ function submissionLimitPath(hackathonId) {
   return `/hackathons/${encodeURIComponent(hackathonId)}/submission-limit`
 }
 
+/** Admin-only evaluator roster for one hackathon. */
+function evaluatorsPath(hackathonId) {
+  return `/hackathons/${encodeURIComponent(hackathonId)}/evaluators`
+}
+
 /** Admin-only report auto-publishing settings for one hackathon. */
 function reportPublishingPath(hackathonId) {
   return `/hackathons/${encodeURIComponent(hackathonId)}/report-publishing`
@@ -174,6 +179,16 @@ export const hackathonsApi = {
 
   updateSubmissionLimit: (hackathonId, maxSubmissions, options) =>
     api.put(submissionLimitPath(hackathonId), { max_submissions: maxSubmissions }, options),
+
+  /* ------------------------ Evaluator roster (admin) ---------------------- */
+  // Which approved evaluators may be assigned this hackathon's submissions.
+  // Every approved evaluator comes back, with `assigned` marking the roster.
+
+  evaluators: (hackathonId, options) => api.get(evaluatorsPath(hackathonId), options),
+
+  /** Replaces the roster. An empty list means nobody can be assigned. */
+  updateEvaluators: (hackathonId, evaluatorIds, options) =>
+    api.put(evaluatorsPath(hackathonId), { evaluator_ids: evaluatorIds }, options),
 
   /* ----------------------- Report publishing (admin) ---------------------- */
   // Approval and publishing are separate: approving records the decision,

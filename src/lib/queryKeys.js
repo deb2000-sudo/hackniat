@@ -17,6 +17,8 @@ export const queryKeys = {
   evaluationRequirements: 'evaluation-requirements:list',
   acceptedVideoTypes: 'submissions:accepted-video-types',
   adminUsers: 'admin:users',
+  /** One page of Student Management; never shares the full-list key above. */
+  adminStudentsPage: (page, q = '') => `admin:users:students:${page}:${q}`,
   adminEvaluators: 'admin:evaluators',
   adminPendingEvaluators: 'admin:pending-evaluators',
   adminOverview: 'admin:overview',
