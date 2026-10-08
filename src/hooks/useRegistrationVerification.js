@@ -92,6 +92,8 @@ export function useRegistrationVerification({
   const [phoneCooldown, setPhoneCooldown] = useState(0)
   const confirmationRef = useRef(null)
   const recaptchaRef = useRef(null)
+  /** True while an SMS send is under way — a second click must not start another. */
+  const phoneSendingRef = useRef(false)
 
   // Held in a ref so callers need not memoise the callback.
   const fieldErrorRef = useRef(onFieldError)
@@ -303,6 +305,10 @@ export function useRegistrationVerification({
   }
 
   const sendPhoneOtp = async () => {
+    // A double click, or Resend while the first send is still running, would
+    // build two reCAPTCHA widgets at once and one of them fails.
+    if (phoneSendingRef.current) return
+    phoneSendingRef.current = true
     setPhoneError('')
     setPhoneState(SENDING)
     try {
@@ -342,6 +348,8 @@ export function useRegistrationVerification({
       setPhoneState(ERROR)
       // Backend failures carry a code; anything else came from Firebase.
       setPhoneError(code ? authErrorMessage(err) : firebasePhoneMessage(err))
+    } finally {
+      phoneSendingRef.current = false
     }
   }
 

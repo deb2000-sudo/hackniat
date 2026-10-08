@@ -78,11 +78,30 @@ export function clearRecaptcha(verifier) {
  * An invisible reCAPTCHA token is single-use: signInWithPhoneNumber consumes
  * it, so reusing the same verifier for "Resend code" (or after a failed
  * attempt) fails with auth/invalid-app-credential.
+ *
+ * Each verifier also gets a brand-new element inside the container.
+ * grecaptcha remembers every element it has rendered into, and emptying that
+ * element does not make it forget — so rendering into the container itself
+ * failed with "reCAPTCHA has already been rendered in this element" whenever
+ * an earlier widget had not been cleared (a render that threw, a double
+ * click), and kept failing until the page was reloaded.
  */
 export async function createRecaptcha(previous) {
   const auth = getFirebaseAuth()
   clearRecaptcha(previous)
-  const verifier = new RecaptchaVerifier(auth, RECAPTCHA_CONTAINER_ID, { size: 'invisible' })
-  await verifier.render()
+
+  const host = document.getElementById(RECAPTCHA_CONTAINER_ID)
+  if (!host) throw new Error('Phone verification is not ready yet. Refresh the page and try again.')
+  const slot = document.createElement('div')
+  host.appendChild(slot)
+
+  const verifier = new RecaptchaVerifier(auth, slot, { size: 'invisible' })
+  try {
+    await verifier.render()
+  } catch (err) {
+    // Never stored by the caller, so tear it down here or it lingers.
+    clearRecaptcha(verifier)
+    throw err
+  }
   return verifier
 }
