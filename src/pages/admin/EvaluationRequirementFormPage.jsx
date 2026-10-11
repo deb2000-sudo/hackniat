@@ -9,8 +9,10 @@ import Button from '../../components/ui/Button'
 import Card, { CardBody } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 export default function EvaluationRequirementFormPage() {
+  const toAdminPath = useAdminPath()
   const { requirementId } = useParams()
   const navigate = useNavigate()
   const editing = !!requirementId
@@ -29,7 +31,7 @@ export default function EvaluationRequirementFormPage() {
         ? await evaluationRequirementsApi.update(requirementId, payload)
         : await evaluationRequirementsApi.create(payload)
       if (editing) {
-        navigate('/admin/evaluation-requirements', { replace: true })
+        navigate(toAdminPath('/admin/evaluation-requirements'), { replace: true })
       } else {
         setCreated(saved)
       }
@@ -55,7 +57,7 @@ export default function EvaluationRequirementFormPage() {
           {error.message}
         </Alert>
         <div>
-          <Link to="/admin/evaluation-requirements" className={BTN_GHOST}>
+          <Link to={toAdminPath('/admin/evaluation-requirements')} className={BTN_GHOST}>
             <Icon name="arrowLeft" size={17} />
             Back to requirements
           </Link>
@@ -81,13 +83,13 @@ export default function EvaluationRequirementFormPage() {
             <div className="row wrap">
               <Button
                 as={Link}
-                to={`/admin/evaluation-requirements/${created.id}/ai-scoring`}
+                to={toAdminPath(`/admin/evaluation-requirements/${created.id}/ai-scoring`)}
                 variant="accent"
                 leftIcon={<Icon name="sparkles" size={18} />}
               >
                 Set scoring
               </Button>
-              <Button as={Link} to="/admin/evaluation-requirements" variant="secondary">
+              <Button as={Link} to={toAdminPath('/admin/evaluation-requirements')} variant="secondary">
                 Back to requirements
               </Button>
             </div>
@@ -111,7 +113,7 @@ export default function EvaluationRequirementFormPage() {
               : 'Build a reusable set of submission fields for one or more hackathon rounds.'}
           </p>
         </div>
-        <Link to="/admin/evaluation-requirements" className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}>
+        <Link to={toAdminPath('/admin/evaluation-requirements')} className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}>
           <Icon name="arrowLeft" size={17} />
           Cancel
         </Link>

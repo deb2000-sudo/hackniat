@@ -30,8 +30,10 @@ import ScorecardBar from '../../components/evaluation/ScorecardBar'
 import SubmissionReport from '../../components/evaluation/SubmissionReport'
 import WithdrawSubmissionDialog from '../../components/evaluation/WithdrawSubmissionDialog'
 import { WITHDRAW_ASSIGNED_MESSAGE, canWithdraw } from '../../components/evaluation/withdraw'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 export default function AdminSubmissionDetailPage() {
+  const toAdminPath = useAdminPath()
   const { submissionId } = useParams()
   const fetcher = useCallback(
     (opts) => evaluationApi.getSubmission(submissionId, opts),
@@ -51,11 +53,13 @@ export default function AdminSubmissionDetailPage() {
   const navigate = useNavigate()
   const [confirmWithdraw, setConfirmWithdraw] = useState(false)
   // Carry the round back so the queue reopens where it was left.
-  const backToQueue = submission?.hackathon_id
-    ? `/admin/submissions/hackathons/${submission.hackathon_id}?round=${
-        Number(submission.round_index) || 0
-      }`
-    : '/admin/submissions'
+  const backToQueue = toAdminPath(
+    submission?.hackathon_id
+      ? `/admin/submissions/hackathons/${submission.hackathon_id}?round=${
+          Number(submission.round_index) || 0
+        }`
+      : '/admin/submissions',
+  )
 
   const [reviewNotes, setReviewNotes] = useState('')
   const [action, setAction] = useState('')
@@ -263,7 +267,7 @@ export default function AdminSubmissionDetailPage() {
           {error.message}
         </Alert>
         <div className="mt-5">
-          <Link to="/admin/submissions" className={BTN_GHOST}>
+          <Link to={toAdminPath('/admin/submissions')} className={BTN_GHOST}>
             <Icon name="arrowLeft" size={17} />
             Back to submissions
           </Link>

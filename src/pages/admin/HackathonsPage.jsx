@@ -5,7 +5,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { queryKeys } from '../../lib/queryKeys'
 import { richTextToPlainText } from '../../lib/richText'
-import { ROLES } from '../../utils/constants'
+import { hasPermission, PERMISSIONS } from '../../utils/access'
 import { formatDate } from '../../utils/format'
 import { getHackathonDuration, getHackathonStatus } from '../../utils/hackathons'
 import {
@@ -25,6 +25,7 @@ import DraftsInbox from '../../components/hackathons/DraftsInbox'
 import EmptyState from '../../components/ui/EmptyState'
 import Icon from '../../components/ui/Icon'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 const FILTERS = [
   { key: 'all', label: 'All events' },
@@ -158,8 +159,10 @@ function HackathonSearch({ value, onChange }) {
 }
 
 export default function HackathonsPage() {
+  const toAdminPath = useAdminPath()
   const { user } = useAuth()
-  const isAdmin = user?.role === ROLES.ADMIN
+  // Any admin-side role given this screen manages it, not only built-in Admin.
+  const isAdmin = hasPermission(user, PERMISSIONS.HACKATHONS)
   const { data, loading, error, reload } = useAsync(
     (opts) => hackathonsApi.list(opts),
     { key: queryKeys.hackathons, staleTime: 60_000 },
@@ -235,7 +238,7 @@ export default function HackathonsPage() {
             Refresh
           </button>
           {isAdmin && (
-            <Link to="/admin/hackathons/create" className={`${BTN_VOLT} w-full sm:w-auto`}>
+            <Link to={toAdminPath('/admin/hackathons/create')} className={`${BTN_VOLT} w-full sm:w-auto`}>
               <Icon name="plus" size={17} />
               Create hackathon
             </Link>
@@ -430,7 +433,7 @@ export default function HackathonsPage() {
             }
             action={
               isAdmin && filter === 'all' ? (
-                <Link to="/admin/hackathons/create" className={BTN_VOLT}>
+                <Link to={toAdminPath('/admin/hackathons/create')} className={BTN_VOLT}>
                   <Icon name="plus" size={17} />
                   Create hackathon
                 </Link>

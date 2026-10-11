@@ -11,7 +11,7 @@ import PasswordFields from './PasswordFields'
 import { authApi } from '../../api/auth'
 import { AUTH_ERROR, authErrorCode, authErrorField, authErrorMessage } from '../../api/authErrors'
 import { setCsrfToken } from '../../api/client'
-import { universitiesApi } from '../../api/universities'
+import { batchesApi, universitiesApi } from '../../api/universities'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { VERIFY, useRegistrationVerification } from '../../hooks/useRegistrationVerification'
@@ -26,6 +26,8 @@ const NIAT_ID_LENGTH = 11
 /** Shown as the placeholder and the worked example under the field. */
 const NIAT_ID_SAMPLE = 'N25H05F9974'
 
+const NO_BATCHES_MESSAGE = 'No batches are available for this university.'
+
 const INITIAL = {
   first_name: '',
   last_name: '',
@@ -33,6 +35,9 @@ const INITIAL = {
   // The campus is chosen by id: the backend owns the label, so a typed name
   // would only be a second spelling of something it already knows.
   university_id: '',
+  // Always one of the chosen university's batches; cleared whenever the
+  // university changes.
+  batch_id: '',
   niat_id: '',
   country_code: '+91',
   mobile_national: '',
@@ -63,6 +68,33 @@ export default function StudentRegisterForm() {
   const universities = Array.isArray(universityData) ? universityData : []
   const noUniversities = !universitiesLoading && !universitiesError && universities.length === 0
 
+  // Only the chosen university's batches, fetched per campus — never one
+  // combined list filtered here. The result is tagged with the university it
+  // was fetched for: on a switch the hook still holds the previous campus's
+  // batches until the new fetch lands, and those must never be offered.
+  const universityId = form.university_id
+  const {
+    data: batchData,
+    loading: batchesFetching,
+    error: batchesFetchError,
+    reload: reloadBatches,
+  } = useAsync(
+    (options) =>
+      batchesApi.list(universityId, options).then((batches) => ({ universityId, batches })),
+    {
+      key: universityId ? queryKeys.universityBatches(universityId) : null,
+      enabled: !!universityId,
+      staleTime: 30_000,
+    },
+  )
+  const batchesCurrent = !!universityId && batchData?.universityId === universityId
+  const batches = batchesCurrent && Array.isArray(batchData.batches) ? batchData.batches : []
+  const batchesError =
+    universityId && (batchesCurrent || !batchesFetching) ? batchesFetchError : null
+  const batchesLoading =
+    !!universityId && !batchesError && (!batchesCurrent || (batchesFetching && !batchData))
+  const noBatches = batchesCurrent && !batchesLoading && !batchesError && batches.length === 0
+
   const verification = useRegistrationVerification({
     email: form.email,
     countryCode: form.country_code,
@@ -71,7 +103,8 @@ export default function StudentRegisterForm() {
   })
 
   const fieldErrors = validateStudentForm(form)
-  const canSubmit = verification.bothVerified && Object.keys(fieldErrors).length === 0
+  const canSubmit =
+    verification.bothVerified && !noBatches && Object.keys(fieldErrors).length === 0
 
   const niatId = form.niat_id.trim()
   const niatValid = isNiatId(niatId)
@@ -85,6 +118,14 @@ export default function StudentRegisterForm() {
     const value = event.target.value.toUpperCase()
     setForm((current) => ({ ...current, niat_id: value }))
     setErrors((prev) => ({ ...prev, niat_id: undefined }))
+    setSubmitError('')
+  }
+
+  /** A new campus invalidates the batch: batches belong to one university. */
+  const updateUniversity = (event) => {
+    const value = event.target.value
+    setForm((current) => ({ ...current, university_id: value, batch_id: '' }))
+    setErrors((prev) => ({ ...prev, university_id: undefined, batch_id: undefined }))
     setSubmitError('')
   }
 
@@ -128,6 +169,7 @@ export default function StudentRegisterForm() {
         last_name: form.last_name.trim(),
         email: verification.email,
         university_id: form.university_id,
+        batch_id: form.batch_id,
         niat_id: form.niat_id.trim(),
         mobile_number: verification.phoneE164,
         password: form.password,
@@ -140,9 +182,16 @@ export default function StudentRegisterForm() {
       // The campus was deleted between loading the form and submitting it.
       // Drop the stale choice and reload the list so the student picks again
       // from what still exists.
-      if (authErrorCode(err) === AUTH_ERROR.UNKNOWN_UNIVERSITY) {
-        setForm((current) => ({ ...current, university_id: '' }))
+      const code = authErrorCode(err)
+      if (code === AUTH_ERROR.UNKNOWN_UNIVERSITY) {
+        setForm((current) => ({ ...current, university_id: '', batch_id: '' }))
         reloadUniversities({ force: true })
+      }
+      // The batch was deleted, or is not this university's. Either way the
+      // list on screen is out of date: drop the choice and refetch it.
+      if (code === AUTH_ERROR.UNKNOWN_BATCH || code === AUTH_ERROR.BATCH_UNIVERSITY_MISMATCH) {
+        setForm((current) => ({ ...current, batch_id: '' }))
+        reloadBatches({ force: true })
       }
       const field = authErrorField(err)
       if (field) setErrors((prev) => ({ ...prev, [field]: authErrorMessage(err) }))
@@ -155,7 +204,9 @@ export default function StudentRegisterForm() {
   const disabledReason = !canSubmit
     ? noUniversities
       ? 'Universities are not available yet. Ask an admin to add your campus.'
-      : !verification.bothVerified
+      : noBatches
+        ? NO_BATCHES_MESSAGE
+        : !verification.bothVerified
         ? 'Verify both email and mobile number to create your account.'
         : 'Fill every required field and match the password rules.'
     : ''
@@ -241,7 +292,7 @@ export default function StudentRegisterForm() {
         label="University name"
         required
         value={form.university_id}
-        onChange={update('university_id')}
+        onChange={updateUniversity}
         error={errors.university_id}
         disabled={universitiesLoading || noUniversities}
         hint={
@@ -267,6 +318,40 @@ export default function StudentRegisterForm() {
             className="link-btn"
             onClick={() => reloadUniversities({ force: true })}
           >
+            Try again
+          </button>
+        </Alert>
+      )}
+
+      {/* Disabled until a university is chosen, and filled only from that
+          university's batch list. */}
+      <Select
+        label="Batch"
+        required
+        value={form.batch_id}
+        onChange={update('batch_id')}
+        error={errors.batch_id || (noBatches ? NO_BATCHES_MESSAGE : undefined)}
+        disabled={!universityId || batchesLoading || !!batchesError || noBatches}
+      >
+        <option value="" disabled>
+          {!universityId
+            ? 'Select a university first'
+            : batchesLoading
+              ? 'Loading batches…'
+              : noBatches
+                ? 'No batches available'
+                : 'Select batch'}
+        </option>
+        {batches.map((batch) => (
+          <option key={batch.id} value={batch.id}>
+            {batch.name}
+          </option>
+        ))}
+      </Select>
+      {batchesError && (
+        <Alert variant="warning">
+          The batch list could not be loaded.{' '}
+          <button type="button" className="link-btn" onClick={() => reloadBatches({ force: true })}>
             Try again
           </button>
         </Alert>

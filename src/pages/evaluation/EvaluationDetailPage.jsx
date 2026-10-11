@@ -4,7 +4,8 @@ import { evaluationApi } from '../../api/evaluation'
 import { usePolling } from '../../hooks/usePolling'
 import { useAuth } from '../../hooks/useAuth'
 import { getScorecard } from '../../utils/scorecard'
-import { EVALUATION_STATUS, ROLE_HOME, ROLES } from '../../utils/constants'
+import { homePath } from '../../utils/access'
+import { EVALUATION_STATUS, ROLES } from '../../utils/constants'
 import PageHeader from '../../components/layout/PageHeader'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
@@ -35,7 +36,7 @@ export default function EvaluationDetailPage() {
     maxInterval: isStudent ? 30_000 : 3000,
   })
 
-  const backTo = isStudent ? '/student/evaluations' : ROLE_HOME[user?.role] || '/'
+  const backTo = isStudent ? '/student/evaluations' : homePath(user)
 
   if (loading && !session) {
     return (

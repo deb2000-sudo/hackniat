@@ -20,11 +20,13 @@ import EmptyState from '../../components/ui/EmptyState'
 import Icon from '../../components/ui/Icon'
 import Input from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 /** Neutral stat pill. Uses text-ink, not text-muted: these are numbers to read. */
 const BADGE_STAT = 'border-hairline bg-raised text-ink'
 
 export default function AdminSubmissionsPage() {
+  const toAdminPath = useAdminPath()
   const { data, loading, error, reload } = useAsync(
     (options) => evaluationApi.loadSubmissionHackathonsWithCounts(options),
     { key: queryKeys.submissionsAdminHackathons, staleTime: 30_000 },
@@ -182,7 +184,7 @@ export default function AdminSubmissionsPage() {
                   </div>
 
                   <Link
-                    to={`/admin/submissions/hackathons/${hackathon.hackathon_id}`}
+                    to={toAdminPath(`/admin/submissions/hackathons/${hackathon.hackathon_id}`)}
                     className={`${BTN_VOLT} w-full`}
                   >
                     View All Submissions

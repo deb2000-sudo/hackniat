@@ -50,8 +50,9 @@ export function AuthProvider({ children }) {
     let active = true
     ;(async () => {
       const me = await refresh()
-      // Warm role dashboards in the background while the shell paints.
-      if (me?.role) prefetchForRole(me.role)
+      // Warm role dashboards in the background while the shell paints — not
+      // for an unfinished profile, which the API refuses with 403s.
+      if (me?.role && me.profile_completed !== false) prefetchForRole(me.role)
       if (active) setLoading(false)
     })()
     return () => {
@@ -125,7 +126,7 @@ export function AuthProvider({ children }) {
       await authApi.login(credentials)
       const me = await refresh()
       // Prefetch starts before navigation so the destination page often hits a warm cache.
-      if (me?.role) prefetchForRole(me.role)
+      if (me?.role && me.profile_completed !== false) prefetchForRole(me.role)
       return me
     },
     [refresh],

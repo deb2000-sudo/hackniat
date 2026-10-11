@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { adminApi } from '../../api/admin'
-import { formatDate, formatDateTime } from '../../utils/format'
+import { authErrorCode } from '../../api/authErrors'
+import { formatDate, formatDateTime, formatMobile, MOBILE_KEYS, universityOf } from '../../utils/format'
 import Alert from '../ui/Alert'
 import Avatar from '../ui/Avatar'
 import { ApprovalBadge, RoleBadge } from '../ui/Badge'
@@ -8,9 +9,6 @@ import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import Modal from '../ui/Modal'
 import { modalScrollable } from '../ui/uiClasses'
-
-/** Where a mobile number may live on a user record, most likely first. */
-const MOBILE_KEYS = ['mobile_no', 'mobile_number', 'phone_number', 'mobile', 'phone']
 
 /** Fields placed in their own rows, so "Other details" never repeats them. */
 const KNOWN_KEYS = new Set([
@@ -27,20 +25,6 @@ const HIDDEN_KEY = /password|hash|token|secret|otp|session|csrf|salt/i
 const isBlank = (value) => value === undefined || value === null || String(value).trim() === ''
 const firstOf = (...values) => values.find((value) => !isBlank(value))
 
-/** "+919640198259" → "+91 96401 98259". Other countries are left as entered. */
-function formatMobile(value) {
-  const raw = String(value || '').replace(/\s+/g, '')
-  const india = raw.match(/^\+91(\d{5})(\d{5})$/)
-  return india ? `+91 ${india[1]} ${india[2]}` : String(value || '')
-}
-
-function universityOf(user) {
-  const university = user.university
-  if (university && typeof university === 'object') {
-    return firstOf(university.display_label, university.name)
-  }
-  return firstOf(user.university_name, university)
-}
 
 const humanise = (key) => key.replace(/_/g, ' ').replace(/^\w/, (letter) => letter.toUpperCase())
 
@@ -152,13 +136,52 @@ function Section({ title, children }) {
 }
 
 /**
- * Read-only profile of one student. Opens straight away with the table row,
- * then fills in from GET /admin/user/{id}, which carries fields the list does
- * not (mobile number, university, verification). If that fetch fails, the row
- * is still shown.
+ * What differs between a student's panel and an evaluator's: where the full
+ * record comes from, and the words. The rows themselves are shared.
  */
-export default function StudentDetailsModal({ user: row, onClose, onEdit }) {
-  // Keyed per user by the caller, so this state never carries between students.
+const VARIANTS = {
+  student: {
+    title: 'Student details',
+    unnamed: 'Unnamed student',
+    load: (id, options) => adminApi.getUser(id, options),
+    deleteLabel: 'Delete student',
+  },
+  evaluator: {
+    title: 'Evaluator details',
+    unnamed: 'Unnamed evaluator',
+    load: (id, options) => adminApi.getEvaluator(id, options),
+    deleteLabel: 'Delete evaluator',
+  },
+}
+
+const configFor = (variant) => VARIANTS[variant] || VARIANTS.student
+
+/** Codes meaning the account is gone, not that the fetch failed. */
+const GONE_CODES = ['USER_NOT_FOUND', 'EVALUATOR_NOT_FOUND']
+
+/** "pending" → "Pending". An evaluator with no status is approved, as in the table. */
+const approvalLabel = (status) => humanise(String(status || 'approved'))
+
+/**
+ * Read-only profile of one student or evaluator. Opens straight away with the
+ * table row, then fills in from the full record (GET /admin/user/{id} or
+ * GET /admin/evaluators/{id}), which carries fields the list does not, such as
+ * the mobile number. If that fetch fails, the row is still shown.
+ *
+ * Students get the Academic section (NIAT ID, university); evaluators get Work
+ * (employee ID, approval status) and never the student-only fields.
+ * `onEdit` and `onDelete` are optional: each button shows only when passed.
+ */
+export default function UserDetailsModal({
+  user: row,
+  variant = 'student',
+  onClose,
+  onEdit,
+  onDelete,
+}) {
+  const config = configFor(variant)
+  const isEvaluator = variant === 'evaluator'
+  // Keyed per user by the caller, so this state never carries between people.
   const [full, setFull] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -166,8 +189,8 @@ export default function StudentDetailsModal({ user: row, onClose, onEdit }) {
   useEffect(() => {
     const controller = new AbortController()
     let active = true
-    adminApi
-      .getUser(row.id, { signal: controller.signal })
+    configFor(variant)
+      .load(row.id, { signal: controller.signal })
       .then((payload) => {
         if (!active) return
         setFull(payload?.user || payload || null)
@@ -175,17 +198,21 @@ export default function StudentDetailsModal({ user: row, onClose, onEdit }) {
       })
       .catch((err) => {
         if (!active || err?.name === 'AbortError') return
-        setLoadError(err?.message || 'Could not load the full profile.')
+        setLoadError(
+          GONE_CODES.includes(authErrorCode(err))
+            ? `This ${variant} no longer exists.`
+            : err?.message || 'Could not load the full profile.',
+        )
         setLoading(false)
       })
     return () => {
       active = false
       controller.abort()
     }
-  }, [row.id])
+  }, [row.id, variant])
 
   const user = { ...row, ...(full || {}) }
-  const name = firstOf(user.name, [user.first_name, user.last_name].filter(Boolean).join(' '), 'Unnamed student')
+  const name = firstOf(user.name, [user.first_name, user.last_name].filter(Boolean).join(' '), config.unnamed)
   const mobileRaw = firstOf(...MOBILE_KEYS.map((key) => user[key]))
   const mobileDial = mobileRaw ? String(mobileRaw).replace(/\s+/g, '') : ''
   const university = universityOf(user)
@@ -195,16 +222,29 @@ export default function StudentDetailsModal({ user: row, onClose, onEdit }) {
     <Modal
       open
       onClose={onClose}
-      title="Student details"
+      title={config.title}
       className={modalScrollable}
       footer={
         <>
+          {/* Passed only for a Super Admin — nobody else may delete. */}
+          {onDelete && (
+            <Button
+              variant="danger"
+              onClick={() => onDelete(user)}
+              leftIcon={<Icon name="trash" size={16} />}
+              className="mr-auto"
+            >
+              {config.deleteLabel}
+            </Button>
+          )}
           <Button variant="ghost" onClick={onClose}>
             Close
           </Button>
-          <Button variant="secondary" onClick={() => onEdit(user)} leftIcon={<Icon name="edit" size={16} />}>
-            Edit name
-          </Button>
+          {onEdit && (
+            <Button variant="secondary" onClick={() => onEdit(user)} leftIcon={<Icon name="edit" size={16} />}>
+              Edit name
+            </Button>
+          )}
         </>
       }
     >
@@ -213,7 +253,9 @@ export default function StudentDetailsModal({ user: row, onClose, onEdit }) {
           <Avatar name={name} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[17px] font-semibold tracking-[-0.01em] text-ink">{name}</p>
-            <p className="truncate text-[13.5px] text-muted">{user.niat_id || user.email}</p>
+            <p className="truncate text-[13.5px] text-muted">
+              {(isEvaluator ? user.employee_id : user.niat_id) || user.email}
+            </p>
           </div>
           <div className="flex items-center gap-1.5">
             <RoleBadge role={user.role} />
@@ -245,12 +287,19 @@ export default function StudentDetailsModal({ user: row, onClose, onEdit }) {
           />
         </Section>
 
-        <Section title="Academic">
-          <Row label="NIAT ID" value={user.niat_id} copy={user.niat_id} mono pending={loading} />
-          {user.employee_id && <Row label="Employee ID" value={user.employee_id} copy={user.employee_id} mono />}
-          <Row label="University" value={university} pending={loading} />
-          <Row label="Location" value={user.university_location} pending={loading} />
-        </Section>
+        {isEvaluator ? (
+          <Section title="Work">
+            <Row label="Employee ID" value={user.employee_id} copy={user.employee_id} mono pending={loading} />
+            <Row label="Approval status" value={approvalLabel(user.approval_status)} />
+          </Section>
+        ) : (
+          <Section title="Academic">
+            <Row label="NIAT ID" value={user.niat_id} copy={user.niat_id} mono pending={loading} />
+            {user.employee_id && <Row label="Employee ID" value={user.employee_id} copy={user.employee_id} mono />}
+            <Row label="University" value={university} pending={loading} />
+            <Row label="Location" value={user.university_location} pending={loading} />
+          </Section>
+        )}
 
         <Section title="Account">
           <Row label="First name" value={user.first_name} pending={loading} />

@@ -20,6 +20,7 @@ import Icon from '../../components/ui/Icon'
 import Input, { Select } from '../../components/ui/Input'
 import Pagination from '../../components/ui/Pagination'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 /** Neutral stat pill. text-ink, not text-muted: these are numbers to read. */
 const BADGE_STAT = 'border-hairline bg-raised text-ink'
@@ -31,6 +32,7 @@ const PAGE_SIZE = 10
 const SEARCH_DELAY_MS = 300
 
 export default function AdminHackathonSubmissionsPage() {
+  const toAdminPath = useAdminPath()
   const { hackathonId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   // The hackathon and its evaluator roster. Submissions load separately, a
@@ -380,7 +382,7 @@ export default function AdminHackathonSubmissionsPage() {
             </Button>
             <Button
               as={Link}
-              to="/admin/submissions"
+              to={toAdminPath('/admin/submissions')}
               variant="secondary"
               leftIcon={<Icon name="arrowLeft" size={17} />}
             >
@@ -644,7 +646,7 @@ export default function AdminHackathonSubmissionsPage() {
                         )}
                         <Button
                           as={Link}
-                          to={`/admin/submissions/${submission.id}`}
+                          to={toAdminPath(`/admin/submissions/${submission.id}`)}
                           variant="ghost"
                           size="sm"
                           rightIcon={<Icon name="arrowRight" size={15} />}

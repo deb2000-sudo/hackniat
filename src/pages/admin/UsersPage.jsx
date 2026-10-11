@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { adminApi } from '../../api/admin'
+import { authErrorCode } from '../../api/authErrors'
 import { useAsync } from '../../hooks/useAsync'
+import { useAuth } from '../../hooks/useAuth'
+import { invalidateQueries } from '../../lib/queryCache'
 import { queryKeys } from '../../lib/queryKeys'
+import { ROLES } from '../../utils/constants'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Card, { CardBody } from '../../components/ui/Card'
@@ -15,8 +19,9 @@ import { RoleBadge, ApprovalBadge } from '../../components/ui/Badge'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
 import Pagination from '../../components/ui/Pagination'
-import StudentDetailsModal from '../../components/admin/StudentDetailsModal'
-import { formatDate } from '../../utils/format'
+import DeleteUserModal from '../../components/admin/DeleteUserModal'
+import UserDetailsModal from '../../components/admin/UserDetailsModal'
+import { accountName, formatDate } from '../../utils/format'
 
 /** Rows per page of the Student Management table. */
 const PAGE_SIZE = 15
@@ -53,7 +58,31 @@ function toStudentPage(payload, page, search) {
   return { rows: students.slice(start, start + PAGE_SIZE), total: students.length }
 }
 
+/** What deleting a student does, shown in the confirmation. */
+const STUDENT_DELETE_CONSEQUENCES = [
+  'Their profile and login are removed — this email can no longer sign in to this account.',
+  'They are removed from every round and team. If they led a team, the next member becomes leader; a team with no one left is removed.',
+  'Submissions they already made stay on the hackathon.',
+]
+
+function deleteErrorMessage(err) {
+  switch (authErrorCode(err)) {
+    case 'USER_NOT_FOUND':
+      return 'This student no longer exists. The list has been refreshed.'
+    case 'NOT_A_STUDENT':
+      return 'Only student accounts can be deleted here.'
+    default:
+      return err?.status === 403
+        ? 'Only a Super Admin can delete students.'
+        : err?.message || 'Unable to delete this student.'
+  }
+}
+
 export default function UsersPage() {
+  const { user: me } = useAuth()
+  // Deleting a student is Super Admin only; the API refuses anyone else (403).
+  const canDelete = me?.role === ROLES.SUPER_ADMIN
+
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -70,7 +99,7 @@ export default function UsersPage() {
   // Keyed per page and search — never queryKeys.adminUsers, which the
   // dashboard prefetch fills with the full user array.
   const pageKey = queryKeys.adminStudentsPage(page, search)
-  const { data, loading, error, reload } = useAsync(
+  const { data, loading, error, reload, setData } = useAsync(
     async (opts) => {
       const payload = await adminApi.getUsersPage(
         { page, page_size: PAGE_SIZE, role: 'student', q: search || undefined },
@@ -97,6 +126,60 @@ export default function UsersPage() {
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+
+  // The student awaiting delete confirmation.
+  const [deleting, setDeleting] = useState(null)
+  const [deleteError, setDeleteError] = useState('')
+  const [removing, setRemoving] = useState(false)
+
+  const askDelete = (user) => {
+    setDeleting(user)
+    setDeleteError('')
+  }
+
+  const studentName = (user) => accountName(user, 'this student')
+
+  const confirmDelete = async () => {
+    if (!deleting) return
+    setRemoving(true)
+    setDeleteError('')
+
+    const result = await adminApi.deleteUser(deleting.id).then(
+      () => 'deleted',
+      (err) => {
+        setDeleteError(deleteErrorMessage(err))
+        // Already gone: drop the stale row the same way a delete would.
+        return authErrorCode(err) === 'USER_NOT_FOUND' ? 'missing' : null
+      },
+    )
+
+    setRemoving(false)
+    if (!result) return
+    if (result === 'deleted') setDeleting(null)
+
+    // Every cached student page (and the dashboard's counts) is now off by
+    // one, so drop them; only this page is patched in place.
+    invalidateQueries(queryKeys.adminUsers)
+    invalidateQueries(queryKeys.adminOverview)
+
+    const lastOnPage = rows.length <= 1
+    if (lastOnPage && page > 1) {
+      // The page emptied: step back one, which refetches (its cache is gone).
+      setPage(page - 1)
+    } else if (lastOnPage || result === 'missing') {
+      reload({ force: true })
+    } else {
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              rows: current.rows.filter((row) => row.id !== deleting.id),
+              total: Math.max(0, (current.total || 0) - 1),
+            }
+          : current,
+      )
+    }
+  }
 
   const openEdit = (user) => {
     setEditing(user)
@@ -201,14 +284,27 @@ export default function UsersPage() {
                   <td>{u.approval_status ? <ApprovalBadge status={u.approval_status} /> : '—'}</td>
                   <td className="text-sm text-muted">{formatDate(u.created_at)}</td>
                   <td style={{ textAlign: 'right' }}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setViewing(u)}
-                      leftIcon={<Icon name="eye" size={16} />}
-                    >
-                      View details
-                    </Button>
+                    <div className="row" style={{ justifyContent: 'flex-end', gap: 6 }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewing(u)}
+                        leftIcon={<Icon name="eye" size={16} />}
+                      >
+                        View details
+                      </Button>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--danger"
+                          onClick={() => askDelete(u)}
+                          aria-label={`Delete ${studentName(u)}`}
+                          title="Delete student"
+                        >
+                          <Icon name="trash" size={17} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -237,7 +333,7 @@ export default function UsersPage() {
       ) : null}
 
       {viewing && (
-        <StudentDetailsModal
+        <UserDetailsModal
           key={viewing.id}
           user={viewing}
           onClose={() => setViewing(null)}
@@ -245,8 +341,26 @@ export default function UsersPage() {
             setViewing(null)
             openEdit(user)
           }}
+          onDelete={
+            canDelete
+              ? (user) => {
+                  setViewing(null)
+                  askDelete(user)
+                }
+              : undefined
+          }
         />
       )}
+
+      <DeleteUserModal
+        account={deleting}
+        title="Delete student"
+        consequences={STUDENT_DELETE_CONSEQUENCES}
+        error={deleteError}
+        deleting={removing}
+        onCancel={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+      />
 
       <Modal
         open={!!editing}

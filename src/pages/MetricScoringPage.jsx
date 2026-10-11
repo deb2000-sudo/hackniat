@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { evaluationRequirementsApi } from '../api/evaluationRequirements'
 import { useAuth } from '../hooks/useAuth'
-import { ROLES } from '../utils/constants'
+import { hasPermission, PERMISSIONS } from '../utils/access'
 import {
   alignMetricsToRequirement,
   buildStandardScorecardPreset,
@@ -28,6 +28,7 @@ import Icon from '../components/ui/Icon'
 import Input, { ColorInput, Select, Textarea } from '../components/ui/Input'
 import Modal from '../components/ui/Modal'
 import { LoadingBlock } from '../components/ui/Spinner'
+import { useAdminPath } from '../hooks/useAdminPath'
 
 function emptySegment() {
   return {
@@ -387,8 +388,10 @@ function SegmentLevels({ segment, isAdmin, errors, errorPrefix, onAdd, onChange,
 }
 
 export default function MetricScoringPage() {
+  const toAdminPath = useAdminPath()
   const { user } = useAuth()
-  const isAdmin = user?.role === ROLES.ADMIN
+  // Any admin-side role given this screen manages it, not only built-in Admin.
+  const isAdmin = hasPermission(user, PERMISSIONS.REQUIREMENTS)
   const { requirementId: requirementIdParam } = useParams()
   const requirementId = requirementIdParam?.trim() || ''
 
@@ -596,7 +599,7 @@ export default function MetricScoringPage() {
   }
 
   if (!requirementId) {
-    return <Navigate to="/admin/evaluation-requirements" replace />
+    return <Navigate to={toAdminPath('/admin/evaluation-requirements')} replace />
   }
 
   return (
@@ -615,7 +618,7 @@ export default function MetricScoringPage() {
         </div>
         <Button
           as={Link}
-          to="/admin/evaluation-requirements"
+          to={toAdminPath('/admin/evaluation-requirements')}
           variant="secondary"
           leftIcon={<Icon name="arrowLeft" size={17} />}
         >
@@ -791,7 +794,7 @@ export default function MetricScoringPage() {
                         <p className="text-[13.5px] text-muted">
                           Video scoring uses the Working Demo Video Analysis prompt under{' '}
                           <Link
-                            to="/admin/ai-prompts"
+                            to={toAdminPath('/admin/ai-prompts')}
                             className="font-medium text-ink underline decoration-hairline underline-offset-4 hover:text-volt-ink hover:decoration-volt-ink"
                           >
                             AI prompts

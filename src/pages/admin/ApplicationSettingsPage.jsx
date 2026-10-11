@@ -9,6 +9,7 @@ import Icon from '../../components/ui/Icon'
 import Input, { PasswordInput } from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 const PROFILE_FORM = {
   current_profile_password: '',
@@ -220,6 +221,7 @@ function ResetSummary({ result, excluded = [], onDismiss, onDashboard }) {
 }
 
 export default function ApplicationSettingsPage() {
+  const toAdminPath = useAdminPath()
   const navigate = useNavigate()
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -418,7 +420,7 @@ export default function ApplicationSettingsPage() {
             result={resetResult}
             excluded={resultExcluded}
             onDismiss={() => setResetResult(null)}
-            onDashboard={() => navigate('/admin')}
+            onDashboard={() => navigate(toAdminPath('/admin'))}
           />
         </div>
       )}

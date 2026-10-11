@@ -14,6 +14,8 @@ export const queryKeys = {
   hackathon: (id) => `hackathon:${id}`,
   themes: 'themes:list',
   universities: 'universities:list',
+  /** One university's batches; there is deliberately no all-batches key. */
+  universityBatches: (universityId) => `batches:university:${universityId}`,
   evaluationRequirements: 'evaluation-requirements:list',
   acceptedVideoTypes: 'submissions:accepted-video-types',
   adminUsers: 'admin:users',
@@ -22,4 +24,7 @@ export const queryKeys = {
   adminEvaluators: 'admin:evaluators',
   adminPendingEvaluators: 'admin:pending-evaluators',
   adminOverview: 'admin:overview',
+  accessPermissions: 'access:permissions',
+  accessRoles: 'access:roles',
+  accessUsers: 'access:users',
 }

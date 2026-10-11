@@ -84,6 +84,7 @@ export function validateStudentForm(form) {
   if (!required(form.last_name)) errors.last_name = 'Last name is required'
   if (!isEmail(form.email)) errors.email = 'Enter a valid email'
   if (!required(form.university_id)) errors.university_id = 'Select your university'
+  else if (!required(form.batch_id)) errors.batch_id = 'Select your batch'
   if (!required(form.niat_id)) errors.niat_id = 'NIAT ID is required'
   else if (!isNiatId(form.niat_id)) {
     errors.niat_id = 'A NIAT ID is 11 characters starting with N, like N26K01A0021'

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import Icon from '../ui/Icon'
 import { DRAFT_STEPS, draftStepLabel } from './draftSteps'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 /** "3 minutes ago" style stamp, falling back to the raw date for anything old. */
 function lastEdited(value) {
@@ -19,6 +20,7 @@ function lastEdited(value) {
  * rather than something you lose. Each row resumes exactly where it stopped.
  */
 export default function DraftsInbox({ drafts, onDiscard, discardingId = '' }) {
+  const toAdminPath = useAdminPath()
   if (!drafts?.length) return null
 
   return (
@@ -57,7 +59,7 @@ export default function DraftsInbox({ drafts, onDiscard, discardingId = '' }) {
               </ol>
 
               <div className="drafts-inbox__actions">
-                <Link to={`/admin/hackathons/create?draftId=${encodeURIComponent(draft.id)}`}>
+                <Link to={toAdminPath(`/admin/hackathons/create?draftId=${encodeURIComponent(draft.id)}`)}>
                   Continue editing
                   <Icon name="arrowRight" size={15} />
                 </Link>

@@ -27,3 +27,27 @@ export const universitiesApi = {
   /** Admin only. */
   delete: (universityId, options) => api.delete(`${PATH}/${encode(universityId)}`, options),
 }
+
+/**
+ * Batches belong to one university and are only ever read for one university
+ * at a time — the register form refetches on every campus change rather than
+ * filtering a combined list, so a batch can never be offered under the wrong
+ * campus. Names are unique per university (409 BATCH_EXISTS), not globally.
+ *
+ * `list` is public, like the university list; the writes are admin-only.
+ */
+export const batchesApi = {
+  list: (universityId, options) => api.get(`${PATH}/${encode(universityId)}/batches`, options),
+
+  /** Admin only. Body: `{ name }`. */
+  create: (universityId, payload, options) =>
+    api.post(`${PATH}/${encode(universityId)}/batches`, payload, options),
+
+  /** Admin only. Body: `{ name }`. */
+  update: (universityId, batchId, payload, options) =>
+    api.patch(`${PATH}/${encode(universityId)}/batches/${encode(batchId)}`, payload, options),
+
+  /** Admin only. */
+  delete: (universityId, batchId, options) =>
+    api.delete(`${PATH}/${encode(universityId)}/batches/${encode(batchId)}`, options),
+}

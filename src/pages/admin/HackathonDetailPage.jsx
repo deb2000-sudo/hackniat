@@ -10,6 +10,7 @@ import RichText from '../../components/ui/RichText'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { ROLES } from '../../utils/constants'
+import { hasPermission, PERMISSIONS } from '../../utils/access'
 import { formatDate } from '../../utils/format'
 import { getHackathonDuration, getHackathonStatus } from '../../utils/hackathons'
 import {
@@ -29,6 +30,7 @@ import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import Modal from '../../components/ui/Modal'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 const PRIZES = [
   { key: 'winner', label: 'Winner', place: '01' },
@@ -83,10 +85,12 @@ function totalPrizePool(prizes) {
 }
 
 export default function HackathonDetailPage() {
+  const toAdminPath = useAdminPath()
   const { hackathonId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isAdmin = user?.role === ROLES.ADMIN
+  // Any admin-side role given this screen manages it, not only built-in Admin.
+  const isAdmin = hasPermission(user, PERMISSIONS.HACKATHONS)
   const isEvaluator = user?.role === ROLES.EVALUATOR
   const isStudent = user?.role === ROLES.STUDENT
   const {
@@ -219,14 +223,14 @@ export default function HackathonDetailPage() {
                   lives on its own page, so it is reachable from where the
                   hackathon is being looked at rather than only mid-wizard. */}
               <Link
-                to={`/admin/hackathons/${hackathon.id}/settings`}
+                to={toAdminPath(`/admin/hackathons/${hackathon.id}/settings`)}
                 className={`${BTN_GHOST} w-full sm:w-auto`}
               >
                 <Icon name="settings" size={16} />
                 Settings
               </Link>
               <Link
-                to={`/admin/hackathons/${hackathon.id}/edit`}
+                to={toAdminPath(`/admin/hackathons/${hackathon.id}/edit`)}
                 className={`${BTN_GHOST} w-full sm:w-auto`}
               >
                 <Icon name="edit" size={16} />
@@ -497,7 +501,7 @@ export default function HackathonDetailPage() {
                   <Alert variant="warning" title="Evaluator guidelines not configured">
                     Add evaluator guidelines so reviewers know how to score submissions.{' '}
                     <Link
-                      to={`/admin/hackathons/${hackathon.id}/edit`}
+                      to={toAdminPath(`/admin/hackathons/${hackathon.id}/edit`)}
                       className="font-medium underline"
                     >
                       Edit hackathon

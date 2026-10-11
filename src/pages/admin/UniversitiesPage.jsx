@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { universitiesApi } from '../../api/universities'
 import { useAsync } from '../../hooks/useAsync'
+import { invalidateQueries } from '../../lib/queryCache'
 import { queryKeys } from '../../lib/queryKeys'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
@@ -101,6 +102,8 @@ export default function UniversitiesPage() {
     setSaving(false)
     if (!done) return
 
+    // The backend deletes the university's batches with it.
+    invalidateQueries(queryKeys.universityBatches(deleting.id))
     setDeleting(null)
     reload({ force: true })
   }
@@ -249,8 +252,9 @@ export default function UniversitiesPage() {
         <div className="stack-md">
           {formError && <Alert variant="danger">{formError}</Alert>}
           <p>
-            Delete <strong>{deleting?.display_label || deleting?.name}</strong>? Students can no
-            longer register under this campus.
+            Delete <strong>{deleting?.display_label || deleting?.name}</strong>? Its batches are
+            deleted too, and students can no longer register under this campus. Students already
+            registered keep their university and batch on their profile.
           </p>
         </div>
       </Modal>

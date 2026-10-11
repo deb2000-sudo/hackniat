@@ -13,6 +13,7 @@ import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 /**
  * Per-hackathon settings. Admin only — the route sits behind the admin guard,
@@ -23,6 +24,7 @@ import { LoadingBlock } from '../../components/ui/Spinner'
  * hackathon-level switches (publishing and the rest) still belong here.
  */
 export default function HackathonSettingsPage() {
+  const toAdminPath = useAdminPath()
   const { hackathonId } = useParams()
   const { data: hackathon, loading, error } = useAsync(() => hackathonsApi.get(hackathonId))
 
@@ -59,7 +61,7 @@ export default function HackathonSettingsPage() {
           <>
             <Button
               as={Link}
-              to={`/admin/hackathons/${hackathonId}/edit`}
+              to={toAdminPath(`/admin/hackathons/${hackathonId}/edit`)}
               variant="secondary"
               leftIcon={<Icon name="edit" size={17} />}
             >
