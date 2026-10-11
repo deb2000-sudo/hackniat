@@ -128,7 +128,7 @@ function ResetSummary({ result, excluded = [], onDismiss, onDashboard }) {
             </h3>
             <p className="mt-1 max-w-2xl text-[13.5px] text-muted">
               {result?.message ||
-                'Wipeable application data was cleared. Admin accounts and the Profile Password were preserved.'}
+                'Wipeable application data was cleared. The Super Admin account and the Profile Password were preserved.'}
             </p>
           </div>
         </div>
@@ -376,7 +376,7 @@ export default function ApplicationSettingsPage() {
   return (
     <div className={`${WRAP_APP} py-7 md:py-10`}>
       <header className="mb-7 sm:mb-9">
-        <span className={EYEBROW}>Admin</span>
+        <span className={EYEBROW}>Super Admin</span>
         <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
           Application Settings
         </h1>
@@ -500,8 +500,8 @@ export default function ApplicationSettingsPage() {
                 Reset Database
               </h3>
               <p className="mt-1 text-[13.5px] text-muted">
-                Permanently deletes wipeable collections. Admin accounts and the Profile Password
-                are preserved.
+                Permanently deletes wipeable collections. Only the Super Admin account and the
+                Profile Password are preserved.
               </p>
             </div>
           </div>
@@ -578,13 +578,13 @@ export default function ApplicationSettingsPage() {
             ) : excludedNames.length > 0 ? (
               <Alert variant="warning" title={`${excludedNames.length} kept, ${selectedCollections.length} to delete`}>
                 Deselected collections are left untouched:{' '}
-                <span className={MONO}>{excludedNames.join(', ')}</span>. Admins and the Profile
-                Password configuration are kept either way.
+                <span className={MONO}>{excludedNames.join(', ')}</span>. The Super Admin account
+                and the Profile Password are kept either way.
               </Alert>
             ) : (
               <Alert variant="warning">
-                Admins and the Profile Password configuration are kept. Everything listed above
-                will be removed.
+                The Super Admin account and the Profile Password are kept. Everything listed
+                above will be removed. Admin logins are removed.
               </Alert>
             )}
 
@@ -650,7 +650,8 @@ export default function ApplicationSettingsPage() {
             {excludedNames.length
               ? `${selectedCollections.length} of ${wipeableCollections.length} collections will be permanently deleted.`
               : 'All wipeable collections will be permanently deleted.'}{' '}
-            Admin accounts and the Profile Password will be preserved.
+            The Super Admin account and the Profile Password will be preserved. Admin logins
+            will be removed.
           </p>
           {excludedNames.length > 0 && (
             <p className="text-[13.5px] text-muted">

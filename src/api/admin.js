@@ -80,14 +80,14 @@ export const adminApi = {
   updateUser: (userId, payload, options) =>
     api.patch(`/admin/user/${userId}`, payload, options),
 
-  /** Application settings (profile password + wipeable collections). */
-  getSettings: (options) => api.get('/admin/settings', options),
+  /** Application settings (profile password + wipeable collections). Super Admin only. */
+  getSettings: (options) => api.get('/super-admin/settings', options),
 
-  /** Change the Profile Password used for destructive admin actions. */
+  /** Change the Profile Password used for destructive actions. Does not sign the user out. */
   changeProfilePassword: (payload, options) =>
-    api.post('/admin/settings/change-profile-password', payload, options),
+    api.post('/super-admin/settings/change-profile-password', payload, options),
 
   /** Wipe wipeable collections after Profile Password + confirm phrase. */
   resetDatabase: (payload, options) =>
-    api.post('/admin/settings/reset-database', payload, options),
+    api.post('/super-admin/settings/reset-database', payload, options),
 }

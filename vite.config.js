@@ -6,6 +6,7 @@ import babel from '@rolldown/plugin-babel'
 const proxyPrefixes = [
   '/health',
   '/auth',
+  '/super-admin',
   '/admin',
   '/hackathons',
   '/submissions',
