@@ -4,11 +4,13 @@ import { AuthProvider } from './context/AuthContext'
 import {
   ADMIN_BASE,
   ADMIN_ROLES,
+  adminPath,
   COMPLETE_PROFILE_PATH,
-  NO_ACCESS_PATH,
   PERMISSIONS,
+  STAFF_BASE,
   SUPER_ADMIN_BASE,
 } from './utils/access'
+import { useAuth } from './hooks/useAuth'
 import { ROLES } from './utils/constants'
 import Layout from './components/layout/Layout'
 import CompleteProfileRoute from './components/routing/CompleteProfileRoute'
@@ -70,21 +72,32 @@ const ProfileCompletionPage = lazy(() => import('./pages/auth/ProfileCompletionP
 const ChangePasswordPage = lazy(() => import('./pages/settings/ChangePasswordPage'))
 const MetricScoringPage = lazy(() => import('./pages/MetricScoringPage'))
 
+/** Redirect to an admin-shell path under the signed-in user's own prefix. */
+function ShellRedirect({ to }) {
+  const { user } = useAuth()
+  return <Navigate to={adminPath(to, user)} replace />
+}
+
 /** An admin-shell screen that also needs one permission key. */
 function AdminRoute({ permission }) {
   return <ProtectedRoute roles={ADMIN_ROLES} permission={permission} />
 }
 
 /**
- * The admin-shell screens under one browser prefix. Registered twice — /admin
- * for Admin and custom roles, /super-admin for Super Admin — with the same page
- * components; ProtectedRoute moves anyone on the other role's prefix across.
+ * The admin-shell screens under one browser prefix. Registered three times —
+ * /admin for Admin, /super-admin for Super Admin, /staff for custom roles —
+ * with the same page components; ProtectedRoute moves anyone on another
+ * role's prefix to their own.
  * Each group also needs its screen's permission key, so a custom role only
  * reaches the screens saved on it.
  */
 function adminShellRoutes(base) {
   return (
     <Fragment key={base}>
+      {/* A custom role with no screens lands here; no permission needed. */}
+      <Route element={<ProtectedRoute roles={ADMIN_ROLES} />}>
+        <Route path={`${base}/no-access`} element={<NoAccessPage />} />
+      </Route>
       <Route element={<AdminRoute permission={PERMISSIONS.OVERVIEW} />}>
         <Route path={base} element={<AdminDashboard />} />
       </Route>
@@ -195,7 +208,7 @@ export default function App() {
                 <Route path="/hackathons/:hackathonId" element={<HackathonDetailPage />} />
                 <Route
                   path="/ai-scoring"
-                  element={<Navigate to="/admin/evaluation-requirements" replace />}
+                  element={<ShellRedirect to="/admin/evaluation-requirements" />}
                 />
               </Route>
 
@@ -228,12 +241,11 @@ export default function App() {
                 />
               </Route>
 
-              {/* Admin shell: built-in Admin, Super Admin, and custom roles. */}
-              <Route element={<ProtectedRoute roles={ADMIN_ROLES} />}>
-                <Route path={NO_ACCESS_PATH} element={<NoAccessPage />} />
-              </Route>
+              {/* Admin shell under each role's prefix: /admin (Admin),
+                  /super-admin (Super Admin), /staff (custom roles). */}
               {adminShellRoutes(ADMIN_BASE)}
               {adminShellRoutes(SUPER_ADMIN_BASE)}
+              {adminShellRoutes(STAFF_BASE)}
 
               <Route path="/404" element={<NotFoundPage />} />
               <Route path="*" element={<Navigate to="/404" replace />} />

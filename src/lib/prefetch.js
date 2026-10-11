@@ -40,8 +40,9 @@ export function prefetchForRole(role) {
 /** Prefetch by route path (nav hover / intent). */
 export function prefetchRouteData(rawPathname) {
   if (!rawPathname) return
-  // Super Admin's /super-admin… screens read the same data as /admin….
-  const pathname = String(rawPathname).replace(/^\/super-admin(?=\/|$)/, '/admin')
+  // /super-admin… (Super Admin) and /staff… (custom roles) are the same
+  // screens as /admin…, reading the same data.
+  const pathname = String(rawPathname).replace(/^\/(super-admin|staff)(?=\/|$)/, '/admin')
 
   if (pathname === '/student' || pathname === '/student/evaluations') {
     prefetchQuery(queryKeys.submissionsMine, () => evaluationApi.listSubmissions())

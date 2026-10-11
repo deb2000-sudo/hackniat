@@ -31,40 +31,49 @@ export const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.CUSTOM]
  */
 export const ADMIN_BASE = '/admin'
 export const SUPER_ADMIN_BASE = '/super-admin'
+/** Custom roles (e.g. Program Manager): same screens, their own address. */
+export const STAFF_BASE = '/staff'
 
-const ADMIN_PREFIX_RE = /^\/admin(?=\/|$)/
-const SUPER_ADMIN_PREFIX_RE = /^\/super-admin(?=\/|$)/
+/** All three prefixes are one admin shell; only the address bar differs. */
+export const SHELL_BASES = [ADMIN_BASE, SUPER_ADMIN_BASE, STAFF_BASE]
+const SHELL_PREFIX_RE = /^\/(admin|super-admin|staff)(?=\/|$)/
 
 /** The admin-shell prefix for this user's address bar. */
 export function adminBase(user) {
-  return user?.role === ROLES.SUPER_ADMIN ? SUPER_ADMIN_BASE : ADMIN_BASE
+  if (user?.role === ROLES.SUPER_ADMIN) return SUPER_ADMIN_BASE
+  if (user?.role === ROLES.CUSTOM) return STAFF_BASE
+  return ADMIN_BASE
 }
 
 /**
  * Re-home an admin-shell path onto this user's prefix: `/admin/themes` becomes
- * `/super-admin/themes` for a Super Admin and the reverse for anyone else.
- * Paths outside the admin shell (e.g. /hackathons) come back unchanged.
+ * `/super-admin/themes` for a Super Admin and `/staff/themes` for a custom
+ * role, and any of the three maps back to `/admin/…` for built-in Admin.
+ * Paths outside the shell (e.g. /hackathons) come back unchanged. These are
+ * browser addresses only — API paths stay /admin/….
  */
 export function adminPath(path, user) {
-  const base = adminBase(user)
-  return String(path).replace(ADMIN_PREFIX_RE, base).replace(SUPER_ADMIN_PREFIX_RE, base)
+  return String(path).replace(SHELL_PREFIX_RE, adminBase(user))
 }
 
 /**
- * Where this user should be instead, when the path is on the other role's
- * prefix (a Super Admin on /admin…, an Admin or custom role on /super-admin…);
- * otherwise null. Students and evaluators are left to the role guards.
+ * Where this user should be instead, when the path is in the admin shell under
+ * another role's prefix (a Program Manager on /admin or /super-admin, an Admin
+ * on /staff, …); otherwise null. Students and evaluators are left to the role
+ * guards.
  */
 export function crossAdminRedirect(pathname, user) {
   if (!user || !isAdminRole(user.role)) return null
-  const wrong = user.role === ROLES.SUPER_ADMIN ? ADMIN_PREFIX_RE : SUPER_ADMIN_PREFIX_RE
-  return wrong.test(pathname) ? adminPath(pathname, user) : null
+  const match = String(pathname).match(SHELL_PREFIX_RE)
+  if (!match || match[0] === adminBase(user)) return null
+  return adminPath(pathname, user)
 }
 
 /**
  * Where each admin screen lives, in sidebar order, written with the /admin
  * prefix — run through adminPath() for the user. A user is sent to the first
- * one they may open: /admin for Admin, /super-admin for Super Admin.
+ * one they may open: /admin for Admin, /super-admin for Super Admin, /staff…
+ * for a custom role.
  */
 export const ADMIN_SCREENS = [
   { permission: PERMISSIONS.OVERVIEW, to: '/admin' },
@@ -93,7 +102,10 @@ export function needsProfileCompletion(user) {
   return user?.profile_completed === false
 }
 
-/** Landing page for a custom role that has no screens at all. */
+/**
+ * Landing page for a custom role that has no screens at all, written with the
+ * /admin prefix like ADMIN_SCREENS — run it through adminPath().
+ */
 export const NO_ACCESS_PATH = '/admin/no-access'
 
 /**
@@ -146,7 +158,7 @@ export function homePath(user) {
   if (!isAdminRole(user.role)) return ROLE_HOME[user.role] || '/'
   const allowed = userPermissions(user)
   const screen = ADMIN_SCREENS.find((entry) => allowed.includes(entry.permission))
-  return screen ? adminPath(screen.to, user) : NO_ACCESS_PATH
+  return adminPath(screen ? screen.to : NO_ACCESS_PATH, user)
 }
 
 const ROLE_LABELS = {
