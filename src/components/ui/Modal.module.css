@@ -42,6 +42,21 @@
     max-height: calc(88vh - 72px);
   }
 
+  /* A tall read-only dialog: fits the viewport and scrolls its body, so the
+     title bar and footer never leave the screen. */
+  .scrollable {
+    max-width: min(600px, 96vw);
+    max-height: min(88vh, 820px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .scrollable .body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   .header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
   .body { padding: 24px; }
   .footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--surface-2); }

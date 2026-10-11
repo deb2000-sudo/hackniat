@@ -15,6 +15,7 @@ import { RoleBadge, ApprovalBadge } from '../../components/ui/Badge'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
 import Pagination from '../../components/ui/Pagination'
+import StudentDetailsModal from '../../components/admin/StudentDetailsModal'
 import { formatDate } from '../../utils/format'
 
 /** Rows per page of the Student Management table. */
@@ -91,6 +92,8 @@ export default function UsersPage() {
   if (data && !stale && !loading && page > totalPages) setPage(totalPages)
 
   const [editing, setEditing] = useState(null)
+  // The student whose details are open.
+  const [viewing, setViewing] = useState(null)
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -201,10 +204,10 @@ export default function UsersPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => openEdit(u)}
-                      leftIcon={<Icon name="edit" size={16} />}
+                      onClick={() => setViewing(u)}
+                      leftIcon={<Icon name="eye" size={16} />}
                     >
-                      Edit
+                      View details
                     </Button>
                   </td>
                 </tr>
@@ -232,6 +235,18 @@ export default function UsersPage() {
           </CardBody>
         </Card>
       ) : null}
+
+      {viewing && (
+        <StudentDetailsModal
+          key={viewing.id}
+          user={viewing}
+          onClose={() => setViewing(null)}
+          onEdit={(user) => {
+            setViewing(null)
+            openEdit(user)
+          }}
+        />
+      )}
 
       <Modal
         open={!!editing}
