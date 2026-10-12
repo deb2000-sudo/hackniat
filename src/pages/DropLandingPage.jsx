@@ -24,6 +24,9 @@ const FILTERS = [
   { id: 'closed', label: 'Closed' },
   { id: 'solo', label: 'Solo' },
   { id: 'team', label: 'Team' },
+  // Team-size filter for team_mode "open". Not id 'open': that is already the
+  // "still accepting entries" status filter above.
+  { id: 'any_size', label: 'Any size' },
 ]
 
 const matchesFilter = (filter, hackathon) => {
@@ -36,10 +39,14 @@ const matchesFilter = (filter, hackathon) => {
     case 'upcoming':
     case 'closed':
       return hackathon.status === filter
+    // Team size comes from team_mode alone. max_team_size is null on a
+    // no-fixed-size hackathon, which matched neither Solo nor Team before.
     case 'solo':
-      return hackathon.team_mode === 'solo' || hackathon.max_team_size === 1
+      return hackathon.team_mode === 'solo'
     case 'team':
-      return hackathon.team_mode === 'team' || hackathon.max_team_size > 1
+      return hackathon.team_mode === 'team'
+    case 'any_size':
+      return hackathon.team_mode === 'open'
     default:
       return true
   }

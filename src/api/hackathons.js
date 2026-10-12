@@ -118,7 +118,11 @@ export const hackathonsApi = {
   participation: (hackathonId, roundIndex, options) =>
     api.get(`${roundPath(hackathonId, roundIndex)}/participation`, options),
 
-  /** Enroll solo. Solo rounds only (max_team_size === 1). */
+  /**
+   * Enroll on your own. Valid for a single-person round and for a no-fixed-size
+   * (`open`) round; a sized team round (`multi`) answers 400 TEAM_REQUIRED.
+   * createTeam and joinTeam are for multi and open rounds.
+   */
   enrollSolo: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/enroll/solo`, undefined, options),
 
@@ -189,6 +193,22 @@ export const hackathonsApi = {
   /** Replaces the roster. An empty list means nobody can be assigned. */
   updateEvaluators: (hackathonId, evaluatorIds, options) =>
     api.put(evaluatorsPath(hackathonId), { evaluator_ids: evaluatorIds }, options),
+
+  /* ------------------------- Visibility (admin) ------------------------- */
+  // Which students see this hackathon: university AND batch must both match.
+  // The response carries the rule plus the full university and batch
+  // catalogues, so the form needs no other calls.
+
+  visibility: (hackathonId, options) =>
+    api.get(`/hackathons/${encodeURIComponent(hackathonId)}/visibility`, options),
+
+  /**
+   * Body: `{ all_universities, all_batches, university_ids, batch_ids }`. An
+   * "all" flag stays open to rows added later, so send it as true with an
+   * empty id list — never every current id with the flag false.
+   */
+  updateVisibility: (hackathonId, payload, options) =>
+    api.put(`/hackathons/${encodeURIComponent(hackathonId)}/visibility`, payload, options),
 
   /* ----------------------- Report publishing (admin) ---------------------- */
   // Approval and publishing are separate: approving records the decision,

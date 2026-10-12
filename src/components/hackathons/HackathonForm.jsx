@@ -19,6 +19,17 @@ import {
 } from './draftSteps'
 import { roundStatusBadge } from './roundStatus'
 import { BADGE } from '../drop/theme'
+import {
+  DEFAULT_MULTI,
+  roundTeamSizeErrors,
+  TEAM_MIN,
+  TEAM_SIZE_MODES,
+  TEAM_SIZES,
+  teamSizeError,
+  teamSizeFromRound,
+  teamSizeHint,
+  teamSizePayload,
+} from '../../utils/teamSize'
 
 const EMPTY_PRIZES = {
   winner: '',
@@ -59,19 +70,6 @@ const GUIDELINE_MAX_LENGTH = 10000
 function guidelineBlank(value) {
   return isRichTextEmpty(value)
 }
-// A team round is one flexible size rather than a fixed headcount: the API
-// stores any 2–5 choice as 5 and lets the leader submit from 2 members up. So
-// the editor offers the two real choices instead of sizes that all mean the
-// same thing.
-const TEAM_SIZE_OPTIONS = [
-  { value: '1', label: 'Solo' },
-  { value: '5', label: '2-5 Members' },
-]
-
-/** Older rounds stored 2, 3 or 4; they are all the flexible team round now. */
-function teamSizeChoice(value) {
-  return Number(value) > 1 ? '5' : '1'
-}
 // Round 1 is the hackathon itself, so it is always present and cannot be
 // removed. Everything from round 2 onwards is optional and deletable.
 const REQUIRED_ROUNDS = 1
@@ -83,6 +81,8 @@ function emptyRound() {
     start_date: '',
     end_date: '',
     evaluation_requirement_id: '',
+    team_size_mode: 'single', // 'single' | 'multi' | 'open'
+    min_team_size: '1',
     max_team_size: '1',
     working_demo_video_required: true,
     auto_ai_evaluation: false,
@@ -120,8 +120,12 @@ function createInitialForm(initialValue) {
         end_date: round.end_date || '',
         evaluation_requirement_id: round.evaluation_requirement_id || '',
         // Backward compatibility: rounds saved before per-round settings
-        // existed inherit the hackathon-level flags.
-        max_team_size: teamSizeChoice(round.max_team_size || initialValue.max_team_size || 1),
+        // existed inherit the hackathon-level size.
+        ...teamSizeFromRound({
+          ...round,
+          max_team_size:
+            round.max_team_size !== undefined ? round.max_team_size : initialValue.max_team_size,
+        }),
         published: round.published === true,
         round_status: round.round_status || '',
         working_demo_video_required:
@@ -197,6 +201,8 @@ function validate(form, banner, { editing = false, initialForm = null } = {}) {
     if (round.start_date && round.end_date && round.end_date < round.start_date) {
       errors[`timeline.${index}.end_date`] = 'Round end date must be on or after its start date'
     }
+    const sizeError = teamSizeError(round)
+    if (sizeError) errors[`timeline.${index}.team_size`] = sizeError
     if (form.start_date && form.end_date) {
       if (round.start_date && round.start_date < form.start_date) {
         errors[`timeline.${index}.start_date`] =
@@ -280,7 +286,7 @@ function cleanForm(form) {
       start_date: round.start_date || null,
       end_date: round.end_date || null,
       evaluation_requirement_id: round.evaluation_requirement_id || null,
-      max_team_size: Number(round.max_team_size || 1),
+      ...teamSizePayload(round),
       working_demo_video_required: round.working_demo_video_required !== false,
       auto_ai_evaluation: round.auto_ai_evaluation === true,
       github_ai_evaluation: round.github_ai_evaluation === true,
@@ -327,6 +333,8 @@ export default function HackathonForm({
   onSubmit,
   submitting,
   submitError,
+  /** The failed save request, when the parent has it; round errors are read from it. */
+  submitErrorCause = null,
   /* Draft mode: the wizard persists each section as it goes and finishes with
      publish, instead of holding everything in memory until one final POST. */
   draftId = '',
@@ -459,6 +467,9 @@ export default function HackathonForm({
     }
   }
 
+  // Round errors the API returned on the last create/update, by round.
+  const serverRoundErrors = roundTeamSizeErrors(submitErrorCause)
+
   const updateRoundFlag = (index, key) => (event) => {
     const { checked } = event.target
     setForm((current) => ({
@@ -486,6 +497,42 @@ export default function HackathonForm({
       [`timeline.${index}.${key}`]: undefined,
       form: undefined,
     }))
+  }
+
+  /** Apply a change to one round's team-size fields and clear its error. */
+  const changeTeamSize = (index, changes) => {
+    setForm((current) => ({
+      ...current,
+      timeline: current.timeline.map((round, roundIndex) =>
+        roundIndex === index ? { ...round, ...changes(round) } : round,
+      ),
+    }))
+    setErrors((current) => ({ ...current, [`timeline.${index}.team_size`]: undefined, form: undefined }))
+  }
+
+  const updateTeamMode = (index) => (event) => {
+    const mode = event.target.value
+    changeTeamSize(index, (round) => {
+      if (mode === 'single') return { team_size_mode: 'single', min_team_size: '1', max_team_size: '1' }
+      if (mode === 'open') return { team_size_mode: 'open', min_team_size: '1', max_team_size: '' }
+      // Back into multi: keep a valid range the round already had.
+      const kept = round.team_size_mode === 'multi' && !teamSizeError(round)
+      return { team_size_mode: 'multi', ...(kept ? {} : DEFAULT_MULTI) }
+    })
+  }
+
+  /** Raising the minimum past the maximum pulls the maximum up to it. */
+  const updateTeamMin = (index) => (event) => {
+    const min = event.target.value
+    changeTeamSize(index, (round) => ({
+      min_team_size: min,
+      max_team_size: Number(round.max_team_size) < Number(min) ? min : round.max_team_size,
+    }))
+  }
+
+  const updateTeamMax = (index) => (event) => {
+    const max = event.target.value
+    changeTeamSize(index, () => ({ max_team_size: max }))
   }
 
   const removeRound = (index) => {
@@ -548,6 +595,7 @@ export default function HackathonForm({
       moveToStep(nextIndex)
     } catch (err) {
       setStepError(err.message || 'Could not save this section. Try again.')
+      setErrors((current) => ({ ...current, ...roundTeamSizeErrors(err) }))
     } finally {
       setSavingStep(false)
     }
@@ -577,6 +625,7 @@ export default function HackathonForm({
       const blamed = draftErrorStep(err)
       if (blamed) moveToStep(draftStepIndex(blamed))
       setStepError(err.message || 'The draft could not be published.')
+      setErrors((current) => ({ ...current, ...roundTeamSizeErrors(err) }))
     } finally {
       setSavingStep(false)
     }
@@ -994,18 +1043,62 @@ export default function HackathonForm({
 
                 {/* Per-round participation and evaluation settings. These used
                     to be hackathon-wide; each round now carries its own. */}
-                <Select
-                  label="Team size"
-                  value={round.max_team_size}
-                  onChange={updateRound(index, 'max_team_size')}
-                  hint="Solo lets each student submit alone. A team round takes 2 to 5 members including the leader, and the leader can submit once there are at least 2."
-                >
-                  {TEAM_SIZE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
+                <div>
+                  <div
+                    className={`grid grid-cols-1 gap-3 ${
+                      round.team_size_mode === 'multi' ? 'md:grid-cols-3' : ''
+                    }`}
+                  >
+                    <Select
+                      label="Team size"
+                      value={round.team_size_mode}
+                      onChange={updateTeamMode(index)}
+                    >
+                      {TEAM_SIZE_MODES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                    {round.team_size_mode === 'multi' && (
+                      <>
+                        <Select
+                          label="Minimum participants"
+                          value={round.min_team_size}
+                          onChange={updateTeamMin(index)}
+                        >
+                          {TEAM_SIZES.map((size) => (
+                            <option key={size} value={String(size)}>
+                              {size}
+                            </option>
+                          ))}
+                        </Select>
+                        <Select
+                          label="Maximum participants"
+                          value={round.max_team_size}
+                          onChange={updateTeamMax(index)}
+                        >
+                          {TEAM_SIZES.filter((size) => size >= Number(round.min_team_size || TEAM_MIN)).map(
+                            (size) => (
+                              <option key={size} value={String(size)}>
+                                {size}
+                              </option>
+                            ),
+                          )}
+                        </Select>
+                      </>
+                    )}
+                  </div>
+                  {errors[`timeline.${index}.team_size`] ||
+                  serverRoundErrors[`timeline.${index}.team_size`] ? (
+                    <span className="field__error" role="alert">
+                      {errors[`timeline.${index}.team_size`] ||
+                        serverRoundErrors[`timeline.${index}.team_size`]}
+                    </span>
+                  ) : (
+                    <span className="field__hint">{teamSizeHint(round)}</span>
+                  )}
+                </div>
 
                 <label className="hackathon-video-toggle">
                   <input

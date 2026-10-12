@@ -26,6 +26,9 @@ export default function HackathonFormPage({ draftFlow = false }) {
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  // The failed request itself, so the form can put a round-level validation
+  // error (e.g. a team size the API rejected) under that round.
+  const [submitErrorCause, setSubmitErrorCause] = useState(null)
   const [bootstrapError, setBootstrapError] = useState('')
 
   // Landing on /create with no draft opens one and puts its id in the URL, so a
@@ -55,6 +58,7 @@ export default function HackathonFormPage({ draftFlow = false }) {
   const save = async (fields) => {
     setSubmitting(true)
     setSubmitError('')
+    setSubmitErrorCause(null)
     try {
       const saved = editing
         ? await hackathonsApi.update(hackathonId, fields)
@@ -62,6 +66,7 @@ export default function HackathonFormPage({ draftFlow = false }) {
       navigate(`/hackathons/${saved.id || hackathonId}`, { replace: true })
     } catch (err) {
       setSubmitError(err.message || `Unable to ${editing ? 'update' : 'create'} the hackathon.`)
+      setSubmitErrorCause(err)
     } finally {
       setSubmitting(false)
     }
@@ -168,6 +173,7 @@ export default function HackathonFormPage({ draftFlow = false }) {
         onSubmit={save}
         submitting={submitting}
         submitError={submitError}
+        submitErrorCause={submitErrorCause}
         draftId={draftId}
         initialStep={data?.current_step || ''}
         initialCompletedSteps={data?.completed_steps || []}

@@ -12,7 +12,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { ROLES } from '../../utils/constants'
 import { hasPermission, PERMISSIONS } from '../../utils/access'
 import { formatDate } from '../../utils/format'
-import { getHackathonDuration, getHackathonStatus } from '../../utils/hackathons'
+import { getHackathonDuration, getHackathonStatus, teamModeFallbackLabel } from '../../utils/hackathons'
 import {
   BADGE,
   BADGE_CLOSED,
@@ -383,10 +383,7 @@ export default function HackathonDetailPage() {
                             {/* The API's own label ("2-5 Members") when it
                                 sends one — a team round is a range, not a
                                 fixed headcount. */}
-                            {round.team_mode_label ||
-                              (Number(round.max_team_size) > 1
-                                ? `Team of ${Number(round.min_team_size) || 2}-${round.max_team_size}`
-                                : 'Solo')}
+                            {round.team_mode_label || teamModeFallbackLabel(round)}
                           </span>
                           {(round.start_date || round.end_date) && (
                             <span className={`${ROUND_PILL} ${ROUND_PILL_NEUTRAL}`}>

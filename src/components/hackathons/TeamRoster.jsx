@@ -2,18 +2,26 @@ import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 
 /**
- * Team members with the leader called out, plus a size counter.
+ * Team members with the leader called out, plus a size counter:
  *
- * A team round accepts a range, so the counter reads "2 of 2–5": the roster is
- * already big enough to submit and can still grow. Only the top of the range
- * counts as full.
+ * - no fixed size (max_members null): "3 members"
+ * - exact size: "2 of 3"
+ * - a range: "2 of 2–6" — already big enough to submit, and can still grow
+ *
+ * "· Team full" only when the API says so (a sized team at its maximum).
  */
 export default function TeamRoster({ team, minMembers }) {
   const members = team?.members || []
   const count = Number(team?.member_count ?? members.length) || members.length
-  const max = team?.max_members || members.length
-  const min = Number(minMembers) || 0
-  const allowed = min > 1 && max > min ? `${min}–${max}` : String(max)
+  const max = team?.max_members == null ? null : Number(team.max_members)
+  const min = Number(team?.min_members ?? minMembers) || 0
+  const unit = (n) => (n === 1 ? 'member' : 'members')
+  const counter =
+    max == null
+      ? `${count} ${unit(count)}`
+      : min > 1 && min < max
+        ? `${count} of ${min}–${max}`
+        : `${count} of ${max}`
 
   return (
     <div className="stack-sm">
@@ -22,7 +30,7 @@ export default function TeamRoster({ team, minMembers }) {
           {team?.team_name || 'Your team'}
         </span>
         <span className="text-[13px] text-muted">
-          {count} of {allowed} {max === 1 ? 'member' : 'members'}
+          {counter}
           {team?.is_full ? ' · Team full' : ''}
         </span>
       </div>

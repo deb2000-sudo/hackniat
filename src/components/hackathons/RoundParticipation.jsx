@@ -4,6 +4,7 @@ import Alert from '../ui/Alert'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import { formatDate } from '../../utils/format'
+import { teamModeFallbackLabel } from '../../utils/hackathons'
 import { BADGE, MONO } from '../drop/theme'
 import ParticipationPanel from './ParticipationPanel'
 import {
@@ -31,11 +32,9 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
   const teamLabel =
     participation?.team_mode_label ||
     round.team_mode_label ||
-    // Fallback for a round that predates the label: a team round is the range
-    // "2-5 Members", never a single headcount.
-    (Number(round.max_team_size || 1) === 1
-      ? 'Solo'
-      : `${Number(round.min_team_size) || 2}-${round.max_team_size} Members`)
+    // Fallback for a round that predates the label. An open round has no max
+    // and must not read as a single-person round.
+    teamModeFallbackLabel(round)
   const videoRequired =
     participation?.working_demo_video_required ?? round.working_demo_video_required !== false
   const status = roundStatusBadge(round)

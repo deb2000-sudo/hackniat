@@ -11,8 +11,8 @@ export function participationErrorCode(err) {
 }
 
 const MESSAGES = {
-  TEAM_REQUIRED: 'This hackathon is played in teams. Choose whether you are the leader or a member.',
-  SOLO_HACKATHON: 'This hackathon is solo — enroll on your own to continue.',
+  TEAM_REQUIRED: 'This round is played in teams. Choose whether you are the leader or a member.',
+  SOLO_HACKATHON: 'This round is for a single person — enroll on your own to continue.',
   ALREADY_ENROLLED: 'You are already enrolled in this hackathon.',
   INVALID_CODE: 'Invalid code. Check the six digits with your team leader.',
   EXPIRED: 'That code has expired. Ask your leader to generate a new one.',
@@ -26,6 +26,9 @@ const MESSAGES = {
     'No approved evaluations yet, so there is nothing to rank. Approve at least one submission first.',
   ALREADY_PUBLISHED: 'This round is already published.',
   TEAM_NAME_REQUIRED: 'Enter a team name.',
+  // The hackathon's visibility rule no longer includes this student's
+  // university and batch (it can change while the page is open).
+  NOT_VISIBLE: 'This hackathon is not open to your university and batch.',
 }
 
 /** Human-readable text for a participation failure. */

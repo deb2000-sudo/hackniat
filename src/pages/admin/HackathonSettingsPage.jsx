@@ -4,6 +4,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { formatDate } from '../../utils/format'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
+import HackathonVisibilityPanel from '../../components/hackathons/HackathonVisibilityPanel'
 import ManageEvaluatorsPanel from '../../components/hackathons/ManageEvaluatorsPanel'
 import ReportPublishingPanel from '../../components/hackathons/ReportPublishingPanel'
 import SubmissionLimitPanel from '../../components/hackathons/SubmissionLimitPanel'
@@ -80,6 +81,15 @@ export default function HackathonSettingsPage() {
       />
 
       <section className="flex flex-col gap-4">
+        <Accordion
+          icon="university"
+          title="Hackathon visibility"
+          description="Choose which universities and batches see this hackathon on their dashboard."
+          lazy
+        >
+          <HackathonVisibilityPanel key={`visibility-${hackathonId}`} hackathonId={hackathonId} />
+        </Accordion>
+
         <Accordion
           icon="upload"
           title="Submissions"
