@@ -231,6 +231,26 @@ export const hackathonsApi = {
       options,
     ),
 
+  /* -------------------- Bulk approval (Super Admin only) ------------------ */
+  // Counts for the "Approve evaluations" section: pending_review_count,
+  // approved_count (already on the leaderboard) and skipped_count (still with
+  // the evaluator).
+
+  evaluationApprovals: (hackathonId, options) =>
+    api.get(`/hackathons/${encodeURIComponent(hackathonId)}/evaluation-approvals`, options),
+
+  /**
+   * Approves every evaluation the evaluators have submitted for this
+   * hackathon. Answers with approved_now, leaderboard_eligible, skipped and
+   * failed: [{ submission_id, reason }].
+   */
+  approveAllEvaluations: (hackathonId, options) =>
+    api.post(
+      `/hackathons/${encodeURIComponent(hackathonId)}/evaluation-approvals/approve-all`,
+      undefined,
+      options,
+    ),
+
   /* --------------------- Video Analysis prompts (admin) ------------------- */
   // Per-hackathon copies of the Application → Video Analysis templates. A
   // hackathon runs on the global prompts until an admin saves one here, so

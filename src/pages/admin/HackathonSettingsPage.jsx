@@ -1,9 +1,12 @@
 import { Link, useParams } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
+import { useAuth } from '../../hooks/useAuth'
+import { ROLES } from '../../utils/constants'
 import { formatDate } from '../../utils/format'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
+import BulkApprovePanel from '../../components/hackathons/BulkApprovePanel'
 import HackathonVisibilityPanel from '../../components/hackathons/HackathonVisibilityPanel'
 import ManageEvaluatorsPanel from '../../components/hackathons/ManageEvaluatorsPanel'
 import ReportPublishingPanel from '../../components/hackathons/ReportPublishingPanel'
@@ -26,6 +29,7 @@ import { useAdminPath } from '../../hooks/useAdminPath'
  */
 export default function HackathonSettingsPage() {
   const toAdminPath = useAdminPath()
+  const { user } = useAuth()
   const { hackathonId } = useParams()
   const { data: hackathon, loading, error } = useAsync(() => hackathonsApi.get(hackathonId))
 
@@ -107,6 +111,18 @@ export default function HackathonSettingsPage() {
         >
           <ReportPublishingPanel key={hackathonId} hackathonId={hackathonId} />
         </Accordion>
+
+        {/* Shared page; bulk approval is Super Admin only (the API agrees). */}
+        {user?.role === ROLES.SUPER_ADMIN ? (
+          <Accordion
+            icon="shield"
+            title="Approve evaluations"
+            description="Approve every evaluation an evaluator has submitted, so those scores count on the leaderboard."
+            lazy
+          >
+            <BulkApprovePanel key={`approve-${hackathonId}`} hackathonId={hackathonId} />
+          </Accordion>
+        ) : null}
 
         <Accordion
           icon="users"
