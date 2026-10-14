@@ -26,14 +26,10 @@ export function prefetchForRole(role) {
   // Custom roles are skipped: their screens vary, and warming one they cannot
   // open would only fetch a 403.
   if (role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN) {
-    // Same loader as the page: this key holds the per-list shape it reads.
-    prefetchQuery(queryKeys.adminOverview, () => adminApi.loadOverview())
+    // Overview only. Submissions load when that page opens, or when its nav
+    // item is hovered (prefetchRouteData).
+    prefetchQuery(queryKeys.adminOverview, () => adminApi.getOverview())
     prefetchQuery(queryKeys.hackathons, () => hackathonsApi.list())
-    // Must match what AdminSubmissionsPage reads from this key — warming it
-    // with a bare array made the page render as empty.
-    prefetchQuery(queryKeys.submissionsAdminHackathons, () =>
-      evaluationApi.loadSubmissionHackathonsWithCounts(),
-    )
   }
 }
 
@@ -57,7 +53,7 @@ export function prefetchRouteData(rawPathname) {
   }
   if (pathname === '/admin') {
     // Same loader as the page: this key holds the per-list shape it reads.
-    prefetchQuery(queryKeys.adminOverview, () => adminApi.loadOverview())
+    prefetchQuery(queryKeys.adminOverview, () => adminApi.getOverview())
     prefetchQuery(queryKeys.hackathons, () => hackathonsApi.list())
   }
   if (pathname === '/admin/submissions') {

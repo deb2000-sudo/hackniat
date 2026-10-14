@@ -10,11 +10,12 @@ import Button from '../../components/ui/Button'
 import Card, { CardBody } from '../../components/ui/Card'
 import EmptyState from '../../components/ui/EmptyState'
 import Icon from '../../components/ui/Icon'
-import Input from '../../components/ui/Input'
+import Input, { Select } from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { COLLEGE_TYPES } from '../../utils/constants'
 
-const EMPTY_FORM = { name: '', location: '' }
+const EMPTY_FORM = { name: '', location: '', college_type: COLLEGE_TYPES.NIAT }
 
 /**
  * Campus catalogue behind the student register form.
@@ -49,7 +50,12 @@ export default function UniversitiesPage() {
 
   const openEdit = (university) => {
     setEditing(university)
-    setForm({ name: university.name || '', location: university.location || '' })
+    setForm({
+      name: university.name || '',
+      location: university.location || '',
+      // A university saved before college types existed is NIAT.
+      college_type: university.college_type || COLLEGE_TYPES.NIAT,
+    })
     setFormError('')
   }
 
@@ -68,7 +74,7 @@ export default function UniversitiesPage() {
     setSaving(true)
     setFormError('')
 
-    const payload = { name, location }
+    const payload = { name, location, college_type: form.college_type || COLLEGE_TYPES.NIAT }
     const saved = await (editing?.id
       ? universitiesApi.update(editing.id, payload)
       : universitiesApi.create(payload)
@@ -138,6 +144,7 @@ export default function UniversitiesPage() {
               <tr>
                 <th>Name</th>
                 <th>Location</th>
+                <th>College type</th>
                 <th aria-label="Actions" />
               </tr>
             </thead>
@@ -150,6 +157,7 @@ export default function UniversitiesPage() {
                     <div className="text-xs text-muted">{university.display_label}</div>
                   </td>
                   <td>{university.location}</td>
+                  <td>{university.college_type || COLLEGE_TYPES.NIAT}</td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="row" style={{ justifyContent: 'flex-end', gap: 6 }}>
                       <button
@@ -231,6 +239,18 @@ export default function UniversitiesPage() {
             hint="City or campus, e.g. Hyderabad."
             placeholder="Hyderabad"
           />
+          <Select
+            label="College type"
+            required
+            value={form.college_type}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, college_type: event.target.value }))
+            }
+            hint="NIAT students enter a NIAT ID. Non NIAT students enter a College ID."
+          >
+            <option value={COLLEGE_TYPES.NIAT}>NIAT</option>
+            <option value={COLLEGE_TYPES.NON_NIAT}>Non NIAT</option>
+          </Select>
         </div>
       </Modal>
 

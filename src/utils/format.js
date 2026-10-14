@@ -129,3 +129,18 @@ export function universityOf(user) {
   return firstFilled(user?.university_name, university)
 }
 
+/** Shortest run of digits treated as part of a mobile number. */
+const MIN_PHONE_DIGITS = 4
+
+/**
+ * What the search box sends. A mobile number is typed many ways ("+91 96401
+ * 98259", "96401-98259", "9640198259"), so anything that looks like one is
+ * sent as its digits only — "919640198259" and "9640198259" both sit inside
+ * the stored "+919640198259". Everything else is sent as typed.
+ */
+export function normalizeSearch(raw) {
+  const text = String(raw || '').trim()
+  const digits = text.replace(/\D/g, '')
+  const looksLikePhone = /^\+?[\d\s().-]+$/.test(text) && digits.length >= MIN_PHONE_DIGITS
+  return looksLikePhone ? digits : text
+}

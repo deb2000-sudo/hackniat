@@ -64,6 +64,24 @@ export const authApi = {
   /** `{ session_id, email, mobile_number, employee_id }` once both checks pass. */
   profileComplete: (payload) => api.post('/auth/profile/complete', payload),
 
+  /**
+   * Public: which registration channels need an OTP right now,
+   * `{ email_verification_enabled, mobile_verification_enabled }`. A channel
+   * that is off is still collected on the form, just not verified.
+   */
+  registrationConfig: (options) => api.get('/auth/registration-config', options),
+
+  /**
+   * Signed in, verification due (see `verification_due` on /auth/me): opens a
+   * session for the account's own email and mobile. Answers with session_id,
+   * email, mobile_number, email_required and mobile_required.
+   */
+  verificationStart: () => api.post('/auth/verification/start'),
+
+  /** Finish once every required channel is verified. Answers with the user profile. */
+  verificationComplete: (sessionId) =>
+    api.post('/auth/verification/complete', { session_id: sessionId }),
+
   /** Log in; backend sets an HttpOnly session cookie and returns csrf_token. */
   login: (payload) => api.post('/auth/login', payload),
 

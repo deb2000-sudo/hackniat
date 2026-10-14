@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { hackathonsApi } from '../../api/hackathons'
-import { MONO } from '../drop/theme'
 import Alert from '../ui/Alert'
 import Button from '../ui/Button'
+import Icon from '../ui/Icon'
 import { LoadingBlock } from '../ui/Spinner'
 import {
   formFromResponse,
@@ -15,58 +15,97 @@ import {
   visibilitySummary,
   visibleBatches,
 } from './visibilityRules'
+import styles from './HackathonVisibilityPanel.module.css'
 
 /**
- * One checklist with its Select all box on top. Rows are the same checkbox
- * tiles Manage Evaluators uses; the list scrolls once it gets long.
+ * One side of the rule: a card with its title, a selection count and the
+ * Select all box in the header, and the options as compact rows underneath.
+ * `groups` lets batches sit under their university; a group with no label is
+ * a plain list.
  */
-function Checklist({ title, allLabel, allOn, onAll, rows, isChecked, onToggle, empty, disabled }) {
+function SelectionCard({ icon, title, allLabel, allOn, onAll, groups, isChecked, onToggle, empty, disabled }) {
+  const rows = groups.flatMap((group) => group.rows)
   const checkedCount = rows.filter((row) => isChecked(row.id)).length
   return (
-    <fieldset className="flex min-w-0 flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <legend className="text-[13px] font-semibold text-ink">{title}</legend>
-        <span className={`${MONO} text-[12px] text-muted`}>
-          {allOn ? 'All' : `${checkedCount} of ${rows.length}`}
-        </span>
+    <fieldset className={styles.card}>
+      <div className={styles.header}>
+        <div className={styles.titleRow}>
+          <legend className={styles.title}>
+            <Icon name={icon} size={16} />
+            {title}
+          </legend>
+          <span className={`${styles.count} ${allOn ? styles.countAll : ''}`}>
+            {allOn ? 'All' : `${checkedCount} of ${rows.length}`}
+          </span>
+        </div>
+        <label className={styles.selectAll}>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={allOn}
+            disabled={disabled}
+            onChange={(event) => onAll(event.target.checked)}
+          />
+          <span>
+            {allLabel} <small>· includes any added later</small>
+          </span>
+        </label>
       </div>
 
-      <label className="hackathon-video-toggle">
-        <input
-          type="checkbox"
-          checked={allOn}
-          disabled={disabled}
-          onChange={(event) => onAll(event.target.checked)}
-        />
-        <span className="min-w-0">
-          <strong>{allLabel}</strong>
-          <small>Includes any added later.</small>
-        </span>
-      </label>
-
-      {rows.length ? (
-        <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
-          {rows.map((row) => (
-            <label key={row.id} className="hackathon-video-toggle">
-              <input
-                type="checkbox"
-                checked={isChecked(row.id)}
-                disabled={disabled}
-                onChange={() => onToggle(row.id)}
-              />
-              <span className="min-w-0">
-                <strong className="break-words">{row.label}</strong>
-              </span>
-            </label>
-          ))}
-        </div>
-      ) : (
-        <p className="rounded-drop border border-dashed border-hairline px-3 py-4 text-[13px] text-muted">
-          {empty}
-        </p>
-      )}
+      <div className={styles.body}>
+        {rows.length ? (
+          groups.map((group) => (
+            <div key={group.key} role="group" aria-label={group.label || title}>
+              {group.label && <div className={styles.groupLabel}>{group.label}</div>}
+              {group.rows.map((row) => {
+                const checked = isChecked(row.id)
+                return (
+                  <label
+                    key={row.id}
+                    className={styles.row}
+                    data-checked={checked}
+                    data-disabled={disabled}
+                  >
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      checked={checked}
+                      disabled={disabled}
+                      onChange={() => onToggle(row.id)}
+                    />
+                    <span className={styles.rowText}>
+                      <span className={styles.primary} title={row.primary}>
+                        {row.primary}
+                      </span>
+                      {row.secondary && <span className={styles.secondary}>{row.secondary}</span>}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          ))
+        ) : (
+          <p className={styles.empty}>{empty}</p>
+        )}
+      </div>
     </fieldset>
   )
+}
+
+/** Batches under their university, in the order the API listed them. */
+function groupBatches(batches) {
+  const groups = []
+  const byUniversity = new Map()
+  batches.forEach((batch) => {
+    const key = batch.university_id || batch.university_name || 'other'
+    if (!byUniversity.has(key)) {
+      const group = { key, label: batch.university_name || 'Other', rows: [] }
+      byUniversity.set(key, group)
+      groups.push(group)
+    }
+    byUniversity.get(key).rows.push({ id: batch.id, primary: batch.name || batch.id })
+  })
+  return groups
 }
 
 /**
@@ -161,41 +200,46 @@ export default function HackathonVisibilityPanel({ hackathonId }) {
   const shownBatches = visibleBatches(form, batches)
   const blocker = saveBlocker(form, batches)
 
-  const universityRows = universities.map((university) => ({
-    id: university.id,
-    label:
-      university.display_label ||
-      [university.name, university.location].filter(Boolean).join(', ') ||
-      university.id,
-  }))
-  const batchRows = shownBatches.map((batch) => ({
-    id: batch.id,
-    label: [batch.university_name, batch.name].filter(Boolean).join(' · ') || batch.id,
-  }))
+  const universityGroups = [
+    {
+      key: 'all',
+      label: '',
+      rows: universities.map((university) => ({
+        id: university.id,
+        primary: university.name || university.display_label || university.id,
+        // The location sits to the right in a quieter tone; display_label
+        // is the fallback when a row has no separate name.
+        secondary: university.name ? university.location : '',
+      })),
+    },
+  ]
+  const batchGroups = groupBatches(shownBatches)
 
   return (
     <div className="stack-md">
       {saveError && <Alert variant="danger">{saveError}</Alert>}
       {message && <Alert variant="success">{message}</Alert>}
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <Checklist
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <SelectionCard
+          icon="university"
           title="Universities"
           allLabel="Select all universities"
           allOn={form.allUniversities}
           onAll={(on) => change(setAllUniversities(form, on, universities, batches))}
-          rows={universityRows}
+          groups={universityGroups}
           isChecked={(id) => form.allUniversities || form.universityIds.has(id)}
           onToggle={(id) => change(toggleUniversity(form, id, universities, batches))}
           empty="No universities yet. Add them in University Management."
           disabled={saving}
         />
-        <Checklist
+        <SelectionCard
+          icon="calendar"
           title="Batches"
           allLabel="Select all batches"
           allOn={form.allBatches}
           onAll={(on) => change(setAllBatches(form, on, batches))}
-          rows={batchRows}
+          groups={batchGroups}
           isChecked={(id) => form.allBatches || form.batchIds.has(id)}
           onToggle={(id) => change(toggleBatch(form, id, batches))}
           empty={
@@ -207,12 +251,18 @@ export default function HackathonVisibilityPanel({ hackathonId }) {
         />
       </div>
 
-      <p className="text-[13px] text-muted">{visibilitySummary(form)}</p>
+      <p className={styles.summary}>
+        <Icon name="eye" size={16} />
+        <span>{visibilitySummary(form)}</span>
+      </p>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[12.5px] text-muted" aria-live="polite">
-          {blocker}
-        </p>
+      <div className={styles.footer}>
+        {blocker && (
+          <p className={styles.blocker} aria-live="polite">
+            <Icon name="alert" size={15} />
+            {blocker}
+          </p>
+        )}
         <Button variant="accent" loading={saving} disabled={Boolean(blocker)} onClick={save}>
           Save visibility
         </Button>

@@ -7,6 +7,16 @@ export const ROLES = {
   STUDENT: 'student',
 }
 
+/**
+ * A university's college type, copied onto the student at registration. NIAT
+ * students give a NIAT ID; Non NIAT students give a College ID. A university
+ * with no type is NIAT.
+ */
+export const COLLEGE_TYPES = {
+  NIAT: 'NIAT',
+  NON_NIAT: 'Non NIAT',
+}
+
 export const APPROVAL_STATUS = {
   PENDING: 'pending',
   APPROVED: 'approved',

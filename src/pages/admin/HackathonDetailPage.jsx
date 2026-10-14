@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import RoundParticipation from '../../components/hackathons/RoundParticipation'
 import LeaderboardPanel from '../../components/hackathons/LeaderboardPanel'
+import WinnerAnnouncementPanel from '../../components/hackathons/WinnerAnnouncementPanel'
 import { participationErrorMessage } from '../../components/hackathons/errorCodes'
 import { roundStatusBadge } from '../../components/hackathons/roundStatus'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
@@ -29,7 +30,8 @@ import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import Modal from '../../components/ui/Modal'
-import { LoadingBlock } from '../../components/ui/Spinner'
+import Spinner, { LoadingBlock } from '../../components/ui/Spinner'
+import { trackEvent } from '../../lib/logrocket'
 import { useAdminPath } from '../../hooks/useAdminPath'
 
 const PRIZES = [
@@ -91,6 +93,8 @@ export default function HackathonDetailPage() {
   const { user } = useAuth()
   // Any admin-side role given this screen manages it, not only built-in Admin.
   const isAdmin = hasPermission(user, PERMISSIONS.HACKATHONS)
+  // Emailing winners is Super Admin only (the API agrees).
+  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN
   const isEvaluator = user?.role === ROLES.EVALUATOR
   const isStudent = user?.role === ROLES.STUDENT
   const {
@@ -105,6 +109,26 @@ export default function HackathonDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [duplicating, setDuplicating] = useState(false)
+  const [duplicateError, setDuplicateError] = useState('')
+
+  /**
+   * Copy this hackathon into a new draft and open it in the create wizard,
+   * which loads whatever draftId is in the URL — so no createDraft() here.
+   * Nothing goes live until the copy is edited and published.
+   */
+  const duplicate = async () => {
+    setDuplicating(true)
+    setDuplicateError('')
+    const draft = await hackathonsApi.duplicate(hackathon.id).catch((err) => {
+      setDuplicateError(participationErrorMessage(err, 'Could not duplicate this hackathon.'))
+      return null
+    })
+    setDuplicating(false)
+    if (!draft?.id) return
+    trackEvent('Hackathon Duplicated', { sourceHackathonId: String(hackathon.id) })
+    navigate(toAdminPath(`/admin/hackathons/create?draftId=${encodeURIComponent(draft.id)}`))
+  }
 
   /**
    * Release a round to students. Publishing is per round, and this page is
@@ -211,6 +235,13 @@ export default function HackathonDetailPage() {
       {/* Hero. A compact card rather than a banner wall: the actions, the
           status and the schedule are what this page is opened for, so they all
           sit above the fold instead of below a full-bleed image. */}
+      {isAdmin && duplicateError && (
+        <div className="mb-4">
+          <Alert variant="danger" title="Could not duplicate">
+            {duplicateError}
+          </Alert>
+        </div>
+      )}
       <section className={`${PANEL} mb-6 overflow-hidden md:mb-8`}>
         <div className="flex flex-col gap-3 border-b border-hairline p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <Link to="/hackathons" className={`${BTN_GHOST} w-full sm:w-auto`}>
@@ -236,6 +267,17 @@ export default function HackathonDetailPage() {
                 <Icon name="edit" size={16} />
                 Edit
               </Link>
+              <button
+                type="button"
+                className={`${BTN_GHOST} w-full sm:w-auto`}
+                onClick={duplicate}
+                disabled={duplicating}
+                aria-busy={duplicating}
+                title="Copy this hackathon into a new draft"
+              >
+                {duplicating ? <Spinner size="sm" /> : <Icon name="clipboard" size={16} />}
+                {duplicating ? 'Duplicating…' : 'Duplicate'}
+              </button>
               <button
                 type="button"
                 className={`${BTN_GHOST} w-full border-transparent text-missing hover:border-missing/30 hover:bg-danger-soft sm:w-auto`}
@@ -521,6 +563,25 @@ export default function HackathonDetailPage() {
                   roundTitle={round.title || `Round ${index + 1}`}
                   published={round.leaderboard_published === true}
                   canManage={isAdmin}
+                  // Re-read the hackathon so the round's leaderboard_published
+                  // flag (and the Winner announcement below) follow the change.
+                  onPublishedChange={() => reloadHackathon({ force: true })}
+                />
+              ))}
+            </div>
+          </Accordion>
+        )}
+
+        {isSuperAdmin && !!leaderboardRounds.length && (
+          <Accordion icon="trophy" title="Winner announcement">
+            <div className="flex flex-col gap-6">
+              {leaderboardRounds.map(({ round, index }) => (
+                <WinnerAnnouncementPanel
+                  key={`winners-${index}`}
+                  hackathonId={hackathonId}
+                  roundIndex={index}
+                  roundTitle={round.title || `Round ${index + 1}`}
+                  leaderboardPublished={round.leaderboard_published === true}
                 />
               ))}
             </div>

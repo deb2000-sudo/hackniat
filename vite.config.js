@@ -2,6 +2,23 @@ import { defineConfig, loadEnv } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import babel from '@rolldown/plugin-babel'
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+
+/**
+ * The release tag LogRocket stamps on every session: VITE_APP_RELEASE when the
+ * build pipeline sets one, else the current git commit, else the package version.
+ */
+function appRelease(env) {
+  if (env.VITE_APP_RELEASE) return env.VITE_APP_RELEASE
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+  } catch {
+    return JSON.parse(readFileSync(new URL('./package.json', import.meta.url))).version
+  }
+}
 
 const proxyPrefixes = [
   '/health',
@@ -43,6 +60,9 @@ export default defineConfig(({ mode }) => {
   const API_TARGET = env.VITE_API_TARGET || 'http://localhost:8000'
 
   return {
+    define: {
+      __APP_RELEASE__: JSON.stringify(appRelease(env)),
+    },
     plugins: [
       react(),
       tailwindcss(),

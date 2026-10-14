@@ -2,8 +2,8 @@ import { api } from './client'
 
 export const adminApi = {
   /**
-   * All non-admin users, as a plain array. The dashboard and the prefetch
-   * count `users.length`, so this stays unpaged.
+   * All non-admin users, as a plain array. Overview uses GET /admin/overview
+   * for its counts, so this stays for any caller that still wants the full list.
    */
   getUsers: (options) => api.get('/admin/users', options),
 
@@ -22,22 +22,11 @@ export const adminApi = {
   },
 
   /**
-   * Overview's three lists, each settled on its own: one rejected list (a 403
-   * for a role without that permission, or any other failure) costs only that
-   * list. A failed or malformed list comes back as `null` so its card can be
-   * hidden; this never throws.
+   * Overview counts and the newest five pending evaluators. The hackathon
+   * list is still GET /hackathons. Student and evaluator management pages
+   * keep their own list calls.
    */
-  loadOverview: async (options) => {
-    const results = await Promise.allSettled([
-      adminApi.getUsers(options),
-      adminApi.getEvaluators(options),
-      adminApi.getPendingEvaluators(options),
-    ])
-    const [users, evaluators, pending] = results.map((result) =>
-      result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : null,
-    )
-    return { users, evaluators, pending }
-  },
+  getOverview: (options) => api.get('/admin/overview', options),
 
   /** Evaluator registrations awaiting approval. */
   getPendingEvaluators: (options) => api.get('/admin/evaluators/pending', options),
@@ -87,7 +76,51 @@ export const adminApi = {
   changeProfilePassword: (payload, options) =>
     api.post('/super-admin/settings/change-profile-password', payload, options),
 
+  /**
+   * Super Admin: registration verification switches (shared by students and
+   * evaluators) plus pending_count, released_count and released_now.
+   */
+  getRegistrationSettings: (options) =>
+    api.get('/super-admin/settings/registration', options),
+
+  /** `{ email_verification_enabled, mobile_verification_enabled }`. Same shape back. */
+  updateRegistrationSettings: (payload, options) =>
+    api.put('/super-admin/settings/registration', payload, options),
+
+  /**
+   * Mark the oldest `batchSize` (1–500) waiting students and evaluators to see
+   * the verification popup on their next sign-in. Sends no email itself;
+   * people already marked are skipped. 400 while both switches are off.
+   */
+  releaseVerification: (batchSize, options) =>
+    api.post('/super-admin/settings/registration/release', { batch_size: batchSize }, options),
+
   /** Wipe wipeable collections after Profile Password + confirm phrase. */
   resetDatabase: (payload, options) =>
     api.post('/super-admin/settings/reset-database', payload, options),
+
+  /*
+   * Delete one hackathon and everything attached to it (submissions, videos,
+   * AI reports, scores, teams, enrollments). Student accounts and other
+   * hackathons stay. Unlike hackathonsApi.delete, which removes only the
+   * hackathon document and leaves its submissions behind.
+   */
+
+  /** `[{ hackathon_id, name }]`, sorted by name. */
+  listHackathonsForDeletion: (options) => api.get('/super-admin/settings/hackathons', options),
+
+  /** What would go: `{ hackathon_id, name, submission_count, team_count, enrollment_count }`. */
+  previewHackathonDeletion: (hackathonId, options) =>
+    api.get(`/super-admin/settings/hackathons/${encodeURIComponent(hackathonId)}`, options),
+
+  /**
+   * Body: `{ profile_password, confirm_name }`. Answers with message and
+   * deleted_counts. 400 for a wrong password or name, 404 if already gone.
+   */
+  deleteHackathonData: (hackathonId, payload, options) =>
+    api.post(
+      `/super-admin/settings/hackathons/${encodeURIComponent(hackathonId)}/delete`,
+      payload,
+      options,
+    ),
 }

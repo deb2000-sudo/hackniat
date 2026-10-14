@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ACCESS_ERROR, accessApi } from '../../../api/access'
+import { ACCESS_ERROR, ACCESS_ERROR_MESSAGES, accessApi } from '../../../api/access'
 import { authErrorCode } from '../../../api/authErrors'
 import { useAsync } from '../../../hooks/useAsync'
 import { useAuth } from '../../../hooks/useAuth'
@@ -112,6 +112,41 @@ export default function AccessUsersPage() {
   const [dialog, setDialog] = useState(null)
   const editing = dialog?.id != null ? dialog : null
   const roleLocked = editing?.role === ROLES.SUPER_ADMIN
+  // The account awaiting delete confirmation.
+  const [removing, setRemoving] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  const askDelete = (account) => {
+    setRemoving(account)
+    setDeleteError('')
+  }
+
+  /** Delete, then drop the row from the list — no refetch. */
+  const confirmDelete = async () => {
+    if (!removing) return
+    setDeleting(true)
+    setDeleteError('')
+
+    const outcome = await accessApi.deleteUser(removing.id).then(
+      () => 'deleted',
+      (err) => {
+        const code = authErrorCode(err)
+        // Already gone: the row is stale, so it goes too.
+        if (err?.status === 404 || code === ACCESS_ERROR.USER_NOT_FOUND) return 'missing'
+        setDeleteError(ACCESS_ERROR_MESSAGES[code] || err?.message || 'Unable to delete this user.')
+        return null
+      },
+    )
+
+    setDeleting(false)
+    if (!outcome) return
+
+    const id = removing.id
+    setData((rows) => (Array.isArray(rows) ? rows.filter((row) => row.id !== id) : rows))
+    setRemoving(null)
+  }
+
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -277,14 +312,28 @@ export default function AccessUsersPage() {
                     <RoleBadge account={account} />
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      onClick={() => openEdit(account)}
-                      aria-label={`Edit ${displayName(account)}`}
-                    >
-                      <Icon name="edit" size={17} />
-                    </button>
+                    <div className="row" style={{ justifyContent: 'flex-end', gap: 6 }}>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => openEdit(account)}
+                        aria-label={`Edit ${displayName(account)}`}
+                      >
+                        <Icon name="edit" size={17} />
+                      </button>
+                      {/* A Super Admin (including you) cannot be deleted. */}
+                      {account.role !== ROLES.SUPER_ADMIN && (
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--danger"
+                          onClick={() => askDelete(account)}
+                          aria-label={`Delete ${displayName(account)}`}
+                          title="Delete user"
+                        >
+                          <Icon name="trash" size={17} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -404,6 +453,30 @@ export default function AccessUsersPage() {
               </button>
             </Alert>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!removing}
+        onClose={() => !deleting && setRemoving(null)}
+        title="Delete user"
+        footer={
+          <>
+            <Button variant="ghost" disabled={deleting} onClick={() => setRemoving(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" loading={deleting} onClick={confirmDelete}>
+              Delete user
+            </Button>
+          </>
+        }
+      >
+        <div className="stack-md">
+          {deleteError && <Alert variant="danger">{deleteError}</Alert>}
+          <p>
+            Delete <strong>{removing ? displayName(removing) : ''}</strong>? Their login is removed
+            and they cannot sign in again.
+          </p>
         </div>
       </Modal>
     </div>

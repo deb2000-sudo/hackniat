@@ -29,6 +29,7 @@ const MESSAGES = {
   // The hackathon's visibility rule no longer includes this student's
   // university and batch (it can change while the page is open).
   NOT_VISIBLE: 'This hackathon is not open to your university and batch.',
+  HACKATHON_NOT_FOUND: 'That hackathon no longer exists.',
 }
 
 /** Human-readable text for a participation failure. */

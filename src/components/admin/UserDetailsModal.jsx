@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { adminApi } from '../../api/admin'
+import { COLLEGE_TYPES } from '../../utils/constants'
 import { authErrorCode } from '../../api/authErrors'
 import { formatDate, formatDateTime, formatMobile, MOBILE_KEYS, universityOf } from '../../utils/format'
 import Alert from '../ui/Alert'
@@ -15,7 +16,7 @@ const KNOWN_KEYS = new Set([
   ...MOBILE_KEYS,
   'id', 'uid', 'name', 'first_name', 'last_name', 'email', 'role', 'approval_status',
   'mobile_national', 'country_code', 'email_verified', 'phone_verified',
-  'niat_id', 'employee_id', 'university', 'university_id', 'university_name', 'university_location',
+  'niat_id', 'college_id', 'college_type', 'employee_id', 'university', 'university_id', 'university_name', 'university_location',
   'created_at', 'updated_at',
 ])
 
@@ -216,6 +217,9 @@ export default function UserDetailsModal({
   const mobileRaw = firstOf(...MOBILE_KEYS.map((key) => user[key]))
   const mobileDial = mobileRaw ? String(mobileRaw).replace(/\s+/g, '') : ''
   const university = universityOf(user)
+  // Students registered before college types existed are NIAT.
+  const collegeType = user.college_type || COLLEGE_TYPES.NIAT
+  const isNonNiat = collegeType === COLLEGE_TYPES.NON_NIAT
   const others = otherDetails(user)
 
   return (
@@ -254,7 +258,8 @@ export default function UserDetailsModal({
           <div className="min-w-0 flex-1">
             <p className="truncate text-[17px] font-semibold tracking-[-0.01em] text-ink">{name}</p>
             <p className="truncate text-[13.5px] text-muted">
-              {(isEvaluator ? user.employee_id : user.niat_id) || user.email}
+              {(isEvaluator ? user.employee_id : isNonNiat ? user.college_id : user.niat_id) ||
+                user.email}
             </p>
           </div>
           <div className="flex items-center gap-1.5">
@@ -294,7 +299,12 @@ export default function UserDetailsModal({
           </Section>
         ) : (
           <Section title="Academic">
-            <Row label="NIAT ID" value={user.niat_id} copy={user.niat_id} mono pending={loading} />
+            <Row label="College type" value={collegeType} />
+            {isNonNiat ? (
+              <Row label="College ID" value={user.college_id} copy={user.college_id} mono pending={loading} />
+            ) : (
+              <Row label="NIAT ID" value={user.niat_id} copy={user.niat_id} mono pending={loading} />
+            )}
             {user.employee_id && <Row label="Employee ID" value={user.employee_id} copy={user.employee_id} mono />}
             <Row label="University" value={university} pending={loading} />
             <Row label="Location" value={user.university_location} pending={loading} />

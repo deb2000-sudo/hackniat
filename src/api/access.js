@@ -70,6 +70,13 @@ export const accessApi = {
    */
   updateUser: (userId, payload, options) =>
     api.patch(`${PATH}/users/${encode(userId)}`, payload, options),
+
+  /**
+   * Removes an Admin or custom-role account from Firestore and Firebase Auth,
+   * so that email can no longer sign in. 404 for an unknown id; a Super Admin
+   * is refused with 409 SUPER_ADMIN_DELETE_LOCKED.
+   */
+  deleteUser: (userId, options) => api.delete(`${PATH}/users/${encode(userId)}`, options),
 }
 
 export const ACCESS_ERROR = {
@@ -81,4 +88,10 @@ export const ACCESS_ERROR = {
   EMAIL_TAKEN: 'EMAIL_TAKEN',
   USER_NOT_FOUND: 'USER_NOT_FOUND',
   SUPER_ADMIN_ROLE_LOCKED: 'SUPER_ADMIN_ROLE_LOCKED',
+  SUPER_ADMIN_DELETE_LOCKED: 'SUPER_ADMIN_DELETE_LOCKED',
+}
+
+/** What to tell the Super Admin for an access error code. */
+export const ACCESS_ERROR_MESSAGES = {
+  [ACCESS_ERROR.SUPER_ADMIN_DELETE_LOCKED]: 'A Super Admin account cannot be deleted.',
 }

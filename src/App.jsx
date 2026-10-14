@@ -15,6 +15,7 @@ import { ROLES } from './utils/constants'
 import Layout from './components/layout/Layout'
 import CompleteProfileRoute from './components/routing/CompleteProfileRoute'
 import ProtectedRoute from './components/routing/ProtectedRoute'
+import VerificationGate from './components/auth/VerificationGate'
 import PublicOnlyRoute from './components/routing/PublicOnlyRoute'
 import { LoadingBlock } from './components/ui/Spinner'
 
@@ -252,6 +253,8 @@ export default function App() {
             </Route>
           </Routes>
         </Suspense>
+        {/* Over every route: blocks the app until a due verification is done. */}
+        <VerificationGate />
       </AuthProvider>
     </BrowserRouter>
   )

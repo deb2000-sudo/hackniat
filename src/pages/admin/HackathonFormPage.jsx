@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
 import { BTN_GHOST, EYEBROW, WRAP_APP } from '../../components/drop/theme'
 import HackathonForm from '../../components/hackathons/HackathonForm'
+import HackathonStartChoice from '../../components/hackathons/HackathonStartChoice'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { trackEvent } from '../../lib/logrocket'
 
 /**
  * Hosts the hackathon wizard in two modes.
@@ -16,37 +18,66 @@ import { LoadingBlock } from '../../components/ui/Spinner'
  * before. `/admin/hackathons/create` builds a server-side draft: every section
  * PATCHes as it is completed, so the work survives a reload, and the event only
  * becomes real on publish.
+ *
+ * With no draftId yet it first asks how to start — blank, or a copy of an
+ * existing hackathon — and puts the resulting draft id in the URL. A draftId
+ * already in the URL (a resumed draft, or a copy made by a hackathon's
+ * Duplicate button) loads straight into the wizard.
  */
 export default function HackathonFormPage({ draftFlow = false }) {
   const { hackathonId } = useParams()
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const editing = !!hackathonId
   const draftId = draftFlow ? searchParams.get('draftId') || '' : ''
+
+  // The chosen start becomes ?draftId=, so a refresh (or a shared link)
+  // resumes the same draft instead of opening another.
+  const openDraft = (id) => setSearchParams({ draftId: id }, { replace: true })
+
+  if (draftFlow && !draftId) {
+    return (
+      <div className={`${WRAP_APP} py-7 md:py-10`}>
+        <header className="mb-7 flex flex-col gap-4 sm:mb-9 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0 max-w-3xl">
+            <span className={EYEBROW}>Hackathons</span>
+            <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
+              Create hackathon
+            </h1>
+            <p className="mt-2 text-[15px] text-muted md:text-base">
+              Start from scratch, or copy an existing hackathon and change what is different.
+            </p>
+          </div>
+          <Link to="/hackathons" className={`${BTN_GHOST} w-full shrink-0 sm:w-auto`}>
+            <Icon name="arrowLeft" size={17} />
+            Cancel
+          </Link>
+        </header>
+        <HackathonStartChoice onDraft={openDraft} />
+      </div>
+    )
+  }
+
+  // Keyed by what it edits: picking a start on this page only changes the
+  // URL, so without a fresh mount the loader would never fetch the new draft
+  // and the wizard (which reads its values once) would stay blank.
+  return (
+    <HackathonEditor
+      key={hackathonId ? `hackathon:${hackathonId}` : `draft:${draftId}`}
+      hackathonId={hackathonId}
+      draftId={draftId}
+    />
+  )
+}
+
+/** Loads one hackathon (edit) or one draft (create), then hosts the wizard. */
+function HackathonEditor({ hackathonId, draftId }) {
+  const navigate = useNavigate()
+  const editing = !!hackathonId
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   // The failed request itself, so the form can put a round-level validation
   // error (e.g. a team size the API rejected) under that round.
   const [submitErrorCause, setSubmitErrorCause] = useState(null)
-  const [bootstrapError, setBootstrapError] = useState('')
-
-  // Landing on /create with no draft opens one and puts its id in the URL, so a
-  // refresh (or a shared link) resumes the same draft instead of orphaning it.
-  const creatingDraftRef = useRef(false)
-  useEffect(() => {
-    if (!draftFlow || draftId || creatingDraftRef.current) return
-    creatingDraftRef.current = true
-    ;(async () => {
-      try {
-        const draft = await hackathonsApi.createDraft()
-        setSearchParams({ draftId: draft.id }, { replace: true })
-      } catch (err) {
-        setBootstrapError(err.message || 'Could not start a new hackathon draft.')
-        creatingDraftRef.current = false
-      }
-    })()
-  }, [draftFlow, draftId, setSearchParams])
 
   const load = useCallback(() => {
     if (editing) return hackathonsApi.get(hackathonId)
@@ -63,6 +94,9 @@ export default function HackathonFormPage({ draftFlow = false }) {
       const saved = editing
         ? await hackathonsApi.update(hackathonId, fields)
         : await hackathonsApi.create(fields)
+      trackEvent(editing ? 'Hackathon Updated' : 'Hackathon Created', {
+        hackathonId: String(saved?.id || hackathonId || ''),
+      })
       navigate(`/hackathons/${saved.id || hackathonId}`, { replace: true })
     } catch (err) {
       setSubmitError(err.message || `Unable to ${editing ? 'update' : 'create'} the hackathon.`)
@@ -95,6 +129,7 @@ export default function HackathonFormPage({ draftFlow = false }) {
     // had in fact been created. Fall back to the list if the id is missing
     // rather than navigating to /hackathons/undefined.
     const publishedId = hackathon?.id || hackathon?.hackathon_id || ''
+    trackEvent('Hackathon Created', { hackathonId: String(publishedId), fromDraft: true })
     navigate(publishedId ? `/hackathons/${publishedId}` : '/hackathons', { replace: true })
   }
 
@@ -103,28 +138,11 @@ export default function HackathonFormPage({ draftFlow = false }) {
     navigate('/hackathons', { replace: true })
   }
 
-  if (bootstrapError) {
-    return (
-      <div className={`${WRAP_APP} py-7 md:py-10`}>
-        <Alert variant="danger" title="Unable to start a draft">
-          {bootstrapError}
-        </Alert>
-        <div className="mt-5">
-          <Button variant="secondary" onClick={() => navigate('/hackathons')}>
-            Back to hackathons
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (loading || (draftFlow && !draftId)) {
+  if (loading) {
     return (
       <div className={`${WRAP_APP} py-7 md:py-10`}>
         <LoadingBlock
-          label={
-            editing ? 'Loading hackathon…' : draftId ? 'Loading draft…' : 'Starting a new draft…'
-          }
+          label={editing ? 'Loading hackathon…' : 'Loading draft…'}
         />
       </div>
     )
@@ -167,6 +185,17 @@ export default function HackathonFormPage({ draftFlow = false }) {
           Cancel
         </Link>
       </header>
+
+      {/* A draft made by Duplicate remembers where it came from. Its name
+          already ends in "(copy)"; the dates are the original's. */}
+      {draftId && data?.source_hackathon_name && (
+        <div className="mb-6">
+          <Alert variant="info">
+            Copied from <strong>{data.source_hackathon_name}</strong>. Change the name and dates,
+            then publish.
+          </Alert>
+        </div>
+      )}
 
       <HackathonForm
         initialValue={data}

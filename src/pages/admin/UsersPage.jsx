@@ -21,7 +21,7 @@ import EmptyState from '../../components/ui/EmptyState'
 import Pagination from '../../components/ui/Pagination'
 import DeleteUserModal from '../../components/admin/DeleteUserModal'
 import UserDetailsModal from '../../components/admin/UserDetailsModal'
-import { accountName, formatDate } from '../../utils/format'
+import { accountName, formatDate, MOBILE_KEYS, normalizeSearch } from '../../utils/format'
 
 /** Rows per page of the Student Management table. */
 const PAGE_SIZE = 15
@@ -29,10 +29,17 @@ const PAGE_SIZE = 15
 /** How long typing pauses before the search is sent. */
 const SEARCH_DELAY_MS = 300
 
-const matchesSearch = (user, needle) =>
-  [user.name, user.email, user.niat_id, user.employee_id, user.id].some((value) =>
-    String(value || '').toLowerCase().includes(needle),
+const digitsOf = (value) => String(value || '').replace(/\D/g, '')
+
+const matchesSearch = (user, needle) => {
+  const fields = [user.name, user.email, user.college_id, user.niat_id, user.employee_id, user.id]
+  if (fields.some((value) => String(value || '').toLowerCase().includes(needle))) return true
+  // A digits-only search also matches the mobile number, in any stored format.
+  return (
+    /^\d+$/.test(needle) &&
+    MOBILE_KEYS.some((key) => digitsOf(user[key]).includes(needle))
   )
+}
 
 /**
  * One page of students in a single shape, whichever backend answered.
@@ -90,7 +97,7 @@ export default function UsersPage() {
   // Search once typing pauses, from the first page.
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearch(query.trim())
+      setSearch(normalizeSearch(query))
       setPage(1)
     }, SEARCH_DELAY_MS)
     return () => clearTimeout(timer)
@@ -223,7 +230,7 @@ export default function UsersPage() {
         <div className="input-group">
           <input
             className="input"
-            placeholder="Search by name, email or ID"
+            placeholder="Search by name, email, ID or mobile"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search students"
@@ -280,7 +287,9 @@ export default function UsersPage() {
                   <td>
                     <RoleBadge role={u.role} />
                   </td>
-                  <td className="text-sm mono">{u.niat_id || u.employee_id || '—'}</td>
+                  <td className="text-sm mono">
+                    {u.college_id || u.niat_id || u.employee_id || '—'}
+                  </td>
                   <td>{u.approval_status ? <ApprovalBadge status={u.approval_status} /> : '—'}</td>
                   <td className="text-sm text-muted">{formatDate(u.created_at)}</td>
                   <td style={{ textAlign: 'right' }}>

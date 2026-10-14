@@ -73,20 +73,19 @@ export default function LeaderboardPanel({
   const totalSubmissions = stats.total_submissions ?? null
   const isPublished = data?.published ?? published
 
-  const setPublished = async (nextPublish, notify) => {
+  // Publishing only shows the board to students; it sends no email. Winners
+  // are emailed separately (Super Admin → Winner announcement).
+  const setPublished = async (nextPublish) => {
     setBusy(nextPublish ? 'publish' : 'unpublish')
     setActionError('')
     setNotice('')
     try {
       await hackathonsApi.publishRoundLeaderboard(hackathonId, roundIndex, {
         publish: nextPublish,
-        notify,
       })
       setNotice(
         nextPublish
-          ? notify
-            ? 'Leaderboard published and ranked candidates emailed.'
-            : 'Leaderboard published.'
+          ? 'Leaderboard published. Students will see it on this hackathon.'
           : 'Leaderboard hidden from students.',
       )
       await reload({ force: true })
@@ -146,33 +145,22 @@ export default function LeaderboardPanel({
         {canManage && (
           <div className="leaderboard__actions">
             {isPublished ? (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={busy === 'publish'}
-                  disabled={Boolean(busy)}
-                  onClick={() => setPublished(true, true)}
-                >
-                  Re-send emails
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  loading={busy === 'unpublish'}
-                  disabled={Boolean(busy)}
-                  onClick={() => setPublished(false)}
-                >
-                  Unpublish
-                </Button>
-              </>
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={busy === 'unpublish'}
+                disabled={Boolean(busy)}
+                onClick={() => setPublished(false)}
+              >
+                Unpublish
+              </Button>
             ) : (
               <Button
                 variant="accent"
                 size="sm"
                 loading={busy === 'publish'}
                 disabled={Boolean(busy) || !entries.length}
-                onClick={() => setPublished(true, true)}
+                onClick={() => setPublished(true)}
                 leftIcon={<Icon name="trophy" size={16} />}
               >
                 Publish leaderboard

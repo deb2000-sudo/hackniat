@@ -10,6 +10,8 @@ import Input, { PasswordInput } from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import { useAdminPath } from '../../hooks/useAdminPath'
+import ApplicationConfigPanel from '../../components/admin/ApplicationConfigPanel'
+import DeleteHackathonPanel from '../../components/admin/DeleteHackathonPanel'
 
 const PROFILE_FORM = {
   current_profile_password: '',
@@ -426,69 +428,74 @@ export default function ApplicationSettingsPage() {
       )}
 
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2 xl:gap-6">
-        <Card className="min-w-0">
-          <CardHeader>
-            <div>
-              <h3>Profile Password</h3>
-              <p className="text-sm text-muted">
-                Used to authorize destructive actions such as Reset Database — not for signing in.
-              </p>
-            </div>
-            <Icon name="shield" size={20} className="text-muted" />
-          </CardHeader>
-          <CardBody>
-            <form className="stack-md" onSubmit={submitProfilePassword} noValidate>
-              {profileError && <Alert variant="danger">{profileError}</Alert>}
+        {/* Left column: Profile Password, then Application config under it. */}
+        <div className="flex min-w-0 flex-col gap-5 xl:gap-6">
+          <Card className="min-w-0">
+            <CardHeader>
+              <div>
+                <h3>Profile Password</h3>
+                <p className="text-sm text-muted">
+                  Used to authorize destructive actions such as Reset Database — not for signing in.
+                </p>
+              </div>
+              <Icon name="shield" size={20} className="text-muted" />
+            </CardHeader>
+            <CardBody>
+              <form className="stack-md" onSubmit={submitProfilePassword} noValidate>
+                {profileError && <Alert variant="danger">{profileError}</Alert>}
 
-              <PasswordInput
-                label="Current profile password"
-                autoComplete="off"
-                required
-                value={profileForm.current_profile_password}
-                onChange={updateProfile('current_profile_password')}
-                disabled={profileLoading}
-              />
-              <PasswordInput
-                label="New profile password"
-                autoComplete="new-password"
-                minLength={6}
-                required
-                value={profileForm.new_profile_password}
-                onChange={updateProfile('new_profile_password')}
-                hint="At least 6 characters"
-                disabled={profileLoading}
-              />
-              <PasswordInput
-                label="Confirm new profile password"
-                autoComplete="new-password"
-                minLength={6}
-                required
-                value={profileForm.confirm_new_profile_password}
-                onChange={updateProfile('confirm_new_profile_password')}
-                error={profileConfirmError}
-                disabled={profileLoading}
-              />
+                <PasswordInput
+                  label="Current profile password"
+                  autoComplete="off"
+                  required
+                  value={profileForm.current_profile_password}
+                  onChange={updateProfile('current_profile_password')}
+                  disabled={profileLoading}
+                />
+                <PasswordInput
+                  label="New profile password"
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                  value={profileForm.new_profile_password}
+                  onChange={updateProfile('new_profile_password')}
+                  hint="At least 6 characters"
+                  disabled={profileLoading}
+                />
+                <PasswordInput
+                  label="Confirm new profile password"
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                  value={profileForm.confirm_new_profile_password}
+                  onChange={updateProfile('confirm_new_profile_password')}
+                  error={profileConfirmError}
+                  disabled={profileLoading}
+                />
 
-              <Button
-                type="submit"
-                variant="accent"
-                block
-                loading={profileLoading}
-                disabled={!canSubmitProfile}
-              >
-                Change Profile Password
-              </Button>
+                <Button
+                  type="submit"
+                  variant="accent"
+                  block
+                  loading={profileLoading}
+                  disabled={!canSubmitProfile}
+                >
+                  Change Profile Password
+                </Button>
 
-              <p className="text-sm text-muted">
-                Your login password is unchanged here. Use{' '}
-                <Link to="/settings/change-password" className="underline underline-offset-4">
-                  Change Password
-                </Link>{' '}
-                to update the password you sign in with.
-              </p>
-            </form>
-          </CardBody>
-        </Card>
+                <p className="text-sm text-muted">
+                  Your login password is unchanged here. Use{' '}
+                  <Link to="/settings/change-password" className="underline underline-offset-4">
+                    Change Password
+                  </Link>{' '}
+                  to update the password you sign in with.
+                </p>
+              </form>
+            </CardBody>
+          </Card>
+
+          <ApplicationConfigPanel />
+        </div>
 
         <section className={`${PANEL} min-w-0 overflow-hidden border-missing/30`}>
           <div className="flex items-start gap-3 border-b border-missing/20 bg-danger-soft px-4 py-4 sm:px-5">
@@ -623,6 +630,11 @@ export default function ApplicationSettingsPage() {
             </Button>
           </div>
         </section>
+      </div>
+
+      {/* Full width, under the two-column grid: one hackathon at a time. */}
+      <div className="mt-5 xl:mt-6">
+        <DeleteHackathonPanel />
       </div>
 
       <Modal

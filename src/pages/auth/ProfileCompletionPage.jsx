@@ -12,6 +12,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { VERIFY, useRegistrationVerification } from '../../hooks/useRegistrationVerification'
 import { RECAPTCHA_CONTAINER_ID } from '../../lib/firebasePhone'
 import { homePath } from '../../utils/access'
+import { trackEvent } from '../../lib/logrocket'
 
 /** Messages that read wrongly here: this person already has an account. */
 const PROFILE_MESSAGES = {
@@ -99,6 +100,7 @@ export default function ProfileCompletionPage() {
       // profile_completed is now true and permissions are filled in, so
       // homePath() gives the real first screen (/admin, /super-admin, …).
       const me = await refresh()
+      trackEvent('Profile Completed', { role: me?.role || '' })
       navigate(homePath(me), { replace: true })
     } catch (err) {
       const code = authErrorCode(err)

@@ -58,6 +58,9 @@ const RESEND_WINDOW = 60
  *   old session's verifications do not carry over.
  *
  * @param {object}   options
+ * @param {boolean}  [options.emailRequired=true]   False when email verification is switched off: the
+ *   email is still collected and bound to the session, it just never needs a code.
+ * @param {boolean}  [options.phoneRequired=true]   The same for the mobile number.
  * @param {Function} [options.startSession]          ({ email, mobile }) => Promise<session_id>; binds both identifiers at once.
  * @param {string}   [options.sessionId]             Session opened by the caller; when set the hook never opens one.
  * @param {string}   [options.phoneNumber]           E.164 supplied by the caller; overrides countryCode + mobileNational.
@@ -70,6 +73,8 @@ const RESEND_WINDOW = 60
  * @param {string}   [options.invalidEmailMessage]   Shown when `isEmailValid` rejects the value.
  */
 export function useRegistrationVerification({
+  emailRequired = true,
+  phoneRequired = true,
   startSession,
   sessionId: externalSessionId = '',
   phoneNumber: externalPhone = '',
@@ -120,9 +125,11 @@ export function useRegistrationVerification({
   const phoneReady = isE164(phoneE164)
   // Profile completion: a check only counts while the session still carries
   // the number on screen. Editing it after verifying voids both.
+  // "Every required channel is verified". A channel switched off counts as
+  // done; the name is kept because every caller reads it as "ready to submit".
   const bothVerified =
-    emailState === VERIFIED &&
-    phoneState === VERIFIED &&
+    (!emailRequired || emailState === VERIFIED) &&
+    (!phoneRequired || phoneState === VERIFIED) &&
     (!startSession || (sessionEmail === email && sessionPhone === phoneE164))
 
   useEffect(() => {

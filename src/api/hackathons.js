@@ -85,6 +85,16 @@ export const hackathonsApi = {
   /** Open a blank draft and return its id. */
   createDraft: (options) => api.post('/hackathons/drafts', undefined, options),
 
+  /**
+   * Copy a hackathon into a new draft (not a live hackathon): "{name} (copy)"
+   * with its content, rounds (all unpublished) and banner, plus settings that
+   * land on the new hackathon at publish. Students, teams, submissions and
+   * scores stay on the original. Carries source_hackathon_id / _name.
+   * 404 HACKATHON_NOT_FOUND.
+   */
+  duplicate: (hackathonId, options) =>
+    api.post(`/hackathons/${encodeURIComponent(hackathonId)}/duplicate`, undefined, options),
+
   getDraft: (draftId, options) =>
     api.get(`/hackathons/drafts/${encodeURIComponent(draftId)}`, options),
 
@@ -157,16 +167,32 @@ export const hackathonsApi = {
     api.get(`${roundPath(hackathonId, roundIndex)}/leaderboard`, options),
 
   /**
-   * Publish or hide a round's leaderboard.
-   *
-   * `notify` controls the ranked-candidate emails: the backend defaults it to
-   * true on a first publish and false on re-publish, so it is only sent when
-   * the caller explicitly wants to mail again. Unpublishing never notifies.
+   * Publish or hide a round's leaderboard. Publishing shows the ranked board
+   * to signed-in students on the hackathon page; it sends no email (winners
+   * are emailed through announceWinners).
    */
-  publishRoundLeaderboard: (hackathonId, roundIndex, { publish = true, notify } = {}, options) =>
+  publishRoundLeaderboard: (hackathonId, roundIndex, { publish = true } = {}, options) =>
+    api.post(`${roundPath(hackathonId, roundIndex)}/leaderboard/publish`, { publish }, options),
+
+  /* ----------------------- Winner announcement (Super Admin) ------------------ */
+  // The first top_n places (1–100) of a published board; a tie on the last
+  // place pulls in every team on that rank. Both answer with entries
+  // (rank, rank_label, place_label, team_name, score), announced_count,
+  // emails_sent and last_announcement. 400 LEADERBOARD_NOT_PUBLISHED or
+  // NO_APPROVED_SUBMISSIONS; 403 for anyone but Super Admin.
+
+  /** Who would be emailed. Sends nothing (emails_sent 0). */
+  previewWinners: (hackathonId, roundIndex, topN, options) =>
+    api.get(
+      `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${roundIndex}/winners?top_n=${topN}`,
+      options,
+    ),
+
+  /** Emails every member of those teams. Calling it again sends again. */
+  announceWinners: (hackathonId, roundIndex, topN, options) =>
     api.post(
-      `${roundPath(hackathonId, roundIndex)}/leaderboard/publish`,
-      notify === undefined ? { publish } : { publish, notify },
+      `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${roundIndex}/winners/announce`,
+      { top_n: topN },
       options,
     ),
 

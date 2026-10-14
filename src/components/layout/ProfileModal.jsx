@@ -3,7 +3,7 @@ import { authApi } from '../../api/auth'
 import { AUTH_ERROR, authErrorCode, authErrorMessage } from '../../api/authErrors'
 import { useAuth } from '../../hooks/useAuth'
 import { roleLabel } from '../../utils/access'
-import { ROLES } from '../../utils/constants'
+import { COLLEGE_TYPES, ROLES } from '../../utils/constants'
 import { formatMobile, mobileOf, universityOf } from '../../utils/format'
 import Alert from '../ui/Alert'
 import Button from '../ui/Button'
@@ -199,7 +199,11 @@ export default function ProfileModal({ onClose }) {
           {isStudent && (
             <>
               <div className="grid gap-3 sm:grid-cols-2">
-                <ReadOnlyField label="NIAT ID" value={profile.niat_id} />
+                {profile.college_type === COLLEGE_TYPES.NON_NIAT ? (
+                  <ReadOnlyField label="College ID" value={profile.college_id} />
+                ) : (
+                  <ReadOnlyField label="NIAT ID" value={profile.niat_id} />
+                )}
                 <ReadOnlyField label="Team" value={teamOf(profile)} />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">

@@ -6,7 +6,6 @@ import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { queryKeys } from '../../lib/queryKeys'
 import { hasPermission, PERMISSIONS } from '../../utils/access'
-import { ROLES } from '../../utils/constants'
 import { formatDate } from '../../utils/format'
 import { getHackathonStatus } from '../../utils/hackathons'
 import {
@@ -84,10 +83,8 @@ function PanelEmpty({ children, className = '' }) {
  * Overview. Shown to any role with `overview` (the route sends everyone else to
  * their first allowed screen).
  *
- * The three admin lists load independently: a list that fails — a 403 for a
- * custom role, or anything else — hides only the cards it feeds, never the
- * whole page. Links into other screens appear only with that screen's
- * permission, because the API would answer those pages with 403s.
+ * Counts come from GET /admin/overview. The hackathon list is separate.
+ * Links into other screens appear only with that screen's permission.
  */
 export default function AdminDashboard() {
   const toAdminPath = useAdminPath()
@@ -98,8 +95,7 @@ export default function AdminDashboard() {
     (action) => ({ ...action, to: toAdminPath(action.to) }),
   )
 
-  // Never rejects: each list is its own array, or null when it failed.
-  const { data, loading } = useAsync((options) => adminApi.loadOverview(options), {
+  const { data, loading, error, reload } = useAsync((options) => adminApi.getOverview(options), {
     key: queryKeys.adminOverview,
     staleTime: 30_000,
   })
@@ -111,17 +107,12 @@ export default function AdminDashboard() {
   } = useAsync((opts) => hackathonsApi.list(opts), { key: queryKeys.hackathons, staleTime: 60_000 })
 
   const firstLoad = loading && !data
-  // A card shows while its list is loading or once it arrived; a failed list
-  // (null) hides its cards.
-  const usersOk = firstLoad || Array.isArray(data?.users)
-  const evaluatorsOk = firstLoad || Array.isArray(data?.evaluators)
-  const pendingOk = firstLoad || Array.isArray(data?.pending)
+  const usersOk = firstLoad || Number.isInteger(data?.total_users)
+  const evaluatorsOk = firstLoad || Number.isInteger(data?.evaluator_count)
+  const pendingOk = firstLoad || Number.isInteger(data?.pending_count)
   const hackathonsOk = !hackathonsError
 
-  const users = useMemo(() => data?.users || [], [data])
-  const evaluators = data?.evaluators || []
-  const pending = data?.pending || []
-  const students = useMemo(() => users.filter((u) => u.role === ROLES.STUDENT), [users])
+  const pending = data?.pending_evaluators || []
   const hackathons = useMemo(
     () =>
       [...(hackathonData || [])].sort((a, b) =>
@@ -131,18 +122,18 @@ export default function AdminDashboard() {
   )
 
   const stats = [
-    { show: usersOk, icon: 'users', value: firstLoad ? '—' : users.length, label: 'Total users' },
-    { show: usersOk, icon: 'user', value: firstLoad ? '—' : students.length, label: 'Students' },
+    { show: usersOk, icon: 'users', value: firstLoad ? '—' : data.total_users, label: 'Total users' },
+    { show: usersOk, icon: 'user', value: firstLoad ? '—' : data.student_count, label: 'Students' },
     {
       show: evaluatorsOk,
       icon: 'shield',
-      value: firstLoad ? '—' : evaluators.length,
+      value: firstLoad ? '—' : data.evaluator_count,
       label: 'Evaluators',
     },
     {
       show: pendingOk,
       icon: 'clock',
-      value: firstLoad ? '—' : pending.length,
+      value: firstLoad ? '—' : data.pending_count,
       label: 'Pending approvals',
     },
     {
@@ -175,6 +166,23 @@ export default function AdminDashboard() {
           </Link>
         )}
       </header>
+
+      {error && (
+        <div className="mb-4">
+          <Alert variant="danger" title="Unable to load overview">
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <span>{error.message}</span>
+              <button
+                type="button"
+                className={`${BTN_GHOST} min-h-10 w-fit px-3.5 text-[13px]`}
+                onClick={() => reload({ force: true })}
+              >
+                Try again
+              </button>
+            </div>
+          </Alert>
+        </div>
+      )}
 
       <section
         aria-label="Platform metrics"

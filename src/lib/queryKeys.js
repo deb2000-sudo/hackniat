@@ -14,6 +14,7 @@ export const queryKeys = {
   hackathon: (id) => `hackathon:${id}`,
   themes: 'themes:list',
   universities: 'universities:list',
+  registrationConfig: 'auth:registration-config',
   /** One university's batches; there is deliberately no all-batches key. */
   universityBatches: (universityId) => `batches:university:${universityId}`,
   evaluationRequirements: 'evaluation-requirements:list',

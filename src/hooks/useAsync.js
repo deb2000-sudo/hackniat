@@ -103,7 +103,8 @@ export function useAsync(asyncFn, options) {
 
         if (!active) return
         setLocal({ data: result, error: null, loading: false })
-        if (key) setQueryData(key, result)
+        // fetchQuery already stored this. Writing it again let a request that
+        // started before logout put the previous user's list back in the cache.
       } catch (err) {
         if (!active || err?.name === 'AbortError') return
         setLocal((s) => ({ data: s.data, error: err, loading: false }))
