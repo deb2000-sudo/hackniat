@@ -5,12 +5,13 @@ import { useAsync } from '../../hooks/useAsync'
 import { evaluationApi } from '../../api/evaluation'
 import { hackathonsApi } from '../../api/hackathons'
 import { queryKeys } from '../../lib/queryKeys'
-import { formatDate, formatScore } from '../../utils/format'
+import { formatScore } from '../../utils/format'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import Card, { CardBody } from '../../components/ui/Card'
+import StudentHackathonCard from '../../components/hackathons/StudentHackathonCard'
 import StatCard from '../../components/ui/StatCard'
 import EmptyState from '../../components/ui/EmptyState'
 import SessionTable from '../../components/evaluation/SessionTable'
@@ -79,53 +80,29 @@ export default function StudentDashboard() {
       </div>
 
       {!!hackathons?.length && (
-        <section className="student-released-themes">
-          <div className="row-between wrap">
-            <div><h2>Released themes</h2><p>Choose one of these themes when creating your submission.</p></div>
-            <Button as={Link} to="/hackathons" variant="ghost" size="sm" rightIcon={<Icon name="arrowRight" size={15} />}>View hackathons</Button>
+        <section className="mb-9" aria-labelledby="released-hackathons-title">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 id="released-hackathons-title" className="text-[20px] font-semibold tracking-[-0.02em] text-ink">
+                Released hackathons
+              </h2>
+              <p className="mt-1 text-[13.5px] text-muted">
+                Hackathons open to you. Pick one and its theme when you create a submission.
+              </p>
+            </div>
+            <Button
+              as={Link}
+              to="/hackathons"
+              variant="ghost"
+              size="sm"
+              rightIcon={<Icon name="arrowRight" size={15} />}
+            >
+              View all hackathons
+            </Button>
           </div>
-          <div className="student-theme-hackathons">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {hackathons.map((hackathon) => (
-              <Card className="student-hackathon-theme-card" key={hackathon.id}>
-                <div className="student-hackathon-theme-card__media">
-                  {hackathon.banner_url ? (
-                    <img
-                      src={hackathon.banner_url}
-                      alt={`${hackathon.name} banner`}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <span><Icon name="trophy" size={28} /></span>
-                  )}
-                </div>
-                <CardBody>
-                  <div className="student-hackathon-theme-card__title">
-                    <div>
-                      <strong>{hackathon.name}</strong>
-                      <small>
-                        <Icon name="calendar" size={13} />
-                        {formatDate(hackathon.start_date)} – {formatDate(hackathon.end_date)}
-                      </small>
-                    </div>
-                    {hackathon.hackathon_url && (
-                      <a
-                        href={hackathon.hackathon_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Official site
-                        <Icon name="arrowRight" size={13} />
-                      </a>
-                    )}
-                  </div>
-                  <div className="student-hackathon-theme-card__themes">
-                    {hackathon.themes?.length ? hackathon.themes.map((theme) => (
-                      <span key={theme.id}>{theme.name}</span>
-                    )) : <small>No themes released</small>}
-                  </div>
-                </CardBody>
-              </Card>
+              <StudentHackathonCard key={hackathon.id} hackathon={hackathon} />
             ))}
           </div>
         </section>

@@ -1,8 +1,14 @@
+import { nowInAppTimezone, scheduleStatus } from './schedule'
+
+/**
+ * Where a hackathon stands now, by its IST date and clock (start minute to end
+ * minute inclusive; no saved time means the whole day) — the same rule that
+ * decides whether a student can submit.
+ */
 export function getHackathonStatus(hackathon, now = new Date()) {
-  const start = new Date(`${hackathon.start_date}T00:00:00`)
-  const end = new Date(`${hackathon.end_date}T23:59:59`)
-  if (now < start) return { key: 'upcoming', label: 'Upcoming', variant: 'info' }
-  if (now > end) return { key: 'past', label: 'Completed', variant: 'neutral' }
+  const status = scheduleStatus(hackathon, nowInAppTimezone(now))
+  if (status === 'scheduled') return { key: 'upcoming', label: 'Upcoming', variant: 'info' }
+  if (status === 'closed') return { key: 'past', label: 'Completed', variant: 'neutral' }
   return { key: 'live', label: 'Live now', variant: 'success' }
 }
 
