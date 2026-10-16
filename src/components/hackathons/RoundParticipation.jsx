@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import Alert from '../ui/Alert'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
-import { formatDate } from '../../utils/format'
 import { teamModeFallbackLabel } from '../../utils/hackathons'
+import { formatScheduleRange } from '../../utils/schedule'
 import { BADGE, MONO } from '../drop/theme'
 import ParticipationPanel from './ParticipationPanel'
 import {
@@ -62,7 +62,7 @@ export default function RoundParticipation({ hackathon, round, roundIndex }) {
           {(round.start_date || round.end_date) && (
             <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted">
               <Icon name="calendar" size={14} />
-              {formatDate(round.start_date)} – {formatDate(round.end_date)}
+              {formatScheduleRange(round)}
             </p>
           )}
           <p className="mt-1 text-[13px] font-medium text-ink">{roundTimingText(round)}</p>

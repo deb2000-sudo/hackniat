@@ -1,4 +1,4 @@
-import { APP_TIMEZONE, formatDate } from '../../utils/format'
+import { formatEnd, formatStart, scheduleStatus } from '../../utils/schedule'
 
 /**
  * Presentation for a round's lifecycle.
@@ -21,28 +21,13 @@ const TONES = {
 }
 
 /**
- * Today in the app's timezone as YYYY-MM-DD.
- *
- * Round dates are plain calendar dates entered in IST, so they must be compared
- * against an IST "today". toISOString() gives UTC, which is the previous day for
- * the first 5.5 hours of every IST day — long enough for a round to look
- * unopened on the morning it starts.
+ * Status implied by the round's own schedule, to the IST minute: scheduled
+ * before the start minute, closed after the end minute (the end minute itself
+ * is still open). A missing time is the whole day — 00:00 to 23:59. "Now" is
+ * built in Asia/Kolkata, never from toISOString(), which is UTC.
  */
-function todayInAppTimezone() {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: APP_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
-}
-
-/** Status implied purely by the round's own dates. */
 function inferStatus(round) {
-  const today = todayInAppTimezone()
-  if (round?.start_date && today < round.start_date) return 'scheduled'
-  if (round?.end_date && today > round.end_date) return 'closed'
-  return 'open'
+  return scheduleStatus(round)
 }
 
 /**
@@ -69,9 +54,9 @@ export function roundStatusBadge(round) {
  */
 export function roundTimingText(round) {
   const key = roundStatusKey(round)
-  if (key === 'scheduled' && round?.start_date) return `Opens ${formatDate(round.start_date)} (IST)`
-  if (key === 'open') return round?.end_date ? `Open now · closes ${formatDate(round.end_date)} (IST)` : 'Open now'
-  if (key === 'closed') return round?.end_date ? `Closed ${formatDate(round.end_date)} (IST)` : 'Closed'
+  if (key === 'scheduled' && round?.start_date) return `Opens ${formatStart(round)}`
+  if (key === 'open') return round?.end_date ? `Open now · closes ${formatEnd(round)}` : 'Open now'
+  if (key === 'closed') return round?.end_date ? `Closed ${formatEnd(round)}` : 'Closed'
   return 'Not published yet'
 }
 
@@ -83,7 +68,7 @@ export function canParticipateInRound(round) {
 /** Copy for a round the schedule says is open but the backend has not released. */
 export function roundPendingReleaseText(round) {
   return round?.end_date
-    ? `It is scheduled to run until ${formatDate(round.end_date)} (IST). Ask an admin to publish it.`
+    ? `It is scheduled to run until ${formatEnd(round)}. Ask an admin to publish it.`
     : 'Ask an admin to publish this round.'
 }
 
@@ -101,9 +86,9 @@ export function roundStatusKeyClosed(round) {
  */
 export function isRoundAwaitingRelease(round) {
   if (!round) return false
-  // The calendar decides. A round whose start date has arrived counts as open
-  // even if the stored `published` flag has not caught up with it.
-  if (round.start_date) return todayInAppTimezone() < round.start_date
+  // The schedule decides. A round whose start minute has arrived counts as
+  // open even if the stored `published` flag has not caught up with it.
+  if (round.start_date) return scheduleStatus(round) === 'scheduled'
   if (round.published === false) return true
   return roundStatusKey(round) === 'draft'
 }
@@ -119,7 +104,7 @@ export function isRoundLive(round) {
  * round even while it is unpublished, so answer "when" rather than just "no".
  */
 export function roundOpensText(round) {
-  if (round?.start_date) return `Goes live on ${formatDate(round.start_date)} (IST).`
+  if (round?.start_date) return `Goes live on ${formatStart(round)}.`
   return 'The opening date has not been announced yet.'
 }
 

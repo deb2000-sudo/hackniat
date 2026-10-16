@@ -30,6 +30,11 @@ const MESSAGES = {
   // university and batch (it can change while the page is open).
   NOT_VISIBLE: 'This hackathon is not open to your university and batch.',
   HACKATHON_NOT_FOUND: 'That hackathon no longer exists.',
+  // A submit outside the window (date + IST clock, end minute inclusive).
+  HACKATHON_NOT_OPEN: 'This hackathon is not open for submissions yet.',
+  HACKATHON_CLOSED: 'This hackathon has closed. Submissions are no longer accepted.',
+  ROUND_NOT_OPEN: 'This round is not open for submissions yet.',
+  ROUND_CLOSED: 'This round has closed. Submissions are no longer accepted.',
 }
 
 /** Human-readable text for a participation failure. */

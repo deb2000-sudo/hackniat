@@ -13,6 +13,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { ROLES } from '../../utils/constants'
 import { hasPermission, PERMISSIONS } from '../../utils/access'
 import { formatDate } from '../../utils/format'
+import { formatEnd, formatScheduleRange, formatStart } from '../../utils/schedule'
 import { getHackathonDuration, getHackathonStatus, teamModeFallbackLabel } from '../../utils/hackathons'
 import {
   BADGE,
@@ -206,7 +207,7 @@ export default function HackathonDetailPage() {
     {
       icon: 'calendar',
       label: 'Starts on',
-      value: formatDate(hackathon.start_date),
+      value: formatStart(hackathon) || formatDate(hackathon.start_date),
     },
     {
       icon: 'chart',
@@ -223,7 +224,7 @@ export default function HackathonDetailPage() {
     {
       icon: 'calendar',
       label: 'Ends on',
-      value: formatDate(hackathon.end_date),
+      value: formatEnd(hackathon) || formatDate(hackathon.end_date),
     },
     // No AI evaluation tile: the flag is set per timeline round, so a single
     // hackathon-level value cannot describe it. The per-round setting is shown
@@ -430,8 +431,7 @@ export default function HackathonDetailPage() {
                           {(round.start_date || round.end_date) && (
                             <span className={`${ROUND_PILL} ${ROUND_PILL_NEUTRAL}`}>
                               <Icon name="calendar" size={15} />
-                              {round.start_date ? formatDate(round.start_date) : 'Date TBD'}
-                              {round.end_date ? ` – ${formatDate(round.end_date)}` : ''}
+                              {round.start_date ? formatScheduleRange(round) : 'Date TBD'}
                             </span>
                           )}
                           {isAdmin && !round.published && (

@@ -9,8 +9,8 @@ import Input from '../ui/Input'
 import OtpInput from '../auth/OtpInput'
 import JoinCodePanel from './JoinCodePanel'
 import TeamRoster from './TeamRoster'
-import { formatDate } from '../../utils/format'
 import { teamModeFallbackLabel, teamSizeMode } from '../../utils/hackathons'
+import { DEFAULT_START_TIME, formatScheduleMoment } from '../../utils/schedule'
 import { participationErrorCode, participationErrorMessage, shouldRefetchParticipation } from './errorCodes'
 import {
   isRoundAwaitingRelease,
@@ -34,7 +34,15 @@ import {
  * the client never infers enrollment state from its own last action.
  */
 /** Actions the panel renders a step for; anything else falls back to team size. */
-const KNOWN_PENDING_ACTIONS = ['solo_enroll', 'choose_role', 'complete_team', 'round_not_open']
+const KNOWN_PENDING_ACTIONS = [
+  'solo_enroll',
+  'choose_role',
+  'complete_team',
+  'round_not_open',
+  // The hackathon's own window (date + IST clock) is not open yet / has ended.
+  'hackathon_not_open',
+  'hackathon_closed',
+]
 
 export default function ParticipationPanel({ hackathonId, roundIndex = 0, round, onState }) {
   // An unreleased round rejects /participation by design, so don't ask: the
@@ -388,8 +396,21 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
         <Alert variant="info" title="Round not open yet">
           {data.block_reason ||
             (data.round_start_date
-              ? `Opens on ${formatDate(data.round_start_date)} (IST). Your team is set — come back then to submit.`
+              ? `Opens on ${formatScheduleMoment(data.round_start_date, data.round_start_time, DEFAULT_START_TIME)}. Your team is set — come back then to submit.`
               : 'Your team is set. You can submit once this round opens.')}
+        </Alert>
+      )}
+
+      {pendingAction === 'hackathon_not_open' && (
+        <Alert variant="info" title="Hackathon not open yet">
+          {data.block_reason ||
+            'Submissions open when the hackathon starts. You can still form your team now.'}
+        </Alert>
+      )}
+
+      {pendingAction === 'hackathon_closed' && (
+        <Alert variant="warning" title="Hackathon closed">
+          {data.block_reason || 'This hackathon has ended. Submissions and team changes are closed.'}
         </Alert>
       )}
 
