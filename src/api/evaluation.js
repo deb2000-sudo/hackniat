@@ -79,6 +79,16 @@ export function isSubmissionEvaluated(submission) {
   return submission?.status === EVALUATION_STATUS.COMPLETED
 }
 
+/**
+ * Has the assigned evaluator already submitted their evaluation? Their score
+ * is on the submission, or it has moved into admin review. Reassigning such a
+ * submission is still allowed, but it needs a reason and is logged.
+ */
+export function isEvaluatorSubmitted(submission) {
+  if (submission?.evaluator_score != null) return true
+  return ['pending_review', 'changes_requested', 'approved'].includes(submission?.review_status)
+}
+
 export const evaluationApi = {
   /** List every submission owned by the authenticated student. */
   listSubmissions: async (options) => {
@@ -171,7 +181,8 @@ export const evaluationApi = {
    * One page of a hackathon's submissions for the admin queue.
    *
    * `params` are `page` (1-based), `page_size`, and the optional filters
-   * `round_index`, `status` and `q`. A backend that pages answers with
+   * `round_index`, `status` (AI analysis), `review_status` (none |
+   * pending_review | changes_requested | approved) and `q`. A backend that pages answers with
    * `{ items, total, page, page_size, round_summary }`; one that does not yet
    * ignores the params and returns every submission as a plain array. Both come
    * back tagged so the caller knows whether it still has to page locally.
@@ -227,11 +238,21 @@ export const evaluationApi = {
   getAcceptedVideoTypes: (options) =>
     api.get('/submissions/accepted-video-types', options),
 
-  /** Admin only: assign or unassign a submission from an approved evaluator. */
-  assignSubmission: async (submissionId, evaluatorId, options) => {
+  /**
+   * Admin only: assign, reassign or unassign a submission's evaluator.
+   *
+   * `reason` is required when the submission already has an evaluator — a
+   * reassignment or an unassign — and the backend records it in the
+   * submission's `assignment_history` (who, when, from → to, reason). A first
+   * assignment needs none. Reassigning must not re-queue AI analysis that has
+   * already finished.
+   */
+  assignSubmission: async (submissionId, evaluatorId, reason = '', options) => {
+    const body = { evaluator_id: evaluatorId || null }
+    if (String(reason).trim()) body.reason = String(reason).trim()
     const submission = await api.post(
       `/submissions/${encodeURIComponent(submissionId)}/assign`,
-      { evaluator_id: evaluatorId || null },
+      body,
       options,
     )
     return normalizeSubmission(submission)

@@ -23,6 +23,7 @@ import Card, { CardBody, CardHeader } from '../../components/ui/Card'
 import Icon from '../../components/ui/Icon'
 import Spinner, { LoadingBlock } from '../../components/ui/Spinner'
 import AdminReviewCard from '../../components/evaluation/AdminReviewCard'
+import AssignmentHistoryCard from '../../components/evaluation/AssignmentHistoryCard'
 import AiMetricsPanel from '../../components/evaluation/AiMetricsPanel'
 import GithubAiPanel from '../../components/evaluation/GithubAiPanel'
 import ManualScoreForms from '../../components/evaluation/ManualScoreForms'
@@ -609,6 +610,8 @@ export default function AdminSubmissionDetailPage() {
               )}
             </CardBody>
           </Card>
+
+          <AssignmentHistoryCard history={submission?.assignment_history} />
 
           {completed && (
             <AdminReviewCard

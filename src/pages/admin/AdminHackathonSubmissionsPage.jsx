@@ -16,6 +16,7 @@ import Badge, { ReviewStatusBadge, StatusBadge } from '../../components/ui/Badge
 import Button from '../../components/ui/Button'
 import Card, { CardBody } from '../../components/ui/Card'
 import EmptyState from '../../components/ui/EmptyState'
+import ReassignEvaluatorDialog from '../../components/evaluation/ReassignEvaluatorDialog'
 import Icon from '../../components/ui/Icon'
 import Input, { Select } from '../../components/ui/Input'
 import Pagination from '../../components/ui/Pagination'
@@ -24,6 +25,17 @@ import { useAdminPath } from '../../hooks/useAdminPath'
 
 /** Neutral stat pill. text-ink, not text-muted: these are numbers to read. */
 const BADGE_STAT = 'border-hairline bg-raised text-ink'
+
+/**
+ * Review states, matching the Review column's badges. "none" is a submission
+ * no admin has reviewed yet (Manual Analysis Pending).
+ */
+const REVIEW_FILTERS = [
+  { value: 'none', label: 'Manual Analysis Pending' },
+  { value: 'pending_review', label: 'Pending admin review' },
+  { value: 'changes_requested', label: 'Changes requested' },
+  { value: 'approved', label: 'Approved' },
+]
 
 /** Rows per page of the submissions table. */
 const PAGE_SIZE = 10
@@ -59,11 +71,17 @@ export default function AdminHackathonSubmissionsPage() {
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
+  // Where each submission is in admin review — the Review column's badge.
+  const [reviewStatus, setReviewStatus] = useState('all')
   const [page, setPage] = useState(1)
   // Selected rows by id, holding the row itself so a selection made on one
   // page still counts after moving to another.
   const [selected, setSelected] = useState(() => new Map())
   const [assigningId, setAssigningId] = useState('')
+  // A change to an evaluator who is already assigned (or removing them) waits
+  // here for a reason; the reason is logged in the submission's history.
+  const [pendingChange, setPendingChange] = useState(null)
+  const [changeError, setChangeError] = useState('')
   const [bulkAssigning, setBulkAssigning] = useState(false)
   const [actionError, setActionError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
@@ -93,6 +111,7 @@ export default function AdminHackathonSubmissionsPage() {
   const feed = useHackathonSubmissions(hackathonId, {
     roundIndex: requestedRoundIndex,
     status,
+    reviewStatus,
     search,
     page,
     pageSize: PAGE_SIZE,
@@ -156,6 +175,16 @@ export default function AdminHackathonSubmissionsPage() {
     setQuery('')
     setSearch('')
     setStatus('all')
+    setReviewStatus('all')
+    setPage(1)
+  }
+
+  const filtersActive = Boolean(search) || status !== 'all' || reviewStatus !== 'all'
+  const clearFilters = () => {
+    setQuery('')
+    setSearch('')
+    setStatus('all')
+    setReviewStatus('all')
     setPage(1)
   }
 
@@ -210,30 +239,62 @@ export default function AdminHackathonSubmissionsPage() {
   // the dialog can title itself before the fetch lands.
   const [teamSubmission, setTeamSubmission] = useState(null)
 
-  const onAssign = async (submissionId, evaluatorId) => {
+  /**
+   * The evaluator dropdown changed. A first assignment saves at once; changing
+   * or removing an evaluator who is already assigned asks for a reason first.
+   */
+  const onAssign = (submissionId, evaluatorId) => {
+    const submission = submissions.find((item) => item.id === submissionId)
+    const current = submission?.assigned_evaluator_id || null
+    const next = evaluatorId || null
+    if (current === next) return
+    if (current) {
+      setChangeError('')
+      setPendingChange({
+        submission,
+        toId: next,
+        toName: evaluators.find((item) => item.id === next)?.name || '',
+      })
+      return
+    }
+    assign(submission, next)
+  }
+
+  /** Save an assignment. Returns true on success. */
+  const assign = async (submission, evaluatorId, reason = '') => {
+    const submissionId = submission?.id
+    const previousEvaluator = submission?.assigned_evaluator_name || ''
+    // AI analysis that already finished is never re-run by a reassignment, so
+    // only a submission that had not been analysed can have queued it.
+    const alreadyAnalysed = submission?.status === 'completed'
     setAssigningId(submissionId)
     setActionError('')
     setActionMessage('')
     try {
-      const updated = await evaluationApi.assignSubmission(
-        submissionId,
-        evaluatorId || null,
-      )
+      const updated = await evaluationApi.assignSubmission(submissionId, evaluatorId || null, reason)
       feed.patch([updated])
       unselect([submissionId])
+      const newName = updated.assigned_evaluator_name || 'the selected evaluator'
+      const queuedAi = !alreadyAnalysed && updated.status === 'processing'
       if (!evaluatorId) {
-        setActionMessage('Submission is now unassigned.')
-      } else if (updated.status === 'processing' || updated.auto_ai_evaluation) {
         setActionMessage(
-          `Assigned to ${updated.assigned_evaluator_name || 'the selected evaluator'}. AI evaluation queued.`,
+          previousEvaluator
+            ? `${previousEvaluator} was removed. The change is logged with your reason.`
+            : 'Submission is now unassigned.',
+        )
+      } else if (reason) {
+        setActionMessage(
+          `Reassigned from ${previousEvaluator || 'the previous evaluator'} to ${newName}. The change is logged with your reason.`,
         )
       } else {
-        setActionMessage(
-          `Submission assigned to ${updated.assigned_evaluator_name || 'the selected evaluator'}.`,
-        )
+        setActionMessage(`Assigned to ${newName}.${queuedAi ? ' AI evaluation queued.' : ''}`)
       }
+      return true
     } catch (err) {
-      setActionError(err.message || 'Unable to update the evaluator assignment.')
+      const message = err.message || 'Unable to update the evaluator assignment.'
+      if (reason) setChangeError(message)
+      else setActionError(message)
+      return false
     } finally {
       setAssigningId('')
     }
@@ -506,19 +567,39 @@ export default function AdminHackathonSubmissionsPage() {
           </div>
           <div className="admin-submissions-toolbar__actions">
             <Select
-              aria-label="Filter submission status"
+              aria-label="Filter by review status"
+              value={reviewStatus}
+              onChange={(event) => {
+                setReviewStatus(event.target.value)
+                setPage(1)
+              }}
+            >
+              <option value="all">All review states</option>
+              {REVIEW_FILTERS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Filter by AI analysis status"
               value={status}
               onChange={(event) => {
                 setStatus(event.target.value)
                 setPage(1)
               }}
             >
-              <option value="all">All statuses</option>
+              <option value="all">All AI statuses</option>
               <option value="uploaded">Uploaded</option>
               <option value="processing">Processing</option>
               <option value="completed">Completed</option>
               <option value="failed">Failed</option>
             </Select>
+            {filtersActive && (
+              <Button variant="ghost" onClick={clearFilters} leftIcon={<Icon name="x" size={16} />}>
+                Clear filters
+              </Button>
+            )}
             <Button
               variant="secondary"
               onClick={onDivideEqually}
@@ -681,10 +762,17 @@ export default function AdminHackathonSubmissionsPage() {
                 title={roundSubmissionsCount ? 'No matching submissions' : 'No submissions yet'}
                 description={
                   roundSubmissionsCount
-                    ? 'Try another search or status filter.'
+                    ? 'Try another search, review state or AI status.'
                     : activeRound
                       ? `New student submissions for ${activeRound.name} will appear here.`
                       : 'New student submissions for this hackathon will appear here.'
+                }
+                action={
+                  filtersActive ? (
+                    <Button variant="secondary" onClick={clearFilters}>
+                      Clear filters
+                    </Button>
+                  ) : undefined
                 }
               />
             </CardBody>
@@ -692,6 +780,18 @@ export default function AdminHackathonSubmissionsPage() {
         ) : null}
         </>
       )}
+
+      <ReassignEvaluatorDialog
+        key={pendingChange ? `${pendingChange.submission?.id}-${pendingChange.toId}` : 'none'}
+        change={pendingChange}
+        saving={Boolean(pendingChange) && assigningId === pendingChange?.submission?.id}
+        error={changeError}
+        onCancel={() => setPendingChange(null)}
+        onConfirm={async (reason) => {
+          const ok = await assign(pendingChange.submission, pendingChange.toId, reason)
+          if (ok) setPendingChange(null)
+        }}
+      />
 
       <WithdrawSubmissionDialog
         submission={withdrawing}
