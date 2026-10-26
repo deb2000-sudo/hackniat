@@ -17,7 +17,7 @@ function encode(value) {
 export const universitiesApi = {
   list: (options) => api.get(PATH, options),
 
-  /** Admin only. Body: `{ name, location }`. */
+  /** Admin only. Body: `{ name, location, college_type, total_students }`. */
   create: (payload, options) => api.post(PATH, payload, options),
 
   /** Admin only. Partial: send only the fields that changed. */
@@ -34,16 +34,19 @@ export const universitiesApi = {
  * filtering a combined list, so a batch can never be offered under the wrong
  * campus. Names are unique per university (409 BATCH_EXISTS), not globally.
  *
+ * Every row carries `total_students` (null if saved before the field existed).
+ * It is set per batch and is independent of the university's own total.
+ *
  * `list` is public, like the university list; the writes are admin-only.
  */
 export const batchesApi = {
   list: (universityId, options) => api.get(`${PATH}/${encode(universityId)}/batches`, options),
 
-  /** Admin only. Body: `{ name }`. */
+  /** Admin only. Body: `{ name, total_students }`. */
   create: (universityId, payload, options) =>
     api.post(`${PATH}/${encode(universityId)}/batches`, payload, options),
 
-  /** Admin only. Body: `{ name }`. */
+  /** Admin only. Body: `{ total_students }`, plus `name` only when it changed. */
   update: (universityId, batchId, payload, options) =>
     api.patch(`${PATH}/${encode(universityId)}/batches/${encode(batchId)}`, payload, options),
 

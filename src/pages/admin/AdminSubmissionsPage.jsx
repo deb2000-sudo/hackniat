@@ -10,7 +10,6 @@ import {
   BADGE_OPEN,
   BTN_GHOST,
   BTN_VOLT,
-  EYEBROW,
   MONO,
   PANEL,
   WRAP_APP,
@@ -45,6 +44,9 @@ export default function AdminSubmissionsPage() {
     [data],
   )
   const countsUnavailable = Array.isArray(data) || Boolean(data?.countsUnavailable)
+  const totalsFromServer = !Array.isArray(data) && Boolean(data?.totalsFromServer)
+  // Unknown numbers render as a dash, not a zero that reads as real data.
+  const splitCount = (value) => (countsUnavailable ? '—' : value || 0)
 
   const hackathons = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -121,9 +123,23 @@ export default function AdminSubmissionsPage() {
           otherwise the zeros read as real data. */}
       {!error && countsUnavailable && (
         <div className="mb-6">
-          <Alert variant="warning" title="Submission counts are unavailable">
-            These hackathons loaded, but the submission feed did not, so every count shows zero.
+          <Alert
+            variant="warning"
+            title={
+              totalsFromServer
+                ? 'Evaluation progress is unavailable'
+                : 'Submission counts are unavailable'
+            }
+          >
+            {totalsFromServer
+              ? 'Submission totals loaded, but the submission feed did not, so evaluated and awaiting counts are not shown.'
+              : 'These hackathons loaded, but the submission feed did not, so counts are not shown.'}{' '}
             Refresh to try again.
+            {data?.countsError && (
+              <span className="mt-1.5 block text-[12px] opacity-70">
+                Server said: {data.countsError}
+              </span>
+            )}
           </Alert>
         </div>
       )}
@@ -152,7 +168,7 @@ export default function AdminSubmissionsPage() {
                   )}
                   <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-canvas/80 via-transparent to-transparent" />
                   <span className={`${BADGE} ${BADGE_CLOSED} absolute right-3.5 bottom-3 z-1`}>
-                    <strong className={`${MONO} mr-1 text-[13px]`}>{hackathon.submission_count || 0}</strong>
+                    <strong className={`${MONO} mr-1 text-[13px]`}>{countsUnavailable && !totalsFromServer ? '—' : hackathon.submission_count || 0}</strong>
                     submissions
                   </span>
                 </div>
@@ -170,15 +186,15 @@ export default function AdminSubmissionsPage() {
 
                   <div className="mt-auto flex flex-wrap gap-2 border-t border-hairline pt-4">
                     <span className={`${BADGE} ${BADGE_STAT}`}>
-                      <strong className={`${MONO} mr-1`}>{hackathon.submission_count || 0}</strong>
+                      <strong className={`${MONO} mr-1`}>{countsUnavailable && !totalsFromServer ? '—' : hackathon.submission_count || 0}</strong>
                       Submissions
                     </span>
                     <span className={`${BADGE} ${BADGE_OPEN}`}>
-                      <strong className={`${MONO} mr-1`}>{hackathon.evaluated_count || 0}</strong>
+                      <strong className={`${MONO} mr-1`}>{splitCount(hackathon.evaluated_count)}</strong>
                       Evaluated
                     </span>
                     <span className={`${BADGE} ${BADGE_STAT}`}>
-                      <strong className={`${MONO} mr-1`}>{hackathon.awaiting_count || 0}</strong>
+                      <strong className={`${MONO} mr-1`}>{splitCount(hackathon.awaiting_count)}</strong>
                       Awaiting evaluation
                     </span>
                   </div>

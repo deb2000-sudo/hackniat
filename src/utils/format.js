@@ -70,6 +70,17 @@ export function formatFileSize(bytes) {
   return `${size.toFixed(size >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`
 }
 
+/**
+ * Whole number with Indian digit grouping (1200 -> "1,200", 1000000 ->
+ * "10,00,000"). Null or missing comes back as an empty string so a table
+ * cell stays blank.
+ */
+export function formatCount(value) {
+  if (value === null || value === undefined || value === '') return ''
+  const number = Number(value)
+  return Number.isFinite(number) ? number.toLocaleString('en-IN') : ''
+}
+
 /** Initials from a full name, e.g. "Ada Lovelace" -> "AL". */
 export function getInitials(name = '') {
   const parts = name.trim().split(/\s+/).filter(Boolean)

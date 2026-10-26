@@ -14,6 +14,8 @@ import Icon from '../../components/ui/Icon'
 import Input, { Select } from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { formatCount } from '../../utils/format'
+import { parseTotalStudents } from '../../utils/validators'
 
 /**
  * Batches students choose from at registration, managed one university at a
@@ -63,6 +65,7 @@ export default function BatchesPage() {
 
   const [editing, setEditing] = useState(null)
   const [name, setName] = useState('')
+  const [totalStudents, setTotalStudents] = useState('')
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(null)
@@ -75,12 +78,15 @@ export default function BatchesPage() {
   const openCreate = () => {
     setEditing({})
     setName('')
+    setTotalStudents('')
     setFormError('')
   }
 
   const openEdit = (batch) => {
     setEditing(batch)
     setName(batch.name || '')
+    // Null on a batch saved before the count existed: the admin fills it in.
+    setTotalStudents(batch.total_students == null ? '' : String(batch.total_students))
     setFormError('')
   }
 
@@ -90,11 +96,19 @@ export default function BatchesPage() {
       setFormError('Batch name is required.')
       return
     }
+    const count = parseTotalStudents(totalStudents)
+    if (count.error) {
+      setFormError(count.error)
+      return
+    }
 
     setSaving(true)
     setFormError('')
 
-    const payload = { name: trimmed }
+    // On edit the name is sent only when it changed, so saving a new count
+    // never trips BATCH_EXISTS against the batch's own name.
+    const payload = { total_students: count.value }
+    if (!editing?.id || trimmed !== editing.name) payload.name = trimmed
     const saved = await (editing?.id
       ? batchesApi.update(universityId, editing.id, payload)
       : batchesApi.create(universityId, payload)
@@ -208,6 +222,7 @@ export default function BatchesPage() {
             <thead>
               <tr>
                 <th>Batch</th>
+                <th style={{ textAlign: 'right' }}>Total students</th>
                 <th aria-label="Actions" />
               </tr>
             </thead>
@@ -215,13 +230,14 @@ export default function BatchesPage() {
               {batches.map((batch) => (
                 <tr key={batch.id}>
                   <td style={{ fontWeight: 600 }}>{batch.name}</td>
+                  <td style={{ textAlign: 'right' }}>{formatCount(batch.total_students)}</td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="row" style={{ justifyContent: 'flex-end', gap: 6 }}>
                       <button
                         type="button"
                         className="icon-btn"
                         onClick={() => openEdit(batch)}
-                        aria-label={`Rename ${batch.name}`}
+                        aria-label={`Edit ${batch.name}`}
                       >
                         <Icon name="edit" size={17} />
                       </button>
@@ -259,7 +275,7 @@ export default function BatchesPage() {
       <Modal
         open={!!editing}
         onClose={() => !saving && setEditing(null)}
-        title={editing?.id ? 'Rename batch' : 'Add batch'}
+        title={editing?.id ? 'Edit batch' : 'Add batch'}
         footer={
           <>
             <Button variant="ghost" disabled={saving} onClick={() => setEditing(null)}>
@@ -284,6 +300,15 @@ export default function BatchesPage() {
             onChange={(event) => setName(event.target.value)}
             hint="Must be unique within this university, e.g. 2024-2028."
             placeholder="2024-2028"
+          />
+          <Input
+            label="Total students"
+            required
+            inputMode="numeric"
+            value={totalStudents}
+            onChange={(event) => setTotalStudents(event.target.value)}
+            hint="Students in this batch, 1 to 10,00,000. Independent of the campus total."
+            placeholder="100"
           />
         </div>
       </Modal>
