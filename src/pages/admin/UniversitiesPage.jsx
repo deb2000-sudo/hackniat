@@ -14,8 +14,10 @@ import Input, { Select } from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import { COLLEGE_TYPES } from '../../utils/constants'
+import { formatCount } from '../../utils/format'
+import { parseTotalStudents } from '../../utils/validators'
 
-const EMPTY_FORM = { name: '', location: '', college_type: COLLEGE_TYPES.NIAT }
+const EMPTY_FORM = { name: '', location: '', college_type: COLLEGE_TYPES.NIAT, total_students: '' }
 
 /**
  * Campus catalogue behind the student register form.
@@ -55,6 +57,8 @@ export default function UniversitiesPage() {
       location: university.location || '',
       // A university saved before college types existed is NIAT.
       college_type: university.college_type || COLLEGE_TYPES.NIAT,
+      // Null on a campus saved before the count existed: the admin fills it in.
+      total_students: university.total_students == null ? '' : String(university.total_students),
     })
     setFormError('')
   }
@@ -70,11 +74,21 @@ export default function UniversitiesPage() {
       setFormError('Location is required.')
       return
     }
+    const totalStudents = parseTotalStudents(form.total_students)
+    if (totalStudents.error) {
+      setFormError(totalStudents.error)
+      return
+    }
 
     setSaving(true)
     setFormError('')
 
-    const payload = { name, location, college_type: form.college_type || COLLEGE_TYPES.NIAT }
+    const payload = {
+      name,
+      location,
+      college_type: form.college_type || COLLEGE_TYPES.NIAT,
+      total_students: totalStudents.value,
+    }
     const saved = await (editing?.id
       ? universitiesApi.update(editing.id, payload)
       : universitiesApi.create(payload)
@@ -145,6 +159,7 @@ export default function UniversitiesPage() {
                 <th>Name</th>
                 <th>Location</th>
                 <th>College type</th>
+                <th style={{ textAlign: 'right' }}>Total students</th>
                 <th aria-label="Actions" />
               </tr>
             </thead>
@@ -158,6 +173,7 @@ export default function UniversitiesPage() {
                   </td>
                   <td>{university.location}</td>
                   <td>{university.college_type || COLLEGE_TYPES.NIAT}</td>
+                  <td style={{ textAlign: 'right' }}>{formatCount(university.total_students)}</td>
                   <td style={{ textAlign: 'right' }}>
                     <div className="row" style={{ justifyContent: 'flex-end', gap: 6 }}>
                       <button
@@ -251,6 +267,17 @@ export default function UniversitiesPage() {
             <option value={COLLEGE_TYPES.NIAT}>NIAT</option>
             <option value={COLLEGE_TYPES.NON_NIAT}>Non NIAT</option>
           </Select>
+          <Input
+            label="Total students"
+            required
+            inputMode="numeric"
+            value={form.total_students}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, total_students: event.target.value }))
+            }
+            hint="Students on this campus, 1 to 10,00,000. Set separately from batch counts."
+            placeholder="1200"
+          />
         </div>
       </Modal>
 

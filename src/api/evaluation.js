@@ -101,7 +101,11 @@ export const evaluationApi = {
 
   /** Admin review queue containing every student submission. */
   listAllSubmissions: async (options) => {
-    const submissions = await emptyOn404(api.get('/submissions/admin/all', options))
+    const payload = await emptyOn404(api.get('/submissions/admin/all', options))
+    // A paging backend wraps the rows; take them rather than failing the feed.
+    const submissions = Array.isArray(payload)
+      ? payload
+      : payload?.items || payload?.submissions || payload?.data
     if (!Array.isArray(submissions)) {
       throw new Error('The admin submissions API returned an unsupported response format.')
     }
@@ -119,12 +123,26 @@ export const evaluationApi = {
    * so a failure there degrades the numbers instead of the whole screen.
    */
   loadSubmissionHackathonsWithCounts: async (options) => {
-    const [hackathonsResult, submissionsResult] = await Promise.allSettled([
+    const [hackathonsResult, firstSubmissionsResult] = await Promise.allSettled([
       evaluationApi.listSubmissionHackathons(options),
       evaluationApi.listAllSubmissions(options),
     ])
     if (hackathonsResult.status === 'rejected') throw hackathonsResult.reason
     const hackathons = hackathonsResult.value
+
+    // The full submissions feed is the slow call here and the one that fails
+    // under load, so give it one more try before showing degraded counts.
+    // Not on 401/403 or an abort: retrying cannot change those.
+    let submissionsResult = firstSubmissionsResult
+    const firstError = firstSubmissionsResult.reason
+    if (
+      submissionsResult.status === 'rejected' &&
+      firstError?.name !== 'AbortError' &&
+      ![401, 403].includes(firstError?.status)
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      ;[submissionsResult] = await Promise.allSettled([evaluationApi.listAllSubmissions(options)])
+    }
     const submissions = submissionsResult.status === 'fulfilled' ? submissionsResult.value : []
 
     const statsByHackathon = submissions.reduce((counts, submission) => {
@@ -149,6 +167,11 @@ export const evaluationApi = {
         }
       }),
       countsUnavailable: submissionsResult.status === 'rejected',
+      countsError:
+        submissionsResult.status === 'rejected' ? submissionsResult.reason?.message || '' : '',
+      // The hackathons endpoint can carry its own totals; when it does, only
+      // the evaluated / awaiting split is lost with the feed.
+      totalsFromServer: hackathons.some((hackathon) => hackathon.submission_count != null),
     }
   },
 

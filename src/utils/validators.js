@@ -74,6 +74,25 @@ export function toE164(countryCode, national) {
   return `${cc}${digits}`
 }
 
+/** Upper bound the backend accepts for a campus or batch student count. */
+export const TOTAL_STUDENTS_MAX = 1_000_000
+
+/**
+ * Parse the "Total students" field on the university and batch forms. Commas
+ * and spaces are ignored so "10,00,000" is accepted as typed.
+ * @returns {{ value: number | null, error: string }}
+ */
+export function parseTotalStudents(raw) {
+  const text = String(raw ?? '').replace(/[,\s]/g, '')
+  if (!text) return { value: null, error: 'Total students is required.' }
+  if (!/^\d+$/.test(text)) return { value: null, error: 'Total students must be a whole number.' }
+  const value = Number(text)
+  if (value < 1 || value > TOTAL_STUDENTS_MAX) {
+    return { value: null, error: 'Total students must be between 1 and 10,00,000.' }
+  }
+  return { value, error: '' }
+}
+
 /**
  * Validate the student registration form (individual, verified contact).
  * @returns {Record<string,string>} field -> error message (empty when valid)
