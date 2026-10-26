@@ -78,8 +78,8 @@ export default function AdminHackathonSubmissionsPage() {
   // page still counts after moving to another.
   const [selected, setSelected] = useState(() => new Map())
   const [assigningId, setAssigningId] = useState('')
-  // A change to an evaluator who is already assigned (or removing them) waits
-  // here for a reason; the reason is logged in the submission's history.
+  // A change from one evaluator to a different one waits here for a reason;
+  // the reason is logged in the submission's history.
   const [pendingChange, setPendingChange] = useState(null)
   const [changeError, setChangeError] = useState('')
   const [bulkAssigning, setBulkAssigning] = useState(false)
@@ -240,15 +240,15 @@ export default function AdminHackathonSubmissionsPage() {
   const [teamSubmission, setTeamSubmission] = useState(null)
 
   /**
-   * The evaluator dropdown changed. A first assignment saves at once; changing
-   * or removing an evaluator who is already assigned asks for a reason first.
+   * The evaluator dropdown changed. A first assignment and an unassign save at
+   * once; only changing one evaluator to another asks for a reason first.
    */
   const onAssign = (submissionId, evaluatorId) => {
     const submission = submissions.find((item) => item.id === submissionId)
     const current = submission?.assigned_evaluator_id || null
     const next = evaluatorId || null
     if (current === next) return
-    if (current) {
+    if (current && next) {
       setChangeError('')
       setPendingChange({
         submission,
@@ -279,7 +279,7 @@ export default function AdminHackathonSubmissionsPage() {
       if (!evaluatorId) {
         setActionMessage(
           previousEvaluator
-            ? `${previousEvaluator} was removed. The change is logged with your reason.`
+            ? `${previousEvaluator} was removed. The submission is now unassigned.`
             : 'Submission is now unassigned.',
         )
       } else if (reason) {

@@ -25,6 +25,10 @@ export const queryKeys = {
   adminEvaluators: 'admin:evaluators',
   adminPendingEvaluators: 'admin:pending-evaluators',
   adminOverview: 'admin:overview',
+  analysisOptions: 'analysis:options',
+  /** One Analysis request; the filter JSON is the key, so a filter change refetches. */
+  analysisHackathons: (filters) => `analysis:hackathons:${filters}`,
+  analysisEvaluators: (filters) => `analysis:evaluators:${filters}`,
   accessPermissions: 'access:permissions',
   accessRoles: 'access:roles',
   accessUsers: 'access:users',

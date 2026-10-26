@@ -9,6 +9,8 @@ import { ROLE_HOME, ROLES } from './constants'
 export const PERMISSIONS = {
   OVERVIEW: 'overview',
   SUBMISSIONS: 'submissions',
+  /** Read-only hackathon and evaluator numbers. Not VIDEO_ANALYSIS (the AI prompts). */
+  ANALYSIS: 'analysis',
   HACKATHONS: 'hackathons',
   THEMES: 'themes',
   REQUIREMENTS: 'requirements',
@@ -78,6 +80,7 @@ export function crossAdminRedirect(pathname, user) {
 export const ADMIN_SCREENS = [
   { permission: PERMISSIONS.OVERVIEW, to: '/admin' },
   { permission: PERMISSIONS.SUBMISSIONS, to: '/admin/submissions' },
+  { permission: PERMISSIONS.ANALYSIS, to: '/admin/analysis' },
   { permission: PERMISSIONS.HACKATHONS, to: '/hackathons' },
   { permission: PERMISSIONS.THEMES, to: '/admin/themes' },
   { permission: PERMISSIONS.REQUIREMENTS, to: '/admin/evaluation-requirements' },

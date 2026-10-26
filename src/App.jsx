@@ -55,6 +55,7 @@ const EvaluationRequirementFormPage = lazy(
 )
 const AdminSubmissionsPage = lazy(() => import('./pages/admin/AdminSubmissionsPage'))
 const AdminSubmissionDetailPage = lazy(() => import('./pages/admin/AdminSubmissionDetailPage'))
+const AnalysisPage = lazy(() => import('./pages/admin/AnalysisPage'))
 const AdminHackathonSubmissionsPage = lazy(
   () => import('./pages/admin/AdminHackathonSubmissionsPage'),
 )
@@ -124,6 +125,9 @@ function adminShellRoutes(base) {
           element={<AdminHackathonSubmissionsPage />}
         />
         <Route path={`${base}/submissions/:submissionId`} element={<AdminSubmissionDetailPage />} />
+      </Route>
+      <Route element={<AdminRoute permission={PERMISSIONS.ANALYSIS} />}>
+        <Route path={`${base}/analysis`} element={<AnalysisPage />} />
       </Route>
       <Route element={<AdminRoute permission={PERMISSIONS.THEMES} />}>
         <Route path={`${base}/themes`} element={<ThemesPage />} />
