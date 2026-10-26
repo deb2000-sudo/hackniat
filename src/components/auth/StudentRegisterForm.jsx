@@ -4,7 +4,6 @@ import Input, { Select } from '../ui/Input'
 import Button from '../ui/Button'
 import Alert from '../ui/Alert'
 import { LoadingBlock } from '../ui/Spinner'
-import Icon from '../ui/Icon'
 import { MONO } from '../drop/theme'
 import MobileField from './MobileField'
 import OtpRow from './OtpRow'
@@ -20,12 +19,9 @@ import { VERIFY, useRegistrationVerification } from '../../hooks/useRegistration
 import { queryKeys } from '../../lib/queryKeys'
 import { RECAPTCHA_CONTAINER_ID } from '../../lib/firebasePhone'
 import { ROLE_HOME } from '../../utils/constants'
-import { COLLEGE_ID_MAX_LENGTH, isNiatId, validateStudentForm } from '../../utils/validators'
+import { COLLEGE_ID_MAX_LENGTH, validateStudentForm } from '../../utils/validators'
 import { COLLEGE_TYPES } from '../../utils/constants'
 import { trackEvent } from '../../lib/logrocket'
-
-/** An ID is exactly this long, so the field stops accepting more. */
-const NIAT_ID_LENGTH = 11
 
 /** Shown as the placeholder and the worked example under the field. */
 const NIAT_ID_SAMPLE = 'N25H05F9974'
@@ -138,9 +134,6 @@ function StudentRegisterFormBody({ emailRequired, phoneRequired }) {
   const fieldErrors = validateStudentForm(form, { nonNiat: isNonNiat })
   const canSubmit =
     verification.bothVerified && !noBatches && Object.keys(fieldErrors).length === 0
-
-  const niatId = form.niat_id.trim()
-  const niatValid = isNiatId(niatId)
 
   /**
    * IDs are written in upper case, and the backend matches them exactly when
@@ -446,37 +439,13 @@ function StudentRegisterFormBody({ emailRequired, phoneRequired }) {
             value={form.niat_id}
             onChange={updateNiatId}
             error={errors.niat_id}
-            maxLength={NIAT_ID_LENGTH}
             autoComplete="off"
             spellCheck={false}
             placeholder={NIAT_ID_SAMPLE}
-            aria-invalid={niatId ? !niatValid : undefined}
-            aria-describedby="niat-id-status niat-id-format"
+            aria-describedby="niat-id-format"
           />
-          {/* Always mounted so a screen reader announces the change rather than
-              the region appearing already filled in. */}
-          <p
-            id="niat-id-status"
-            aria-live="polite"
-            className={
-              niatId
-                ? `mt-1.5 flex items-center gap-1.5 text-[13px] font-medium ${
-                    niatValid ? 'text-passed' : 'text-missing'
-                  }`
-                : 'sr-only'
-            }
-          >
-            {niatId ? (
-              <>
-                <Icon name={niatValid ? 'checkCircle' : 'xCircle'} size={15} />
-                {niatValid ? 'Verified' : 'Not verified'}
-              </>
-            ) : (
-              ''
-            )}
-          </p>
           <p id="niat-id-format" className="mt-1 text-[12.5px] text-muted">
-            It looks like this: <span className={MONO}>{NIAT_ID_SAMPLE}</span>
+            For example: <span className={MONO}>{NIAT_ID_SAMPLE}</span>
           </p>
         </div>
       )}
