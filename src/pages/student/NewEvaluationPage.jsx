@@ -30,6 +30,13 @@ const ALL_STEPS = [
 
 const DEFAULT_VIDEO_ACCEPT = 'video/webm,video/mp4,video/quicktime,.webm,.mp4,.mov'
 const DEFAULT_MAX_VIDEO_BYTES = 500 * 1024 * 1024
+
+/**
+ * Temporarily off while direct video uploads from devices are failing for some
+ * students. Set back to true to offer "Upload video" again; Record demo is
+ * unaffected.
+ */
+const DEVICE_UPLOAD_ENABLED = false
 const DEFAULT_VIDEO_MIME_TYPES = ['video/webm', 'video/mp4', 'video/quicktime']
 const DEFAULT_VIDEO_EXTENSIONS = ['.webm', '.mp4', '.mov']
 
@@ -834,12 +841,18 @@ export default function NewEvaluationPage() {
                 type="button"
                 className={videoSource === 'uploaded' ? 'is-active' : ''}
                 onClick={() => chooseVideoSource('uploaded')}
-                disabled={busy}
+                disabled={busy || !DEVICE_UPLOAD_ENABLED}
+                aria-disabled={!DEVICE_UPLOAD_ENABLED || undefined}
+                style={DEVICE_UPLOAD_ENABLED ? undefined : { opacity: 0.55, cursor: 'not-allowed' }}
               >
                 <span><Icon name="upload" size={22} /></span>
                 <div>
                   <strong>Upload video</strong>
-                  <small>Choose a previously recorded demo from your device.</small>
+                  <small>
+                    {DEVICE_UPLOAD_ENABLED
+                      ? 'Choose a previously recorded demo from your device.'
+                      : 'Temporarily unavailable. Use Record demo for now.'}
+                  </small>
                 </div>
                 {videoSource === 'uploaded' && <Icon name="checkCircle" size={19} />}
               </button>
@@ -860,7 +873,7 @@ export default function NewEvaluationPage() {
               />
             )}
 
-            {videoSource === 'uploaded' && (
+            {DEVICE_UPLOAD_ENABLED && videoSource === 'uploaded' && (
               <div className="stack-md">
                 {videoMetaError && (
                   <Alert variant="warning">

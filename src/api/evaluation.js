@@ -1,5 +1,6 @@
 import { api } from './client'
 import { EVALUATION_STATUS } from '../utils/constants'
+import { captureError } from '../lib/logrocket'
 import { uploadVideoToStorage } from '../utils/videoUpload'
 
 /**
@@ -432,6 +433,23 @@ export const evaluationApi = {
         })
       } catch (uploadError) {
         if (uploadError.name === 'AbortError') throw uploadError
+        // Only some students hit upload failures; this is what tells a weak
+        // connection apart from a blocked network or a storage rejection.
+        captureError(uploadError, {
+          tags: { area: 'video-upload' },
+          extra: {
+            status: Number(uploadError.status ?? -1),
+            storage_code: uploadError.storageCode || '',
+            network: Boolean(uploadError.network),
+            attempts: Number(uploadError.attempts || 1),
+            online: typeof navigator === 'undefined' ? true : navigator.onLine !== false,
+            protocol: prep?.upload_protocol || 'single',
+            parts: Array.isArray(prep?.parts) ? prep.parts.length : 1,
+            file_size_mb: Math.round((file.size / 1048576) * 10) / 10,
+            file_type: file.type || '(none)',
+            origin: typeof window === 'undefined' ? '' : window.location.origin,
+          },
+        })
         if (uploadError.status === 413) throw new Error(tooLargeMessage, { cause: uploadError })
         throw uploadError
       }
