@@ -1,13 +1,16 @@
 /**
  * Backend participation error codes → what the UI should say and do.
  *
- * Errors arrive as { detail: { code, message } }; ApiError keeps the parsed
- * body on `.data`, so the code is read from there rather than the message,
- * which is free text and may change.
+ * Errors arrive as { detail: { code, message } } or, from newer endpoints,
+ * a bare { code, message }; ApiError keeps the parsed body on `.data`, so the
+ * code is read from there rather than the message, which is free text and
+ * may change.
  */
 export function participationErrorCode(err) {
+  if (err?.code) return err.code
   const detail = err?.data?.detail
-  return typeof detail === 'object' && detail ? detail.code || '' : ''
+  if (typeof detail === 'object' && detail) return detail.code || ''
+  return err?.data?.code || ''
 }
 
 const MESSAGES = {
@@ -35,6 +38,19 @@ const MESSAGES = {
   HACKATHON_CLOSED: 'This hackathon has closed. Submissions are no longer accepted.',
   ROUND_NOT_OPEN: 'This round is not open for submissions yet.',
   ROUND_CLOSED: 'This round has closed. Submissions are no longer accepted.',
+  ALREADY_SUBMITTED: 'You already submitted for this round, so this choice cannot be changed.',
+  TEAM_HAS_MEMBERS: 'Ask your teammates to go back before you change this choice.',
+}
+
+/**
+ * Text for a failed revert. NOT_ENROLLED means something else here than on
+ * submit, so revert codes take the server's own wording first.
+ */
+export function revertErrorMessage(err) {
+  if (participationErrorCode(err) === 'NOT_ENROLLED') {
+    return err?.message || 'You have not chosen a role for this round.'
+  }
+  return participationErrorMessage(err, 'Could not change your choice. Try again.')
 }
 
 /** Human-readable text for a participation failure. */
@@ -48,9 +64,15 @@ export function participationErrorMessage(err, fallback = 'Something went wrong.
  * re-read GET /participation rather than trust what it already has.
  */
 export function shouldRefetchParticipation(err) {
-  return ['TEAM_REQUIRED', 'SOLO_HACKATHON', 'ALREADY_ENROLLED', 'NOT_ENROLLED'].includes(
-    participationErrorCode(err),
-  )
+  return [
+    'TEAM_REQUIRED',
+    'SOLO_HACKATHON',
+    'ALREADY_ENROLLED',
+    'NOT_ENROLLED',
+    // A teammate joined or someone submitted after can_revert was read.
+    'ALREADY_SUBMITTED',
+    'TEAM_HAS_MEMBERS',
+  ].includes(participationErrorCode(err))
 }
 
 /* ------------------------------- Drafts --------------------------------- */

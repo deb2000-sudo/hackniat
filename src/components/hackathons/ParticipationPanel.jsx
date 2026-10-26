@@ -6,12 +6,18 @@ import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import Spinner, { LoadingBlock } from '../ui/Spinner'
 import Input from '../ui/Input'
+import Modal from '../ui/Modal'
 import OtpInput from '../auth/OtpInput'
 import JoinCodePanel from './JoinCodePanel'
 import TeamRoster from './TeamRoster'
 import { teamModeFallbackLabel, teamSizeMode } from '../../utils/hackathons'
 import { DEFAULT_START_TIME, formatScheduleMoment } from '../../utils/schedule'
-import { participationErrorCode, participationErrorMessage, shouldRefetchParticipation } from './errorCodes'
+import {
+  participationErrorCode,
+  participationErrorMessage,
+  revertErrorMessage,
+  shouldRefetchParticipation,
+} from './errorCodes'
 import {
   isRoundAwaitingRelease,
   isRoundLive,
@@ -52,7 +58,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
     (options) => hackathonsApi.participation(hackathonId, roundIndex, options),
     [hackathonId, roundIndex],
   )
-  const { data, loading, error, reload } = useAsync(fetcher, {
+  const { data, loading, error, reload, setData } = useAsync(fetcher, {
     enabled: Boolean(hackathonId) && !awaitingRelease,
   })
 
@@ -63,6 +69,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
   const [joinCode, setJoinCode] = useState('')
   const [teamName, setTeamName] = useState('')
   const [issuedCode, setIssuedCode] = useState(null)
+  const [confirmingRevert, setConfirmingRevert] = useState(false)
 
   useEffect(() => {
     if (data && onState) onState(data)
@@ -85,6 +92,35 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
         await reload()
       }
       return null
+    } finally {
+      setBusy('')
+    }
+  }
+
+  /**
+   * Undo this round's role. The response is the new participation state, so
+   * it replaces ours outright instead of being refetched. A teammate joining
+   * or a submission landing since the last read comes back as a 409; say so
+   * and re-read, which also hides the button if can_revert went false.
+   */
+  const revert = async () => {
+    setBusy('revert')
+    setActionError('')
+    setNotice('')
+    try {
+      const next = await hackathonsApi.revertEnrollment(hackathonId, roundIndex)
+      setData(next)
+      // The old team's join codes are gone; nothing from the last choice carries over.
+      setIssuedCode(null)
+      setChoice('')
+      setTeamName('')
+      setJoinCode('')
+      setConfirmingRevert(false)
+      setNotice('Your choice for this round was undone. You can choose again.')
+    } catch (err) {
+      setConfirmingRevert(false)
+      setActionError(revertErrorMessage(err))
+      if (shouldRefetchParticipation(err)) await reload()
     } finally {
       setBusy('')
     }
@@ -419,6 +455,59 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
       {enrolled && !team && (
         <p className="text-sm text-muted">You are enrolled and can submit whenever you are ready.</p>
       )}
+
+      {/* Only from the latest can_revert: a role alone is not enough (a
+          submission, a closed round, or a leader's teammates all rule it out). */}
+      {enrolled && data.can_revert === true && (
+        <div>
+          <Button
+            type="button"
+            variant="ghost"
+            leftIcon={<Icon name="arrowLeft" size={16} />}
+            disabled={Boolean(busy)}
+            onClick={() => {
+              setActionError('')
+              setConfirmingRevert(true)
+            }}
+          >
+            Change my choice
+          </Button>
+        </div>
+      )}
+
+      <Modal
+        open={confirmingRevert}
+        onClose={() => busy !== 'revert' && setConfirmingRevert(false)}
+        title="Change your choice?"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              disabled={busy === 'revert'}
+              onClick={() => setConfirmingRevert(false)}
+            >
+              Keep it
+            </Button>
+            <Button variant="danger" loading={busy === 'revert'} onClick={revert}>
+              {role === 'leader' ? 'Delete team and go back' : 'Go back'}
+            </Button>
+          </>
+        }
+      >
+        <div className="stack-md text-[14px] text-ink">
+          <p>
+            {role === 'leader'
+              ? `${team?.team_name || 'Your team'} and its join codes are deleted.`
+              : role === 'member'
+                ? `You leave ${team?.team_name || 'your team'}. The team stays with its leader.`
+                : 'Your enrollment for this round is removed.'}
+          </p>
+          <p className="text-muted">
+            Only {roundName} changes. You can then choose again:{' '}
+            {isSingle ? 'enroll on your own.' : isOpen ? 'submit alone, create a team, or join one with a code.' : 'create a team or join one with a code.'}
+          </p>
+        </div>
+      </Modal>
 
       {busy && !loading && (
         <span className="inline-flex items-center gap-2 text-sm text-muted">
