@@ -21,22 +21,8 @@ export function minLength(value, len) {
 }
 
 /**
- * NIAT ID — 11 characters: an `N` followed by ten letters or digits, as in
- * N26K01A0021.
- *
- * Shape only. The backend accepts any 1–50 character string and checks that it
- * is unique, so this catches typos at the form rather than enforcing a rule the
- * API would also apply.
- */
-const NIAT_ID_RE = /^N[A-Z0-9]{10}$/
-
-export function isNiatId(value) {
-  return NIAT_ID_RE.test(String(value || '').trim().toUpperCase())
-}
-
-/**
  * Employee ID — 9 characters: `NW` followed by seven letters or digits, as in
- * NW0003800. Shape only, like {@link isNiatId}.
+ * NW0003800. Shape only: catches typos at the form.
  */
 const EMPLOYEE_ID_RE = /^NW[A-Z0-9]{7}$/
 
@@ -119,9 +105,9 @@ export function validateStudentForm(form, { nonNiat = false } = {}) {
       errors.college_id = `A College ID can be up to ${COLLEGE_ID_MAX_LENGTH} characters`
     }
   } else if (!required(form.niat_id)) {
+    // Any length and any mix of letters and digits: the backend only checks
+    // that it is present and not already registered.
     errors.niat_id = 'NIAT ID is required'
-  } else if (!isNiatId(form.niat_id)) {
-    errors.niat_id = 'A NIAT ID is 11 characters starting with N, like N26K01A0021'
   }
   const phone = toE164(form.country_code, form.mobile_national)
   if (!isE164(phone)) errors.mobile_national = 'Enter a valid mobile number'
