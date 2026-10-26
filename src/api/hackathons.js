@@ -147,6 +147,17 @@ export const hackathonsApi = {
       options,
     ),
 
+  /**
+   * Undo this student's role on one round, so they can choose again. Only
+   * offered while participation reports `can_revert`. Solo and member drop
+   * their enrollment (the team stays); a leader who is alone deletes the team
+   * and its join codes too. Other rounds, submissions and videos are left
+   * alone. Answers with the new participation object, same shape as the GET.
+   * Races since that GET come back as 409 ALREADY_SUBMITTED or TEAM_HAS_MEMBERS.
+   */
+  revertEnrollment: (hackathonId, roundIndex, options) =>
+    api.post(`${roundPath(hackathonId, roundIndex)}/enroll/revert`, undefined, options),
+
   /** Member joins with a 6-digit code. */
   joinTeam: (hackathonId, roundIndex, code, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/teams/join`, { code }, options),

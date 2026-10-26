@@ -264,11 +264,14 @@ export const evaluationApi = {
   /**
    * Admin only: assign, reassign or unassign a submission's evaluator.
    *
-   * `reason` is required when the submission already has an evaluator — a
-   * reassignment or an unassign — and the backend records it in the
-   * submission's `assignment_history` (who, when, from → to, reason). A first
-   * assignment needs none. Reassigning must not re-queue AI analysis that has
-   * already finished.
+   * `reason` (1–500 characters) is required only when changing one evaluator
+   * to a different one; without it the backend answers 400 REASON_REQUIRED. A
+   * first assignment and an unassign (`evaluatorId` null) send none and are
+   * stored with `reason: null`. Every real change is appended to the
+   * submission's `assignment_history`, sends `review_status` back to none and
+   * clears the review-submit time; `final_score` stays. Callers skip the call
+   * when the evaluator is unchanged. Reassigning must not re-queue AI analysis
+   * that has already finished.
    */
   assignSubmission: async (submissionId, evaluatorId, reason = '', options) => {
     const body = { evaluator_id: evaluatorId || null }

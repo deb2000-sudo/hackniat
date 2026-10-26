@@ -31,6 +31,7 @@ const NAV_BY_ROLE = {
 const ADMIN_NAV = [
   { to: '/admin', label: 'Overview', icon: 'chart', end: true, permission: PERMISSIONS.OVERVIEW },
   { to: '/admin/submissions', label: 'Submissions', icon: 'video', permission: PERMISSIONS.SUBMISSIONS },
+  { to: '/admin/analysis', label: 'Analysis', icon: 'chart', permission: PERMISSIONS.ANALYSIS },
   { to: '/hackathons', label: 'Hackathons', icon: 'trophy', permission: PERMISSIONS.HACKATHONS },
   { to: '/admin/themes', label: 'Themes', icon: 'sparkles', permission: PERMISSIONS.THEMES },
   {
