@@ -9,6 +9,9 @@
 
 const entries = new Map()
 const listeners = new Map()
+// Bumped on logout so a request that started as another user cannot write its
+// result back into the cache after the cache was cleared.
+let generation = 0
 
 function notify(key) {
   const set = listeners.get(key)
@@ -57,6 +60,7 @@ export function invalidateQueries(match) {
 }
 
 export function clearQueryCache() {
+  generation += 1
   entries.clear()
 }
 
@@ -88,9 +92,11 @@ export async function fetchQuery(key, fetcher, { staleTime = 30_000, force = fal
 
   if (!force && existing?.promise) return existing.promise
 
+  const started = generation
   const promise = Promise.resolve()
     .then(() => fetcher())
     .then((data) => {
+      if (started !== generation) return data
       entries.set(key, {
         data,
         error: null,
@@ -101,6 +107,7 @@ export async function fetchQuery(key, fetcher, { staleTime = 30_000, force = fal
       return data
     })
     .catch((error) => {
+      if (started !== generation) throw error
       const prev = entries.get(key)
       entries.set(key, {
         data: prev?.data,

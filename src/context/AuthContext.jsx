@@ -3,6 +3,7 @@ import { authApi } from '../api/auth'
 import { ApiError, clearCsrfToken, onSessionExpired } from '../api/client'
 import { clearQueryCache } from '../lib/queryCache'
 import { prefetchForRole } from '../lib/prefetch'
+import { identifyUser, trackEvent } from '../lib/logrocket'
 
 /**
  * How often a visible tab re-checks that its session is still alive. The token
@@ -50,8 +51,9 @@ export function AuthProvider({ children }) {
     let active = true
     ;(async () => {
       const me = await refresh()
-      // Warm role dashboards in the background while the shell paints.
-      if (me?.role) prefetchForRole(me.role)
+      // Warm role dashboards in the background while the shell paints — not
+      // for an unfinished profile, which the API refuses with 403s.
+      if (me?.role && me.profile_completed !== false) prefetchForRole(me.role)
       if (active) setLoading(false)
     })()
     return () => {
@@ -72,6 +74,12 @@ export function AuthProvider({ children }) {
     setUser(null)
     setSessionExpired(true)
   }, [])
+
+  // Tie the recording to whoever is signed in (re-runs after a profile edit,
+  // so a new name reaches LogRocket too). Signed-out sessions stay anonymous.
+  useEffect(() => {
+    if (user) identifyUser(user)
+  }, [user])
 
   // Only a session we believed was alive can expire. Subscribing while logged
   // out would catch the landing page's own /auth/me probe and bounce every
@@ -125,7 +133,8 @@ export function AuthProvider({ children }) {
       await authApi.login(credentials)
       const me = await refresh()
       // Prefetch starts before navigation so the destination page often hits a warm cache.
-      if (me?.role) prefetchForRole(me.role)
+      if (me?.role && me.profile_completed !== false) prefetchForRole(me.role)
+      if (me) trackEvent('Signed In', { role: me.role || '' })
       return me
     },
     [refresh],

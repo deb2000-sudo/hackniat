@@ -53,6 +53,35 @@ export const authApi = {
    */
   forgotPasswordReset: (payload) => api.post('/auth/forgot-password/reset', payload),
 
+  /**
+   * First-login profile for an account Super Admin created. Binds BOTH
+   * identifiers at once and opens a fresh session each call, so a changed
+   * mobile number means calling it again and re-running both checks. Signed-in
+   * write: the client sends the CSRF header as usual.
+   */
+  profileStart: (payload) => api.post('/auth/profile/start', payload),
+
+  /** `{ session_id, email, mobile_number, employee_id }` once both checks pass. */
+  profileComplete: (payload) => api.post('/auth/profile/complete', payload),
+
+  /**
+   * Public: which registration channels need an OTP right now,
+   * `{ email_verification_enabled, mobile_verification_enabled }`. A channel
+   * that is off is still collected on the form, just not verified.
+   */
+  registrationConfig: (options) => api.get('/auth/registration-config', options),
+
+  /**
+   * Signed in, verification due (see `verification_due` on /auth/me): opens a
+   * session for the account's own email and mobile. Answers with session_id,
+   * email, mobile_number, email_required and mobile_required.
+   */
+  verificationStart: () => api.post('/auth/verification/start'),
+
+  /** Finish once every required channel is verified. Answers with the user profile. */
+  verificationComplete: (sessionId) =>
+    api.post('/auth/verification/complete', { session_id: sessionId }),
+
   /** Log in; backend sets an HttpOnly session cookie and returns csrf_token. */
   login: (payload) => api.post('/auth/login', payload),
 
@@ -70,4 +99,12 @@ export const authApi = {
 
   /** Fetch the currently authenticated user's profile. */
   me: (options) => api.get('/auth/me', options),
+
+  /**
+   * Update your own profile: `{ first_name, last_name }`, plus `employee_id`
+   * for Super Admin, Admin, custom roles and evaluators. Email and mobile are
+   * never sent and cannot change. Answers with the same shape as GET /auth/me.
+   * 409 EMPLOYEE_ID_TAKEN.
+   */
+  updateMe: (payload) => api.patch('/auth/me', payload),
 }

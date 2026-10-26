@@ -1,3 +1,4 @@
+import { roleLabel } from '../../utils/access'
 import { APPROVAL_STATUS, EVALUATION_STATUS, ROLES } from '../../utils/constants'
 import styles from './Badge.module.css'
 
@@ -22,13 +23,21 @@ export default function Badge({
 }
 
 const ROLE_VARIANT = {
+  [ROLES.SUPER_ADMIN]: 'accent',
   [ROLES.ADMIN]: 'accent',
+  [ROLES.CUSTOM]: 'neutral',
   [ROLES.EVALUATOR]: 'info',
   [ROLES.STUDENT]: 'brand',
 }
 
-export function RoleBadge({ role }) {
-  return <Badge variant={ROLE_VARIANT[role] || 'neutral'}>{role}</Badge>
+/** Pass `account` to label a custom role by its name; `role` alone still works. */
+export function RoleBadge({ role, account }) {
+  const value = account?.role ?? role
+  return (
+    <Badge variant={ROLE_VARIANT[value] || 'neutral'}>
+      {account ? roleLabel(account) : value}
+    </Badge>
+  )
 }
 
 const APPROVAL_VARIANT = {

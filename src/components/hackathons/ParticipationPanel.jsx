@@ -9,7 +9,8 @@ import Input from '../ui/Input'
 import OtpInput from '../auth/OtpInput'
 import JoinCodePanel from './JoinCodePanel'
 import TeamRoster from './TeamRoster'
-import { formatDate } from '../../utils/format'
+import { teamModeFallbackLabel, teamSizeMode } from '../../utils/hackathons'
+import { DEFAULT_START_TIME, formatScheduleMoment } from '../../utils/schedule'
 import { participationErrorCode, participationErrorMessage, shouldRefetchParticipation } from './errorCodes'
 import {
   isRoundAwaitingRelease,
@@ -33,7 +34,15 @@ import {
  * the client never infers enrollment state from its own last action.
  */
 /** Actions the panel renders a step for; anything else falls back to team size. */
-const KNOWN_PENDING_ACTIONS = ['solo_enroll', 'choose_role', 'complete_team', 'round_not_open']
+const KNOWN_PENDING_ACTIONS = [
+  'solo_enroll',
+  'choose_role',
+  'complete_team',
+  'round_not_open',
+  // The hackathon's own window (date + IST clock) is not open yet / has ended.
+  'hackathon_not_open',
+  'hackathon_closed',
+]
 
 export default function ParticipationPanel({ hackathonId, roundIndex = 0, round, onState }) {
   // An unreleased round rejects /participation by design, so don't ask: the
@@ -109,7 +118,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
   if (error && !data) {
     return (
       <Alert variant="danger" title="Unable to load your enrollment">
-        {error.message}
+        {participationErrorMessage(error, 'Could not load your enrollment.')}
       </Alert>
     )
   }
@@ -117,16 +126,24 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
   if (!data) return null
 
   const { enrolled, role, team, pending_action: pendingAction } = data
-  const isSolo = Number(data.max_team_size) === 1
+  // The round's team rule, from the payload — never from max_team_size alone:
+  // an open round has max_team_size null, which must not read as one person.
+  const mode = teamSizeMode(data)
+  const isSingle = mode === 'single'
+  const isOpen = mode === 'open'
+  const minTeamSize = Number(data.min_team_size) || 1
+  const maxTeamSize = data.max_team_size == null ? null : Number(data.max_team_size)
+  const exactSize = maxTeamSize != null && minTeamSize === maxTeamSize
 
   // pending_action is the backend's instruction and is honoured whenever it is
   // one we know. When it is missing or named something else, fall back to the
   // round's team size: previously an unrecognised value rendered the header and
   // nothing else, so a team round silently offered no way to enroll at all.
   const unknownAction = !KNOWN_PENDING_ACTIONS.includes(pendingAction)
-  const showSoloEnroll = !enrolled && (pendingAction === 'solo_enroll' || (unknownAction && isSolo))
+  const showSoloEnroll =
+    !enrolled && (pendingAction === 'solo_enroll' || (unknownAction && isSingle))
   const showRoleChoice =
-    !enrolled && !choice && (pendingAction === 'choose_role' || (unknownAction && !isSolo))
+    !enrolled && !choice && (pendingAction === 'choose_role' || (unknownAction && !isSingle))
   const activeCode = issuedCode || team?.join_code || null
 
   const header = (
@@ -136,7 +153,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
           {data.round_title ? `Participation · ${data.round_title}` : 'Participation'}
         </span>
         <p className="mt-1 text-[15px] font-medium text-ink">
-          {data.team_mode_label || (isSolo ? 'Solo' : 'Team')}
+          {data.team_mode_label || teamModeFallbackLabel(data)}
           {enrolled && role ? ` · You are the ${role}` : ''}
         </p>
       </div>
@@ -152,11 +169,13 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
   // Attempts are counted per round, and a first submission does not
   // necessarily mean the last: `already_submitted` stays true while more are
   // allowed, so the cap is read from these three fields instead.
-  // A team round is a range, not a headcount: any size from min to max may
-  // submit, and the roster only counts as full at the top of it.
-  const minTeamSize = Number(data.min_team_size) || 1
-  const maxTeamSize = Number(data.max_team_size) || 1
-  const teamSizeRange = minTeamSize > 1 ? `${minTeamSize} to ${maxTeamSize}` : `${maxTeamSize}`
+  // A sized team round is a range: any size from min to max may submit, and
+  // the roster only counts as full at the top of it. An open round has no top.
+  const teamRule = isOpen
+    ? 'You can submit alone, or form a team of any size.'
+    : exactSize
+      ? `Teams of exactly ${maxTeamSize}.`
+      : `Teams of ${minTeamSize} to ${maxTeamSize} (the leader included).`
 
   const maxSubmissions = Number(data.max_submissions) || 0
   const submissionCount = Number(data.submission_count) || 0
@@ -193,9 +212,7 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
       {/* ---------------------------- Solo enroll --------------------------- */}
       {showSoloEnroll && (
         <div className="stack-sm">
-          <p className="text-sm text-muted">
-            This hackathon is solo. Enroll to unlock your submission.
-          </p>
+          <p className="text-sm text-muted">Only one student can submit for this round.</p>
           <Button
             type="button"
             variant="accent"
@@ -210,11 +227,25 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
       {/* ------------------------- Leader / member pick --------------------- */}
       {showRoleChoice && (
         <div className="stack-sm">
-          <p className="text-sm text-muted">
-            Teams of {teamSizeRange} (the leader included). How are you taking part?
-          </p>
+          <p className="text-sm text-muted">{teamRule} How are you taking part?</p>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="accent" onClick={() => setChoice('leader')}>
+            {/* Submitting alone is only for a no-fixed-size round; a sized
+                team round rejects it (TEAM_REQUIRED). */}
+            {isOpen && (
+              <Button
+                type="button"
+                variant="accent"
+                loading={busy === 'solo'}
+                onClick={() => run('solo', () => hackathonsApi.enrollSolo(hackathonId, roundIndex))}
+              >
+                Submit alone
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant={isOpen ? 'secondary' : 'accent'}
+              onClick={() => setChoice('leader')}
+            >
               I am Team Leader
             </Button>
             <Button type="button" variant="secondary" onClick={() => setChoice('member')}>
@@ -352,10 +383,12 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
 
       {enrolled && pendingAction === 'complete_team' && (
         <Alert variant="warning" title="Team not complete">
-          {/* The gap is to the minimum, not the maximum: a team of two can
-              submit and still add people afterwards. */}
+          {/* The gap is to the minimum, not the maximum: a 2–6 team can submit
+              at two and still add people afterwards. */}
           {data.block_reason ||
-            `Add at least one teammate. A team must have ${minTeamSize} to ${maxTeamSize} members before you can submit. Share the join code below.`}
+            (exactSize
+              ? `This team must have exactly ${maxTeamSize} members before you can submit. Share the join code below.`
+              : `This team must have ${minTeamSize} to ${maxTeamSize} members before you can submit. Share the join code below.`)}
         </Alert>
       )}
 
@@ -363,12 +396,27 @@ export default function ParticipationPanel({ hackathonId, roundIndex = 0, round,
         <Alert variant="info" title="Round not open yet">
           {data.block_reason ||
             (data.round_start_date
-              ? `Opens on ${formatDate(data.round_start_date)} (IST). Your team is set — come back then to submit.`
+              ? `Opens on ${formatScheduleMoment(data.round_start_date, data.round_start_time, DEFAULT_START_TIME)}. Your team is set — come back then to submit.`
               : 'Your team is set. You can submit once this round opens.')}
         </Alert>
       )}
 
-      {enrolled && !team && isSolo && (
+      {pendingAction === 'hackathon_not_open' && (
+        <Alert variant="info" title="Hackathon not open yet">
+          {data.block_reason ||
+            'Submissions open when the hackathon starts. You can still form your team now.'}
+        </Alert>
+      )}
+
+      {pendingAction === 'hackathon_closed' && (
+        <Alert variant="warning" title="Hackathon closed">
+          {data.block_reason || 'This hackathon has ended. Submissions and team changes are closed.'}
+        </Alert>
+      )}
+
+      {/* Enrolled on your own: a single-person round, or "Submit alone" on
+          an open one. */}
+      {enrolled && !team && (
         <p className="text-sm text-muted">You are enrolled and can submit whenever you are ready.</p>
       )}
 

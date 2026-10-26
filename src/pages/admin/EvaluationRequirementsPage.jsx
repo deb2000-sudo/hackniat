@@ -12,8 +12,10 @@ import Icon from '../../components/ui/Icon'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 export default function EvaluationRequirementsPage() {
+  const toAdminPath = useAdminPath()
   const { data, loading, error, reload, setData } = useAsync(() =>
     evaluationRequirementsApi.list(),
   )
@@ -58,7 +60,7 @@ export default function EvaluationRequirementsPage() {
         </div>
         <Button
           as={Link}
-          to="/admin/evaluation-requirements/new"
+          to={toAdminPath('/admin/evaluation-requirements/new')}
           variant="accent"
           leftIcon={<Icon name="plus" size={18} />}
         >
@@ -101,7 +103,7 @@ export default function EvaluationRequirementsPage() {
                   <div className="requirement-list-card__actions">
                     <Button
                       as={Link}
-                      to={`/admin/evaluation-requirements/${requirement.id}/edit`}
+                      to={toAdminPath(`/admin/evaluation-requirements/${requirement.id}/edit`)}
                       variant="ghost"
                       size="sm"
                       leftIcon={<Icon name="edit" size={15} />}
@@ -142,7 +144,7 @@ export default function EvaluationRequirementsPage() {
                 </div>
                 <Button
                   as={Link}
-                  to={`/admin/evaluation-requirements/${requirement.id}/ai-scoring`}
+                  to={toAdminPath(`/admin/evaluation-requirements/${requirement.id}/ai-scoring`)}
                   variant="secondary"
                   block
                   leftIcon={<Icon name="sparkles" size={17} />}
@@ -167,7 +169,7 @@ export default function EvaluationRequirementsPage() {
               action={!query ? (
                 <Button
                   as={Link}
-                  to="/admin/evaluation-requirements/new"
+                  to={toAdminPath('/admin/evaluation-requirements/new')}
                   variant="accent"
                   leftIcon={<Icon name="plus" size={17} />}
                 >

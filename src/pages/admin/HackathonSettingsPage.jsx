@@ -1,9 +1,13 @@
 import { Link, useParams } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import { useAsync } from '../../hooks/useAsync'
+import { useAuth } from '../../hooks/useAuth'
+import { ROLES } from '../../utils/constants'
 import { formatDate } from '../../utils/format'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
+import BulkApprovePanel from '../../components/hackathons/BulkApprovePanel'
+import HackathonVisibilityPanel from '../../components/hackathons/HackathonVisibilityPanel'
 import ManageEvaluatorsPanel from '../../components/hackathons/ManageEvaluatorsPanel'
 import ReportPublishingPanel from '../../components/hackathons/ReportPublishingPanel'
 import SubmissionLimitPanel from '../../components/hackathons/SubmissionLimitPanel'
@@ -13,6 +17,7 @@ import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 /**
  * Per-hackathon settings. Admin only — the route sits behind the admin guard,
@@ -23,6 +28,8 @@ import { LoadingBlock } from '../../components/ui/Spinner'
  * hackathon-level switches (publishing and the rest) still belong here.
  */
 export default function HackathonSettingsPage() {
+  const toAdminPath = useAdminPath()
+  const { user } = useAuth()
   const { hackathonId } = useParams()
   const { data: hackathon, loading, error } = useAsync(() => hackathonsApi.get(hackathonId))
 
@@ -59,7 +66,7 @@ export default function HackathonSettingsPage() {
           <>
             <Button
               as={Link}
-              to={`/admin/hackathons/${hackathonId}/edit`}
+              to={toAdminPath(`/admin/hackathons/${hackathonId}/edit`)}
               variant="secondary"
               leftIcon={<Icon name="edit" size={17} />}
             >
@@ -79,6 +86,15 @@ export default function HackathonSettingsPage() {
 
       <section className="flex flex-col gap-4">
         <Accordion
+          icon="university"
+          title="Hackathon visibility"
+          description="Choose which universities and batches see this hackathon on their dashboard."
+          lazy
+        >
+          <HackathonVisibilityPanel key={`visibility-${hackathonId}`} hackathonId={hackathonId} />
+        </Accordion>
+
+        <Accordion
           icon="upload"
           title="Submissions"
           description="How many times a student or team may submit for a round."
@@ -95,6 +111,18 @@ export default function HackathonSettingsPage() {
         >
           <ReportPublishingPanel key={hackathonId} hackathonId={hackathonId} />
         </Accordion>
+
+        {/* Shared page; bulk approval is Super Admin only (the API agrees). */}
+        {user?.role === ROLES.SUPER_ADMIN ? (
+          <Accordion
+            icon="shield"
+            title="Approve evaluations"
+            description="Approve every evaluation an evaluator has submitted, so those scores count on the leaderboard."
+            lazy
+          >
+            <BulkApprovePanel key={`approve-${hackathonId}`} hackathonId={hackathonId} />
+          </Accordion>
+        ) : null}
 
         <Accordion
           icon="users"

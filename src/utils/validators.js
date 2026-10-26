@@ -78,14 +78,30 @@ export function toE164(countryCode, national) {
  * Validate the student registration form (individual, verified contact).
  * @returns {Record<string,string>} field -> error message (empty when valid)
  */
-export function validateStudentForm(form) {
+/** A College ID is plain text (any format), up to this many characters. */
+export const COLLEGE_ID_MAX_LENGTH = 50
+
+/**
+ * @param {object} form
+ * @param {{ nonNiat?: boolean }} [options] `nonNiat` when the selected
+ *   university is Non NIAT: a College ID is required instead of a NIAT ID.
+ */
+export function validateStudentForm(form, { nonNiat = false } = {}) {
   const errors = {}
   if (!required(form.first_name)) errors.first_name = 'First name is required'
   if (!required(form.last_name)) errors.last_name = 'Last name is required'
   if (!isEmail(form.email)) errors.email = 'Enter a valid email'
   if (!required(form.university_id)) errors.university_id = 'Select your university'
-  if (!required(form.niat_id)) errors.niat_id = 'NIAT ID is required'
-  else if (!isNiatId(form.niat_id)) {
+  else if (!required(form.batch_id)) errors.batch_id = 'Select your batch'
+  if (nonNiat) {
+    const collegeId = String(form.college_id || '').trim()
+    if (!collegeId) errors.college_id = 'College ID is required'
+    else if (collegeId.length > COLLEGE_ID_MAX_LENGTH) {
+      errors.college_id = `A College ID can be up to ${COLLEGE_ID_MAX_LENGTH} characters`
+    }
+  } else if (!required(form.niat_id)) {
+    errors.niat_id = 'NIAT ID is required'
+  } else if (!isNiatId(form.niat_id)) {
     errors.niat_id = 'A NIAT ID is 11 characters starting with N, like N26K01A0021'
   }
   const phone = toE164(form.country_code, form.mobile_national)

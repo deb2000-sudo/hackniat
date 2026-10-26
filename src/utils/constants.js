@@ -1,7 +1,20 @@
 export const ROLES = {
+  SUPER_ADMIN: 'super_admin',
   ADMIN: 'admin',
+  // A Super Admin-defined role; its screens come from `user.permissions`.
+  CUSTOM: 'custom',
   EVALUATOR: 'evaluator',
   STUDENT: 'student',
+}
+
+/**
+ * A university's college type, copied onto the student at registration. NIAT
+ * students give a NIAT ID; Non NIAT students give a College ID. A university
+ * with no type is NIAT.
+ */
+export const COLLEGE_TYPES = {
+  NIAT: 'NIAT',
+  NON_NIAT: 'Non NIAT',
 }
 
 export const APPROVAL_STATUS = {
@@ -24,7 +37,8 @@ export const CRITERIA_LABELS = {
   impact: 'Impact',
 }
 
-// Default landing route per role after login.
+// Default landing route per role after login. Admin-side roles land on the
+// first screen they may open instead — use homePath() from utils/access.
 export const ROLE_HOME = {
   [ROLES.ADMIN]: '/admin',
   [ROLES.EVALUATOR]: '/evaluator',

@@ -33,3 +33,5 @@ export const accordionManualPending = accordionStyles.manualPending
 
 /** Wide Modal layout for the full AI analysis report dialog. */
 export const modalAnalysisDetail = modalStyles.analysisDetail
+/** Fits the viewport and scrolls its body — for tall read-only dialogs. */
+export const modalScrollable = modalStyles.scrollable

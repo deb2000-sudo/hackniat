@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { evaluationRequirementsApi } from '../api/evaluationRequirements'
 import { useAuth } from '../hooks/useAuth'
-import { ROLES } from '../utils/constants'
+import { hasPermission, PERMISSIONS } from '../utils/access'
 import {
   alignMetricsToRequirement,
   buildStandardScorecardPreset,
   enumOptionsAreScored,
   normalizeSegmentOptions,
+  requirementSupportsStandardPreset,
   segmentEffectiveMax,
   sortScorecardMetrics,
   sumWeights,
@@ -28,6 +29,7 @@ import Icon from '../components/ui/Icon'
 import Input, { ColorInput, Select, Textarea } from '../components/ui/Input'
 import Modal from '../components/ui/Modal'
 import { LoadingBlock } from '../components/ui/Spinner'
+import { useAdminPath } from '../hooks/useAdminPath'
 
 function emptySegment() {
   return {
@@ -154,9 +156,22 @@ function segmentSumWarnings(metric) {
   return warnings
 }
 
-function validate(name, metrics) {
+/** The video row is scored from the analysis report, so it is always available. */
+const VIDEO_FIELD_KEY = 'video_explanation'
+
+/** Field keys a metric may use: this requirement's fields plus the video row. */
+function allowedFieldKeys(requirementFields) {
+  const keys = (Array.isArray(requirementFields) ? requirementFields : [])
+    .map((field) => String(field?.key || '').trim())
+    .filter(Boolean)
+  return Array.from(new Set([...keys, VIDEO_FIELD_KEY]))
+}
+
+function validate(name, metrics, allowedKeys = null) {
   const errors = {}
   if (!name.trim()) errors.name = 'Give this scorecard a name.'
+  if (!metrics.length) errors.metrics = 'Add at least one metric before saving.'
+  const seen = new Set()
   const weightTotal = sumWeights(metrics)
   if (Math.round(weightTotal) !== 100) {
     errors.weights = `Weights must sum to 100 (currently ${weightTotal}).`
@@ -164,7 +179,14 @@ function validate(name, metrics) {
 
   metrics.forEach((metric, index) => {
     const prefix = `m${index}`
-    if (!metric.field_key.trim()) errors[`${prefix}.field_key`] = 'Field key is required.'
+    const key = metric.field_key.trim()
+    if (!key) errors[`${prefix}.field_key`] = 'Choose a field.'
+    else if (allowedKeys && !allowedKeys.includes(key)) {
+      errors[`${prefix}.field_key`] = 'This field is not on this requirement. Choose another.'
+    } else if (seen.has(key)) {
+      errors[`${prefix}.field_key`] = 'This field already has a metric.'
+    }
+    seen.add(key)
     if (!Number.isFinite(Number(metric.max_score)) || Number(metric.max_score) < 0) {
       errors[`${prefix}.max_score`] = 'Enter a valid max score.'
     }
@@ -387,8 +409,10 @@ function SegmentLevels({ segment, isAdmin, errors, errorPrefix, onAdd, onChange,
 }
 
 export default function MetricScoringPage() {
+  const toAdminPath = useAdminPath()
   const { user } = useAuth()
-  const isAdmin = user?.role === ROLES.ADMIN
+  // Any admin-side role given this screen manages it, not only built-in Admin.
+  const isAdmin = hasPermission(user, PERMISSIONS.REQUIREMENTS)
   const { requirementId: requirementIdParam } = useParams()
   const requirementId = requirementIdParam?.trim() || ''
 
@@ -396,6 +420,9 @@ export default function MetricScoringPage() {
   const [scoring, setScoring] = useState(null)
   const [name, setName] = useState('')
   const [metrics, setMetrics] = useState([])
+  // One ready-made card per field on this requirement (plus video), from the
+  // API. "Build from this requirement" and "Add metric" draw from it.
+  const [manualMetrics, setManualMetrics] = useState([])
   const [promptPlaceholders, setPromptPlaceholders] = useState([])
   const [loading, setLoading] = useState(Boolean(requirementId))
   const [loadError, setLoadError] = useState('')
@@ -407,8 +434,23 @@ export default function MetricScoringPage() {
   const promptRefs = useRef({})
 
   const weightTotal = useMemo(() => sumWeights(metrics), [metrics])
-  const saveFeedback = errors.form || errors.weights || saveMessage
-  const saveFeedbackVariant = errors.form || errors.weights ? 'danger' : 'success'
+  const saveFeedback = errors.form || errors.metrics || errors.weights || saveMessage
+  const saveFeedbackVariant = errors.form || errors.metrics || errors.weights ? 'danger' : 'success'
+
+  const requirementFields = requirement?.fields
+  const allowedKeys = useMemo(() => allowedFieldKeys(requirementFields), [requirementFields])
+  /** Dropdown labels: the requirement's own label for each key. */
+  const fieldLabels = useMemo(() => {
+    const labels = { [VIDEO_FIELD_KEY]: 'Video Explanation' }
+    ;(Array.isArray(requirementFields) ? requirementFields : []).forEach((field) => {
+      const key = String(field?.key || '').trim()
+      if (key) labels[key] = String(field?.label || '').trim() || key
+    })
+    return labels
+  }, [requirementFields])
+  const usedKeys = new Set(metrics.map((metric) => metric.field_key.trim()))
+  const unusedManualMetrics = manualMetrics.filter((metric) => !usedKeys.has(metric.field_key))
+  const canLoadStandard = requirementSupportsStandardPreset(requirementFields)
 
   useEffect(() => {
     if (!requirementId) return undefined
@@ -428,6 +470,9 @@ export default function MetricScoringPage() {
         setRequirement(loadedRequirement)
         setScoring(existing)
         setPromptPlaceholders(normalizePlaceholders(setup?.scoring_prompt_placeholders))
+        setManualMetrics(
+          Array.isArray(setup?.manual_metrics) ? setup.manual_metrics.map(normalizeMetric) : [],
+        )
         setName(
           existing?.name ||
             `${loadedRequirement?.name || loadedRequirement?.title || 'Evaluation'} scorecard`,
@@ -445,6 +490,7 @@ export default function MetricScoringPage() {
         setRequirement(null)
         setScoring(null)
         setPromptPlaceholders([])
+        setManualMetrics([])
         setMetrics([])
         setLoadError(error.message || 'Unable to load scoring setup.')
       } finally {
@@ -468,6 +514,34 @@ export default function MetricScoringPage() {
     )
     setErrors({})
     setSaveMessage('Loaded standard scorecard. Review prompts, then save.')
+  }
+
+  /**
+   * One card per field on this requirement, from the API's manual_metrics —
+   * the same prompts, colours and checklists as the standard scorecard for
+   * the fields it knows, an AI row for anything else, weights totalling 100.
+   * The configuration name is left as it is. Nothing is saved yet.
+   */
+  const buildFromRequirement = () => {
+    if (!isAdmin || !manualMetrics.length) return
+    setMetrics(sortScorecardMetrics(manualMetrics.map(normalizeMetric)))
+    setErrors({})
+    setSaveMessage("Built from this requirement's fields. Review the cards, then save.")
+  }
+
+  /** Append the chosen unused field as a new card. */
+  const addMetric = (fieldKey) => {
+    const template = manualMetrics.find((metric) => metric.field_key === fieldKey)
+    if (!template) return
+    setMetrics((current) => [...current, normalizeMetric(template)])
+    setErrors((current) => ({ ...current, metrics: undefined, weights: undefined }))
+    setSaveMessage('')
+  }
+
+  const removeMetric = (index) => {
+    setMetrics((current) => current.filter((_, metricIndex) => metricIndex !== index))
+    setErrors({})
+    setSaveMessage('')
   }
 
   const updateMetric = (index, patch) => {
@@ -545,7 +619,7 @@ export default function MetricScoringPage() {
   const save = async (event) => {
     event.preventDefault()
     if (!isAdmin) return
-    const validation = validate(name, metrics)
+    const validation = validate(name, metrics, allowedKeys)
     setErrors(validation)
     setSaveMessage('')
     if (Object.keys(validation).length) return
@@ -596,7 +670,7 @@ export default function MetricScoringPage() {
   }
 
   if (!requirementId) {
-    return <Navigate to="/admin/evaluation-requirements" replace />
+    return <Navigate to={toAdminPath('/admin/evaluation-requirements')} replace />
   }
 
   return (
@@ -615,7 +689,7 @@ export default function MetricScoringPage() {
         </div>
         <Button
           as={Link}
-          to="/admin/evaluation-requirements"
+          to={toAdminPath('/admin/evaluation-requirements')}
           variant="secondary"
           leftIcon={<Icon name="arrowLeft" size={17} />}
         >
@@ -690,21 +764,42 @@ export default function MetricScoringPage() {
                 className="sm:max-w-md"
               />
               {isAdmin && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={loadPreset}
-                  leftIcon={<Icon name="sparkles" size={17} />}
-                >
-                  Load Standard Score and Weightage
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {/* The fixed 15 / 15 / 20 / 20 / 30 shortcut — only when this
+                      requirement has all of those fields. */}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={loadPreset}
+                    disabled={!canLoadStandard}
+                    title={
+                      canLoadStandard
+                        ? undefined
+                        : 'This requirement does not have Problem, Solution, GitHub and deployed link fields. Use Build from this requirement.'
+                    }
+                    leftIcon={<Icon name="sparkles" size={17} />}
+                  >
+                    Load Standard Score and Weightage
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={buildFromRequirement}
+                    disabled={!manualMetrics.length}
+                    leftIcon={<Icon name="clipboard" size={17} />}
+                  >
+                    Build from this requirement
+                  </Button>
+                </div>
               )}
             </div>
           </section>
 
           {!metrics.length ? (
             <Alert variant="warning" title="No metrics yet">
-              Load the standard scorecard preset, or wait for an existing configuration.
+              {isAdmin
+                ? 'Build from this requirement to start from its fields, or add metrics one at a time below.'
+                : 'This requirement has no scorecard yet.'}
             </Alert>
           ) : (
             <div className="stack-md">
@@ -724,16 +819,46 @@ export default function MetricScoringPage() {
                     <span className={`${BADGE} ${BADGE_CLOSED}`}>
                       {metric.scoring_mode === 'ai' ? 'AI' : 'Manual'}
                     </span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--danger"
+                        onClick={() => removeMetric(index)}
+                        aria-label={`Remove ${metric.field_label || metric.field_key || 'metric'}`}
+                        title="Remove metric"
+                      >
+                        <Icon name="trash" size={17} />
+                      </button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4">
-                    <Input
-                      label="Field key"
+                    <Select
+                      label="Field"
                       value={metric.field_key}
                       disabled={!isAdmin}
                       error={errors[`m${index}.field_key`]}
-                      onChange={(event) => updateMetric(index, { field_key: event.target.value })}
-                    />
+                      onChange={(event) => {
+                        const key = event.target.value
+                        updateMetric(index, { field_key: key, field_label: fieldLabels[key] || key })
+                      }}
+                    >
+                      {!metric.field_key && <option value="">Choose a field</option>}
+                      {/* A key saved before but no longer on the requirement stays
+                          visible so it can be seen — and is rejected on save. */}
+                      {metric.field_key && !allowedKeys.includes(metric.field_key) && (
+                        <option value={metric.field_key}>
+                          {metric.field_key} (not on this requirement)
+                        </option>
+                      )}
+                      {allowedKeys
+                        .filter((key) => key === metric.field_key || !usedKeys.has(key))
+                        .map((key) => (
+                          <option key={key} value={key}>
+                            {fieldLabels[key] || key} · {key}
+                          </option>
+                        ))}
+                    </Select>
                     <Input
                       label="Label"
                       value={metric.field_label}
@@ -791,7 +916,7 @@ export default function MetricScoringPage() {
                         <p className="text-[13.5px] text-muted">
                           Video scoring uses the Working Demo Video Analysis prompt under{' '}
                           <Link
-                            to="/admin/ai-prompts"
+                            to={toAdminPath('/admin/ai-prompts')}
                             className="font-medium text-ink underline decoration-hairline underline-offset-4 hover:text-volt-ink hover:decoration-volt-ink"
                           >
                             AI prompts
@@ -970,6 +1095,25 @@ export default function MetricScoringPage() {
             </div>
           )}
 
+          {isAdmin && unusedManualMetrics.length > 0 && (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-full sm:w-80">
+                <Select
+                  label="Add metric"
+                  value=""
+                  onChange={(event) => addMetric(event.target.value)}
+                  hint="Fields on this requirement that are not scored yet."
+                >
+                  <option value="">Choose a field to add…</option>
+                  {unusedManualMetrics.map((metric) => (
+                    <option key={metric.field_key} value={metric.field_key}>
+                      {metric.field_label || metric.field_key}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          )}
         </form>
 
         {isAdmin && (

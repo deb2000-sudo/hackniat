@@ -19,6 +19,23 @@ import {
 } from './draftSteps'
 import { roundStatusBadge } from './roundStatus'
 import { BADGE } from '../drop/theme'
+import {
+  DEFAULT_MULTI,
+  roundTeamSizeErrors,
+  TEAM_MIN,
+  TEAM_SIZE_MODES,
+  TEAM_SIZES,
+  teamSizeError,
+  teamSizeFromRound,
+  teamSizeHint,
+  teamSizePayload,
+} from '../../utils/teamSize'
+import {
+  DEFAULT_END_TIME,
+  DEFAULT_START_TIME,
+  formatTime12,
+  normalizeTime,
+} from '../../utils/schedule'
 
 const EMPTY_PRIZES = {
   winner: '',
@@ -26,11 +43,70 @@ const EMPTY_PRIZES = {
   second_runner_up: '',
 }
 
+/**
+ * A date with its IST clock beside it. The time input keeps 24-hour HH:MM (what
+ * the API takes); the 12-hour reading sits underneath ("9:30 AM IST") because
+ * the native control's display depends on the browser's locale.
+ */
+function DateTimeInputs({
+  dateLabel,
+  timeLabel,
+  date,
+  time,
+  onDate,
+  onTime,
+  dateError,
+  timeError,
+  min,
+  max,
+  dateHint,
+  disabled = false,
+  required = false,
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,9.5rem)] items-start gap-2">
+      <Input
+        label={dateLabel}
+        type="date"
+        required={required}
+        min={min}
+        max={max}
+        value={date}
+        onChange={onDate}
+        error={dateError}
+        hint={dateHint}
+        disabled={disabled}
+      />
+      <Input
+        label={timeLabel}
+        type="time"
+        step={60}
+        required={required}
+        value={time}
+        onChange={onTime}
+        error={timeError}
+        hint={time ? `${formatTime12(time)} IST` : undefined}
+        disabled={disabled}
+      />
+    </div>
+  )
+}
+
+/** A schedule edge's time as 24-hour HH:MM, defaulting to the whole day. */
+function timeOf(item, edge) {
+  return edge === 'start'
+    ? normalizeTime(item?.start_time, DEFAULT_START_TIME)
+    : normalizeTime(item?.end_time, DEFAULT_END_TIME)
+}
+
 const EMPTY_FORM = {
   name: '',
   description: '',
   start_date: '',
   end_date: '',
+  // IST clock, 24-hour HH:MM. A new event runs the whole day by default.
+  start_time: DEFAULT_START_TIME,
+  end_time: DEFAULT_END_TIME,
   hackathon_url: '',
   guidelines: '',
   evaluator_guidelines: '',
@@ -43,10 +119,18 @@ const EMPTY_FORM = {
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const SCALAR_FIELDS = ['name', 'description', 'start_date', 'end_date', 'guidelines']
-const PATCH_SCALAR_FIELDS = [...SCALAR_FIELDS, 'evaluator_guidelines']
+const PATCH_SCALAR_FIELDS = [...SCALAR_FIELDS, 'evaluator_guidelines', 'start_time', 'end_time']
 const FORM_STEPS = DRAFT_STEPS
 const REVIEW_INDEX = FORM_STEPS.length - 1
-const BASICS_FIELDS = ['name', 'description', 'start_date', 'end_date', 'hackathon_url']
+const BASICS_FIELDS = [
+  'name',
+  'description',
+  'start_date',
+  'start_time',
+  'end_date',
+  'end_time',
+  'hackathon_url',
+]
 const GUIDELINE_FIELDS = ['guidelines', 'evaluator_guidelines']
 /** Fields written in the rich-text editor: blank means no words, and the
  *  length limit counts the formatting too. */
@@ -59,19 +143,6 @@ const GUIDELINE_MAX_LENGTH = 10000
 function guidelineBlank(value) {
   return isRichTextEmpty(value)
 }
-// A team round is one flexible size rather than a fixed headcount: the API
-// stores any 2–5 choice as 5 and lets the leader submit from 2 members up. So
-// the editor offers the two real choices instead of sizes that all mean the
-// same thing.
-const TEAM_SIZE_OPTIONS = [
-  { value: '1', label: 'Solo' },
-  { value: '5', label: '2-5 Members' },
-]
-
-/** Older rounds stored 2, 3 or 4; they are all the flexible team round now. */
-function teamSizeChoice(value) {
-  return Number(value) > 1 ? '5' : '1'
-}
 // Round 1 is the hackathon itself, so it is always present and cannot be
 // removed. Everything from round 2 onwards is optional and deletable.
 const REQUIRED_ROUNDS = 1
@@ -82,7 +153,11 @@ function emptyRound() {
     description: '',
     start_date: '',
     end_date: '',
+    start_time: DEFAULT_START_TIME,
+    end_time: DEFAULT_END_TIME,
     evaluation_requirement_id: '',
+    team_size_mode: 'single', // 'single' | 'multi' | 'open'
+    min_team_size: '1',
     max_team_size: '1',
     working_demo_video_required: true,
     auto_ai_evaluation: false,
@@ -105,6 +180,9 @@ function createInitialForm(initialValue) {
     description: initialValue.description || '',
     start_date: initialValue.start_date || '',
     end_date: initialValue.end_date || '',
+    // The API fills 00:00 / 23:59 for events saved before times existed.
+    start_time: normalizeTime(initialValue.start_time, DEFAULT_START_TIME),
+    end_time: normalizeTime(initialValue.end_time, DEFAULT_END_TIME),
     hackathon_url: initialValue.hackathon_url || '',
     guidelines: initialValue.guidelines || '',
     evaluator_guidelines: initialValue.evaluator_guidelines || '',
@@ -118,10 +196,16 @@ function createInitialForm(initialValue) {
         description: round.description || '',
         start_date: round.start_date || '',
         end_date: round.end_date || '',
+        start_time: normalizeTime(round.start_time, DEFAULT_START_TIME),
+        end_time: normalizeTime(round.end_time, DEFAULT_END_TIME),
         evaluation_requirement_id: round.evaluation_requirement_id || '',
         // Backward compatibility: rounds saved before per-round settings
-        // existed inherit the hackathon-level flags.
-        max_team_size: teamSizeChoice(round.max_team_size || initialValue.max_team_size || 1),
+        // existed inherit the hackathon-level size.
+        ...teamSizeFromRound({
+          ...round,
+          max_team_size:
+            round.max_team_size !== undefined ? round.max_team_size : initialValue.max_team_size,
+        }),
         published: round.published === true,
         round_status: round.round_status || '',
         working_demo_video_required:
@@ -177,6 +261,9 @@ function validate(form, banner, { editing = false, initialForm = null } = {}) {
   })
   if (form.start_date && form.end_date && form.end_date < form.start_date) {
     errors.end_date = 'End date must be on or after the start date'
+  } else if (form.start_date && form.start_date === form.end_date && timeOf(form, 'end') < timeOf(form, 'start')) {
+    // Same day: the end may be the same minute, never earlier.
+    errors.end_time = 'End time must be at or after the start time'
   }
   if (form.hackathon_url.trim()) {
     try {
@@ -196,7 +283,15 @@ function validate(form, banner, { editing = false, initialForm = null } = {}) {
     if (!round.title.trim()) errors[`timeline.${index}.title`] = 'Round title is required'
     if (round.start_date && round.end_date && round.end_date < round.start_date) {
       errors[`timeline.${index}.end_date`] = 'Round end date must be on or after its start date'
+    } else if (
+      round.start_date &&
+      round.start_date === round.end_date &&
+      timeOf(round, 'end') < timeOf(round, 'start')
+    ) {
+      errors[`timeline.${index}.end_time`] = 'Round end time must be at or after its start time'
     }
+    const sizeError = teamSizeError(round)
+    if (sizeError) errors[`timeline.${index}.team_size`] = sizeError
     if (form.start_date && form.end_date) {
       if (round.start_date && round.start_date < form.start_date) {
         errors[`timeline.${index}.start_date`] =
@@ -213,6 +308,20 @@ function validate(form, banner, { editing = false, initialForm = null } = {}) {
       if (round.end_date && round.end_date < form.start_date) {
         errors[`timeline.${index}.end_date`] =
           'Round end must be on or after the hackathon start date'
+      }
+      // On a day the round shares with the hackathon's first or last day, the
+      // round's clock must sit inside the hackathon's clock too.
+      if (round.start_date === form.start_date && timeOf(round, 'start') < timeOf(form, 'start')) {
+        errors[`timeline.${index}.start_time`] = `Round cannot start before the hackathon (${formatTime12(timeOf(form, 'start'))})`
+      }
+      if (round.start_date === form.end_date && timeOf(round, 'start') > timeOf(form, 'end')) {
+        errors[`timeline.${index}.start_time`] = `Round cannot start after the hackathon ends (${formatTime12(timeOf(form, 'end'))})`
+      }
+      if (round.end_date === form.end_date && timeOf(round, 'end') > timeOf(form, 'end')) {
+        errors[`timeline.${index}.end_time`] = `Round cannot end after the hackathon (${formatTime12(timeOf(form, 'end'))})`
+      }
+      if (round.end_date === form.start_date && timeOf(round, 'end') < timeOf(form, 'start')) {
+        errors[`timeline.${index}.end_time`] = `Round cannot end before the hackathon starts (${formatTime12(timeOf(form, 'start'))})`
       }
     }
   })
@@ -268,6 +377,8 @@ function cleanForm(form) {
     name: form.name.trim(),
     description: form.description.trim(),
     hackathon_url: form.hackathon_url.trim(),
+    start_time: timeOf(form, 'start'),
+    end_time: timeOf(form, 'end'),
     guidelines: form.guidelines.trim(),
     evaluator_guidelines: form.evaluator_guidelines.trim(),
 
@@ -279,8 +390,11 @@ function cleanForm(form) {
       description: round.description.trim() || null,
       start_date: round.start_date || null,
       end_date: round.end_date || null,
+      // Always sent: a round without times is stored as the full day.
+      start_time: timeOf(round, 'start'),
+      end_time: timeOf(round, 'end'),
       evaluation_requirement_id: round.evaluation_requirement_id || null,
-      max_team_size: Number(round.max_team_size || 1),
+      ...teamSizePayload(round),
       working_demo_video_required: round.working_demo_video_required !== false,
       auto_ai_evaluation: round.auto_ai_evaluation === true,
       github_ai_evaluation: round.github_ai_evaluation === true,
@@ -312,6 +426,11 @@ function validateStep(form, banner, step, options = {}) {
   )
 }
 
+/** Error keys about the schedule: date/time order and rounds inside the hackathon. */
+function isScheduleErrorKey(key) {
+  return /(^|\.)(start_date|end_date|start_time|end_time)$/.test(key)
+}
+
 /** First section holding an outstanding error — where publish should land. */
 function firstStepWithError(errors) {
   const keys = Object.keys(errors || {})
@@ -327,6 +446,8 @@ export default function HackathonForm({
   onSubmit,
   submitting,
   submitError,
+  /** The failed save request, when the parent has it; round errors are read from it. */
+  submitErrorCause = null,
   /* Draft mode: the wizard persists each section as it goes and finishes with
      publish, instead of holding everything in memory until one final POST. */
   draftId = '',
@@ -459,6 +580,9 @@ export default function HackathonForm({
     }
   }
 
+  // Round errors the API returned on the last create/update, by round.
+  const serverRoundErrors = roundTeamSizeErrors(submitErrorCause)
+
   const updateRoundFlag = (index, key) => (event) => {
     const { checked } = event.target
     setForm((current) => ({
@@ -486,6 +610,42 @@ export default function HackathonForm({
       [`timeline.${index}.${key}`]: undefined,
       form: undefined,
     }))
+  }
+
+  /** Apply a change to one round's team-size fields and clear its error. */
+  const changeTeamSize = (index, changes) => {
+    setForm((current) => ({
+      ...current,
+      timeline: current.timeline.map((round, roundIndex) =>
+        roundIndex === index ? { ...round, ...changes(round) } : round,
+      ),
+    }))
+    setErrors((current) => ({ ...current, [`timeline.${index}.team_size`]: undefined, form: undefined }))
+  }
+
+  const updateTeamMode = (index) => (event) => {
+    const mode = event.target.value
+    changeTeamSize(index, (round) => {
+      if (mode === 'single') return { team_size_mode: 'single', min_team_size: '1', max_team_size: '1' }
+      if (mode === 'open') return { team_size_mode: 'open', min_team_size: '1', max_team_size: '' }
+      // Back into multi: keep a valid range the round already had.
+      const kept = round.team_size_mode === 'multi' && !teamSizeError(round)
+      return { team_size_mode: 'multi', ...(kept ? {} : DEFAULT_MULTI) }
+    })
+  }
+
+  /** Raising the minimum past the maximum pulls the maximum up to it. */
+  const updateTeamMin = (index) => (event) => {
+    const min = event.target.value
+    changeTeamSize(index, (round) => ({
+      min_team_size: min,
+      max_team_size: Number(round.max_team_size) < Number(min) ? min : round.max_team_size,
+    }))
+  }
+
+  const updateTeamMax = (index) => (event) => {
+    const max = event.target.value
+    changeTeamSize(index, () => ({ max_team_size: max }))
   }
 
   const removeRound = (index) => {
@@ -532,6 +692,19 @@ export default function HackathonForm({
       return
     }
 
+    // A draft may be incomplete, but not contradictory: a schedule that ends
+    // before it starts (by date or IST clock) or a round outside the
+    // hackathon's window is caught here rather than saved and found at publish.
+    const scheduleErrors = Object.fromEntries(
+      Object.entries(validateStep(form, banner, current, validationOptions)).filter(([key]) =>
+        isScheduleErrorKey(key),
+      ),
+    )
+    if (Object.keys(scheduleErrors).length) {
+      setErrors(scheduleErrors)
+      return
+    }
+
     const stepKey = FORM_STEPS[current].key
     const nextCompleted = withStepCompleted(completedSteps, stepKey)
     setSavingStep(true)
@@ -548,6 +721,7 @@ export default function HackathonForm({
       moveToStep(nextIndex)
     } catch (err) {
       setStepError(err.message || 'Could not save this section. Try again.')
+      setErrors((current) => ({ ...current, ...roundTeamSizeErrors(err) }))
     } finally {
       setSavingStep(false)
     }
@@ -577,6 +751,7 @@ export default function HackathonForm({
       const blamed = draftErrorStep(err)
       if (blamed) moveToStep(draftStepIndex(blamed))
       setStepError(err.message || 'The draft could not be published.')
+      setErrors((current) => ({ ...current, ...roundTeamSizeErrors(err) }))
     } finally {
       setSavingStep(false)
     }
@@ -720,25 +895,35 @@ export default function HackathonForm({
             error={errors.description}
             minHeight={160}
           />
-          <div className="grid grid-2">
-            <Input
-              label="Start date"
-              type="date"
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <DateTimeInputs
+              dateLabel="Start date"
+              timeLabel="Start time"
               required
-              value={form.start_date}
-              onChange={update('start_date')}
-              error={errors.start_date}
+              date={form.start_date}
+              time={form.start_time}
+              onDate={update('start_date')}
+              onTime={update('start_time')}
+              dateError={errors.start_date}
+              timeError={errors.start_time}
             />
-            <Input
-              label="End date"
-              type="date"
-              min={form.start_date || undefined}
+            <DateTimeInputs
+              dateLabel="End date"
+              timeLabel="End time"
               required
-              value={form.end_date}
-              onChange={update('end_date')}
-              error={errors.end_date}
+              min={form.start_date || undefined}
+              date={form.end_date}
+              time={form.end_time}
+              onDate={update('end_date')}
+              onTime={update('end_time')}
+              dateError={errors.end_date}
+              timeError={errors.end_time}
             />
           </div>
+          <p className="text-[12.5px] text-muted">
+            Times are IST. Submissions open at the start minute and stay open through the end
+            minute.
+          </p>
           <Input
             label="Hackathon URL"
             type="url"
@@ -933,10 +1118,10 @@ export default function HackathonForm({
                   value={round.description}
                   onChange={updateRound(index, 'description')}
                 />
-                <div className="grid grid-2">
-                  <Input
-                    label="Start date"
-                    type="date"
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <DateTimeInputs
+                    dateLabel="Start date"
+                    timeLabel="Start time"
                     min={form.start_date || undefined}
                     max={
                       round.end_date && form.end_date
@@ -945,26 +1130,32 @@ export default function HackathonForm({
                           : form.end_date
                         : form.end_date || undefined
                     }
-                    value={round.start_date}
-                    onChange={updateRound(index, 'start_date')}
-                    error={errors[`timeline.${index}.start_date`]}
+                    date={round.start_date}
+                    time={round.start_time}
+                    onDate={updateRound(index, 'start_date')}
+                    onTime={updateRound(index, 'start_time')}
+                    dateError={errors[`timeline.${index}.start_date`]}
+                    timeError={errors[`timeline.${index}.start_time`]}
                     disabled={!form.start_date || !form.end_date}
-                    hint={
+                    dateHint={
                       form.start_date && form.end_date
                         ? `Within ${form.start_date} – ${form.end_date}`
                         : 'Complete step 1 dates first'
                     }
                   />
-                  <Input
-                    label="End date"
-                    type="date"
+                  <DateTimeInputs
+                    dateLabel="End date"
+                    timeLabel="End time"
                     min={round.start_date || form.start_date || undefined}
                     max={form.end_date || undefined}
-                    value={round.end_date}
-                    onChange={updateRound(index, 'end_date')}
-                    error={errors[`timeline.${index}.end_date`]}
+                    date={round.end_date}
+                    time={round.end_time}
+                    onDate={updateRound(index, 'end_date')}
+                    onTime={updateRound(index, 'end_time')}
+                    dateError={errors[`timeline.${index}.end_date`]}
+                    timeError={errors[`timeline.${index}.end_time`]}
                     disabled={!form.start_date || !form.end_date}
-                    hint={
+                    dateHint={
                       form.start_date && form.end_date
                         ? `Within ${form.start_date} – ${form.end_date}`
                         : 'Complete step 1 dates first'
@@ -994,18 +1185,62 @@ export default function HackathonForm({
 
                 {/* Per-round participation and evaluation settings. These used
                     to be hackathon-wide; each round now carries its own. */}
-                <Select
-                  label="Team size"
-                  value={round.max_team_size}
-                  onChange={updateRound(index, 'max_team_size')}
-                  hint="Solo lets each student submit alone. A team round takes 2 to 5 members including the leader, and the leader can submit once there are at least 2."
-                >
-                  {TEAM_SIZE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
+                <div>
+                  <div
+                    className={`grid grid-cols-1 gap-3 ${
+                      round.team_size_mode === 'multi' ? 'md:grid-cols-3' : ''
+                    }`}
+                  >
+                    <Select
+                      label="Team size"
+                      value={round.team_size_mode}
+                      onChange={updateTeamMode(index)}
+                    >
+                      {TEAM_SIZE_MODES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                    {round.team_size_mode === 'multi' && (
+                      <>
+                        <Select
+                          label="Minimum participants"
+                          value={round.min_team_size}
+                          onChange={updateTeamMin(index)}
+                        >
+                          {TEAM_SIZES.map((size) => (
+                            <option key={size} value={String(size)}>
+                              {size}
+                            </option>
+                          ))}
+                        </Select>
+                        <Select
+                          label="Maximum participants"
+                          value={round.max_team_size}
+                          onChange={updateTeamMax(index)}
+                        >
+                          {TEAM_SIZES.filter((size) => size >= Number(round.min_team_size || TEAM_MIN)).map(
+                            (size) => (
+                              <option key={size} value={String(size)}>
+                                {size}
+                              </option>
+                            ),
+                          )}
+                        </Select>
+                      </>
+                    )}
+                  </div>
+                  {errors[`timeline.${index}.team_size`] ||
+                  serverRoundErrors[`timeline.${index}.team_size`] ? (
+                    <span className="field__error" role="alert">
+                      {errors[`timeline.${index}.team_size`] ||
+                        serverRoundErrors[`timeline.${index}.team_size`]}
+                    </span>
+                  ) : (
+                    <span className="field__hint">{teamSizeHint(round)}</span>
+                  )}
+                </div>
 
                 <label className="hackathon-video-toggle">
                   <input

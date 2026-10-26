@@ -1,0 +1,88 @@
+/* Role editor: the permission checkboxes laid out as a compact grid of tiles. */
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.summary strong {
+  color: var(--heading);
+}
+
+.group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.groupTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.groupCount {
+  margin-left: 8px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--heading);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.option:hover {
+  border-color: var(--text-muted);
+}
+
+.option[data-checked='true'] {
+  border-color: var(--color-volt, #c8fa3c);
+  background: color-mix(in srgb, var(--color-volt, #c8fa3c) 12%, var(--surface));
+}
+
+.option:focus-within {
+  outline: 2px solid var(--color-volt, #c8fa3c);
+  outline-offset: 2px;
+}
+
+.option input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--color-volt, #c8fa3c);
+}

@@ -19,6 +19,7 @@ import Input, { Select, Textarea } from '../../components/ui/Input'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import ScreenRecorder from '../../components/evaluation/ScreenRecorder'
 import { EYEBROW, WRAP_APP } from '../../components/drop/theme'
+import { captureError, trackEvent } from '../../lib/logrocket'
 
 const ALL_STEPS = [
   { id: 'requirements', label: 'Requirements', short: 'Details' },
@@ -508,6 +509,10 @@ export default function NewEvaluationPage() {
         onUploadProgress: setUploadPercent,
       })
       invalidateQueries(queryKeys.submissionsMine)
+      trackEvent('Submission Submitted', {
+        hackathonId: String(activeHackathon.id),
+        roundIndex: Number(roundIndex) || 0,
+      })
       setSubmittedSession(submitted)
     } catch (submitError) {
       // NOT_ENROLLED / LEADER_ONLY come back here if enrollment lapsed between
@@ -519,6 +524,14 @@ export default function NewEvaluationPage() {
           'Your submission could not be recorded. Please try again.',
         ),
       )
+      // A refusal the API explained (4xx) is expected; a crash, a 5xx or a
+      // failed upload is worth a look in the recording.
+      if (!(submitError?.status >= 400 && submitError?.status < 500)) {
+        captureError(submitError, {
+          tags: { area: 'submission' },
+          extra: { hackathonId: String(activeHackathon?.id || ''), roundIndex: Number(roundIndex) || 0 },
+        })
+      }
     } finally {
       setPhase('idle')
       setUploadPercent(0)

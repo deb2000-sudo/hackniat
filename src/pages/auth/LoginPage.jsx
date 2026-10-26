@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AuthShell from '../../components/layout/AuthShell'
 import { useAuth } from '../../hooks/useAuth'
 import { validateLoginForm } from '../../utils/validators'
-import { ROLE_HOME } from '../../utils/constants'
+import { homePath, needsProfileCompletion } from '../../utils/access'
 
 const initial = { email: '', password: '' }
 
@@ -81,7 +81,10 @@ export default function LoginPage() {
       // Navigate in the same tick as the login: PublicOnlyRoute sends any
       // signed-in user to their role home on the next render, which would
       // drop the page they were sent here from.
-      navigate(location.state?.from?.pathname || ROLE_HOME[user?.role] || '/', { replace: true })
+      // Unfinished setup wins over a saved link: /admin would only bounce back
+      // to /complete-profile anyway, and the API refuses it until then.
+      const from = needsProfileCompletion(user) ? '' : location.state?.from?.pathname
+      navigate(from || homePath(user), { replace: true })
     } catch (err) {
       setSubmitError(err.message || 'Unable to sign in. Please try again.')
     } finally {

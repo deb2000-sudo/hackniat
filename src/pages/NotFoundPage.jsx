@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { ROLE_HOME } from '../utils/constants'
+import { homePath } from '../utils/access'
 import Button from '../components/ui/Button'
 import Icon from '../components/ui/Icon'
 
 export default function NotFoundPage() {
   const { user } = useAuth()
-  const home = user ? ROLE_HOME[user.role] || '/' : '/'
+  const home = homePath(user)
   return (
     <div className="container page" style={{ display: 'grid', placeItems: 'center', minHeight: '70vh' }}>
       <div className="text-center stack-md">

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { hackathonsApi } from '../../api/hackathons'
 import RoundParticipation from '../../components/hackathons/RoundParticipation'
 import LeaderboardPanel from '../../components/hackathons/LeaderboardPanel'
+import WinnerAnnouncementPanel from '../../components/hackathons/WinnerAnnouncementPanel'
 import { participationErrorMessage } from '../../components/hackathons/errorCodes'
 import { roundStatusBadge } from '../../components/hackathons/roundStatus'
 import { evaluationRequirementsApi } from '../../api/evaluationRequirements'
@@ -10,8 +11,10 @@ import RichText from '../../components/ui/RichText'
 import { useAsync } from '../../hooks/useAsync'
 import { useAuth } from '../../hooks/useAuth'
 import { ROLES } from '../../utils/constants'
+import { hasPermission, PERMISSIONS } from '../../utils/access'
 import { formatDate } from '../../utils/format'
-import { getHackathonDuration, getHackathonStatus } from '../../utils/hackathons'
+import { formatEnd, formatScheduleRange, formatStart } from '../../utils/schedule'
+import { getHackathonDuration, getHackathonStatus, teamModeFallbackLabel } from '../../utils/hackathons'
 import {
   BADGE,
   BADGE_CLOSED,
@@ -28,7 +31,9 @@ import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import Modal from '../../components/ui/Modal'
-import { LoadingBlock } from '../../components/ui/Spinner'
+import Spinner, { LoadingBlock } from '../../components/ui/Spinner'
+import { trackEvent } from '../../lib/logrocket'
+import { useAdminPath } from '../../hooks/useAdminPath'
 
 const PRIZES = [
   { key: 'winner', label: 'Winner', place: '01' },
@@ -83,10 +88,14 @@ function totalPrizePool(prizes) {
 }
 
 export default function HackathonDetailPage() {
+  const toAdminPath = useAdminPath()
   const { hackathonId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isAdmin = user?.role === ROLES.ADMIN
+  // Any admin-side role given this screen manages it, not only built-in Admin.
+  const isAdmin = hasPermission(user, PERMISSIONS.HACKATHONS)
+  // Emailing winners is Super Admin only (the API agrees).
+  const isSuperAdmin = user?.role === ROLES.SUPER_ADMIN
   const isEvaluator = user?.role === ROLES.EVALUATOR
   const isStudent = user?.role === ROLES.STUDENT
   const {
@@ -101,6 +110,26 @@ export default function HackathonDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [duplicating, setDuplicating] = useState(false)
+  const [duplicateError, setDuplicateError] = useState('')
+
+  /**
+   * Copy this hackathon into a new draft and open it in the create wizard,
+   * which loads whatever draftId is in the URL — so no createDraft() here.
+   * Nothing goes live until the copy is edited and published.
+   */
+  const duplicate = async () => {
+    setDuplicating(true)
+    setDuplicateError('')
+    const draft = await hackathonsApi.duplicate(hackathon.id).catch((err) => {
+      setDuplicateError(participationErrorMessage(err, 'Could not duplicate this hackathon.'))
+      return null
+    })
+    setDuplicating(false)
+    if (!draft?.id) return
+    trackEvent('Hackathon Duplicated', { sourceHackathonId: String(hackathon.id) })
+    navigate(toAdminPath(`/admin/hackathons/create?draftId=${encodeURIComponent(draft.id)}`))
+  }
 
   /**
    * Release a round to students. Publishing is per round, and this page is
@@ -178,7 +207,7 @@ export default function HackathonDetailPage() {
     {
       icon: 'calendar',
       label: 'Starts on',
-      value: formatDate(hackathon.start_date),
+      value: formatStart(hackathon) || formatDate(hackathon.start_date),
     },
     {
       icon: 'chart',
@@ -195,7 +224,7 @@ export default function HackathonDetailPage() {
     {
       icon: 'calendar',
       label: 'Ends on',
-      value: formatDate(hackathon.end_date),
+      value: formatEnd(hackathon) || formatDate(hackathon.end_date),
     },
     // No AI evaluation tile: the flag is set per timeline round, so a single
     // hackathon-level value cannot describe it. The per-round setting is shown
@@ -207,6 +236,13 @@ export default function HackathonDetailPage() {
       {/* Hero. A compact card rather than a banner wall: the actions, the
           status and the schedule are what this page is opened for, so they all
           sit above the fold instead of below a full-bleed image. */}
+      {isAdmin && duplicateError && (
+        <div className="mb-4">
+          <Alert variant="danger" title="Could not duplicate">
+            {duplicateError}
+          </Alert>
+        </div>
+      )}
       <section className={`${PANEL} mb-6 overflow-hidden md:mb-8`}>
         <div className="flex flex-col gap-3 border-b border-hairline p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <Link to="/hackathons" className={`${BTN_GHOST} w-full sm:w-auto`}>
@@ -219,19 +255,30 @@ export default function HackathonDetailPage() {
                   lives on its own page, so it is reachable from where the
                   hackathon is being looked at rather than only mid-wizard. */}
               <Link
-                to={`/admin/hackathons/${hackathon.id}/settings`}
+                to={toAdminPath(`/admin/hackathons/${hackathon.id}/settings`)}
                 className={`${BTN_GHOST} w-full sm:w-auto`}
               >
                 <Icon name="settings" size={16} />
                 Settings
               </Link>
               <Link
-                to={`/admin/hackathons/${hackathon.id}/edit`}
+                to={toAdminPath(`/admin/hackathons/${hackathon.id}/edit`)}
                 className={`${BTN_GHOST} w-full sm:w-auto`}
               >
                 <Icon name="edit" size={16} />
                 Edit
               </Link>
+              <button
+                type="button"
+                className={`${BTN_GHOST} w-full sm:w-auto`}
+                onClick={duplicate}
+                disabled={duplicating}
+                aria-busy={duplicating}
+                title="Copy this hackathon into a new draft"
+              >
+                {duplicating ? <Spinner size="sm" /> : <Icon name="clipboard" size={16} />}
+                {duplicating ? 'Duplicating…' : 'Duplicate'}
+              </button>
               <button
                 type="button"
                 className={`${BTN_GHOST} w-full border-transparent text-missing hover:border-missing/30 hover:bg-danger-soft sm:w-auto`}
@@ -379,16 +426,12 @@ export default function HackathonDetailPage() {
                             {/* The API's own label ("2-5 Members") when it
                                 sends one — a team round is a range, not a
                                 fixed headcount. */}
-                            {round.team_mode_label ||
-                              (Number(round.max_team_size) > 1
-                                ? `Team of ${Number(round.min_team_size) || 2}-${round.max_team_size}`
-                                : 'Solo')}
+                            {round.team_mode_label || teamModeFallbackLabel(round)}
                           </span>
                           {(round.start_date || round.end_date) && (
                             <span className={`${ROUND_PILL} ${ROUND_PILL_NEUTRAL}`}>
                               <Icon name="calendar" size={15} />
-                              {round.start_date ? formatDate(round.start_date) : 'Date TBD'}
-                              {round.end_date ? ` – ${formatDate(round.end_date)}` : ''}
+                              {round.start_date ? formatScheduleRange(round) : 'Date TBD'}
                             </span>
                           )}
                           {isAdmin && !round.published && (
@@ -497,7 +540,7 @@ export default function HackathonDetailPage() {
                   <Alert variant="warning" title="Evaluator guidelines not configured">
                     Add evaluator guidelines so reviewers know how to score submissions.{' '}
                     <Link
-                      to={`/admin/hackathons/${hackathon.id}/edit`}
+                      to={toAdminPath(`/admin/hackathons/${hackathon.id}/edit`)}
                       className="font-medium underline"
                     >
                       Edit hackathon
@@ -520,6 +563,25 @@ export default function HackathonDetailPage() {
                   roundTitle={round.title || `Round ${index + 1}`}
                   published={round.leaderboard_published === true}
                   canManage={isAdmin}
+                  // Re-read the hackathon so the round's leaderboard_published
+                  // flag (and the Winner announcement below) follow the change.
+                  onPublishedChange={() => reloadHackathon({ force: true })}
+                />
+              ))}
+            </div>
+          </Accordion>
+        )}
+
+        {isSuperAdmin && !!leaderboardRounds.length && (
+          <Accordion icon="trophy" title="Winner announcement">
+            <div className="flex flex-col gap-6">
+              {leaderboardRounds.map(({ round, index }) => (
+                <WinnerAnnouncementPanel
+                  key={`winners-${index}`}
+                  hackathonId={hackathonId}
+                  roundIndex={index}
+                  roundTitle={round.title || `Round ${index + 1}`}
+                  leaderboardPublished={round.leaderboard_published === true}
                 />
               ))}
             </div>

@@ -1,0 +1,206 @@
+/* Hackathon visibility: two selection cards with a header, compact rows and
+   per-university batch groups. Colours come from the Drop tokens so both
+   themes follow automatically. */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--drop-hairline);
+  border-radius: var(--radius-lg, 14px);
+  background: var(--drop-surface);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--drop-hairline);
+  background: color-mix(in srgb, var(--drop-raised) 55%, var(--drop-surface));
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--drop-ink);
+}
+
+.count {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border: 1px solid var(--drop-hairline);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--drop-muted);
+  background: var(--drop-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.countAll {
+  border-color: var(--drop-volt-edge);
+  background: var(--drop-volt-tint);
+  color: var(--drop-volt-ink);
+}
+
+.selectAll {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--drop-ink);
+}
+
+.selectAll small {
+  font-weight: 400;
+  color: var(--drop-muted);
+}
+
+.body {
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.groupLabel {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--drop-hairline);
+  background: var(--drop-surface);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--drop-muted);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--drop-hairline);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row:hover {
+  background: var(--drop-raised);
+}
+
+.row[data-checked='true'] {
+  background: color-mix(in srgb, var(--drop-volt) 7%, var(--drop-surface));
+}
+
+.row[data-checked='true']:hover {
+  background: color-mix(in srgb, var(--drop-volt) 12%, var(--drop-surface));
+}
+
+.row[data-disabled='true'] {
+  cursor: default;
+}
+
+.rowText {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.primary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--drop-ink);
+}
+
+.secondary {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--drop-muted);
+}
+
+.checkbox {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: inherit;
+  accent-color: var(--drop-volt);
+}
+
+.empty {
+  padding: 28px 16px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--drop-muted);
+}
+
+.summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--drop-hairline);
+  border-radius: var(--radius, 10px);
+  background: color-mix(in srgb, var(--drop-raised) 45%, var(--drop-surface));
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--drop-ink);
+}
+
+.summary svg {
+  margin-top: 1px;
+  flex-shrink: 0;
+  color: var(--drop-muted);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--drop-hairline);
+}
+
+.blocker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--drop-warning, #b7791f);
+}
+
+/* A divider above each university's batches after the first group. */
+.body > div + div .groupLabel {
+  border-top: 1px solid var(--drop-hairline);
+}

@@ -9,6 +9,9 @@ import Icon from '../../components/ui/Icon'
 import Input, { PasswordInput } from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import { LoadingBlock } from '../../components/ui/Spinner'
+import { useAdminPath } from '../../hooks/useAdminPath'
+import ApplicationConfigPanel from '../../components/admin/ApplicationConfigPanel'
+import DeleteHackathonPanel from '../../components/admin/DeleteHackathonPanel'
 
 const PROFILE_FORM = {
   current_profile_password: '',
@@ -127,7 +130,7 @@ function ResetSummary({ result, excluded = [], onDismiss, onDashboard }) {
             </h3>
             <p className="mt-1 max-w-2xl text-[13.5px] text-muted">
               {result?.message ||
-                'Wipeable application data was cleared. Admin accounts and the Profile Password were preserved.'}
+                'Wipeable application data was cleared. The Super Admin account and the Profile Password were preserved.'}
             </p>
           </div>
         </div>
@@ -220,6 +223,7 @@ function ResetSummary({ result, excluded = [], onDismiss, onDashboard }) {
 }
 
 export default function ApplicationSettingsPage() {
+  const toAdminPath = useAdminPath()
   const navigate = useNavigate()
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -374,7 +378,7 @@ export default function ApplicationSettingsPage() {
   return (
     <div className={`${WRAP_APP} py-7 md:py-10`}>
       <header className="mb-7 sm:mb-9">
-        <span className={EYEBROW}>Admin</span>
+        <span className={EYEBROW}>Super Admin</span>
         <h1 className="mt-2 text-[28px] font-semibold tracking-[-0.03em] text-ink md:text-[36px]">
           Application Settings
         </h1>
@@ -418,75 +422,80 @@ export default function ApplicationSettingsPage() {
             result={resetResult}
             excluded={resultExcluded}
             onDismiss={() => setResetResult(null)}
-            onDashboard={() => navigate('/admin')}
+            onDashboard={() => navigate(toAdminPath('/admin'))}
           />
         </div>
       )}
 
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2 xl:gap-6">
-        <Card className="min-w-0">
-          <CardHeader>
-            <div>
-              <h3>Profile Password</h3>
-              <p className="text-sm text-muted">
-                Used to authorize destructive actions such as Reset Database — not for signing in.
-              </p>
-            </div>
-            <Icon name="shield" size={20} className="text-muted" />
-          </CardHeader>
-          <CardBody>
-            <form className="stack-md" onSubmit={submitProfilePassword} noValidate>
-              {profileError && <Alert variant="danger">{profileError}</Alert>}
+        {/* Left column: Profile Password, then Application config under it. */}
+        <div className="flex min-w-0 flex-col gap-5 xl:gap-6">
+          <Card className="min-w-0">
+            <CardHeader>
+              <div>
+                <h3>Profile Password</h3>
+                <p className="text-sm text-muted">
+                  Used to authorize destructive actions such as Reset Database — not for signing in.
+                </p>
+              </div>
+              <Icon name="shield" size={20} className="text-muted" />
+            </CardHeader>
+            <CardBody>
+              <form className="stack-md" onSubmit={submitProfilePassword} noValidate>
+                {profileError && <Alert variant="danger">{profileError}</Alert>}
 
-              <PasswordInput
-                label="Current profile password"
-                autoComplete="off"
-                required
-                value={profileForm.current_profile_password}
-                onChange={updateProfile('current_profile_password')}
-                disabled={profileLoading}
-              />
-              <PasswordInput
-                label="New profile password"
-                autoComplete="new-password"
-                minLength={6}
-                required
-                value={profileForm.new_profile_password}
-                onChange={updateProfile('new_profile_password')}
-                hint="At least 6 characters"
-                disabled={profileLoading}
-              />
-              <PasswordInput
-                label="Confirm new profile password"
-                autoComplete="new-password"
-                minLength={6}
-                required
-                value={profileForm.confirm_new_profile_password}
-                onChange={updateProfile('confirm_new_profile_password')}
-                error={profileConfirmError}
-                disabled={profileLoading}
-              />
+                <PasswordInput
+                  label="Current profile password"
+                  autoComplete="off"
+                  required
+                  value={profileForm.current_profile_password}
+                  onChange={updateProfile('current_profile_password')}
+                  disabled={profileLoading}
+                />
+                <PasswordInput
+                  label="New profile password"
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                  value={profileForm.new_profile_password}
+                  onChange={updateProfile('new_profile_password')}
+                  hint="At least 6 characters"
+                  disabled={profileLoading}
+                />
+                <PasswordInput
+                  label="Confirm new profile password"
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                  value={profileForm.confirm_new_profile_password}
+                  onChange={updateProfile('confirm_new_profile_password')}
+                  error={profileConfirmError}
+                  disabled={profileLoading}
+                />
 
-              <Button
-                type="submit"
-                variant="accent"
-                block
-                loading={profileLoading}
-                disabled={!canSubmitProfile}
-              >
-                Change Profile Password
-              </Button>
+                <Button
+                  type="submit"
+                  variant="accent"
+                  block
+                  loading={profileLoading}
+                  disabled={!canSubmitProfile}
+                >
+                  Change Profile Password
+                </Button>
 
-              <p className="text-sm text-muted">
-                Your login password is unchanged here. Use{' '}
-                <Link to="/settings/change-password" className="underline underline-offset-4">
-                  Change Password
-                </Link>{' '}
-                to update the password you sign in with.
-              </p>
-            </form>
-          </CardBody>
-        </Card>
+                <p className="text-sm text-muted">
+                  Your login password is unchanged here. Use{' '}
+                  <Link to="/settings/change-password" className="underline underline-offset-4">
+                    Change Password
+                  </Link>{' '}
+                  to update the password you sign in with.
+                </p>
+              </form>
+            </CardBody>
+          </Card>
+
+          <ApplicationConfigPanel />
+        </div>
 
         <section className={`${PANEL} min-w-0 overflow-hidden border-missing/30`}>
           <div className="flex items-start gap-3 border-b border-missing/20 bg-danger-soft px-4 py-4 sm:px-5">
@@ -498,8 +507,8 @@ export default function ApplicationSettingsPage() {
                 Reset Database
               </h3>
               <p className="mt-1 text-[13.5px] text-muted">
-                Permanently deletes wipeable collections. Admin accounts and the Profile Password
-                are preserved.
+                Permanently deletes wipeable collections. Only the Super Admin account and the
+                Profile Password are preserved.
               </p>
             </div>
           </div>
@@ -576,13 +585,13 @@ export default function ApplicationSettingsPage() {
             ) : excludedNames.length > 0 ? (
               <Alert variant="warning" title={`${excludedNames.length} kept, ${selectedCollections.length} to delete`}>
                 Deselected collections are left untouched:{' '}
-                <span className={MONO}>{excludedNames.join(', ')}</span>. Admins and the Profile
-                Password configuration are kept either way.
+                <span className={MONO}>{excludedNames.join(', ')}</span>. The Super Admin account
+                and the Profile Password are kept either way.
               </Alert>
             ) : (
               <Alert variant="warning">
-                Admins and the Profile Password configuration are kept. Everything listed above
-                will be removed.
+                The Super Admin account and the Profile Password are kept. Everything listed
+                above will be removed. Admin logins are removed.
               </Alert>
             )}
 
@@ -623,6 +632,11 @@ export default function ApplicationSettingsPage() {
         </section>
       </div>
 
+      {/* Full width, under the two-column grid: one hackathon at a time. */}
+      <div className="mt-5 xl:mt-6">
+        <DeleteHackathonPanel />
+      </div>
+
       <Modal
         open={confirmResetOpen}
         onClose={() => !resetLoading && setConfirmResetOpen(false)}
@@ -648,7 +662,8 @@ export default function ApplicationSettingsPage() {
             {excludedNames.length
               ? `${selectedCollections.length} of ${wipeableCollections.length} collections will be permanently deleted.`
               : 'All wipeable collections will be permanently deleted.'}{' '}
-            Admin accounts and the Profile Password will be preserved.
+            The Super Admin account and the Profile Password will be preserved. Admin logins
+            will be removed.
           </p>
           {excludedNames.length > 0 && (
             <p className="text-[13.5px] text-muted">

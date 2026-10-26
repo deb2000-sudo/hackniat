@@ -3,11 +3,13 @@ import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import BrandMark from '../brand/BrandMark'
 import { useAuth } from '../../hooks/useAuth'
 import { prefetchRouteData } from '../../lib/prefetch'
+import { adminPath, isAdminRole, homePath, PERMISSIONS, userPermissions } from '../../utils/access'
 import { ROLES } from '../../utils/constants'
 import Avatar from '../ui/Avatar'
 import Icon from '../ui/Icon'
 import { RoleBadge } from '../ui/Badge'
 import ThemeToggle from '../drop/ThemeToggle'
+import ProfileModal from './ProfileModal'
 
 const NAV_BY_ROLE = {
   [ROLES.STUDENT]: [
@@ -20,26 +22,110 @@ const NAV_BY_ROLE = {
     { to: '/evaluator', label: 'Assigned submissions', icon: 'clipboard', end: true },
     { to: '/hackathons', label: 'Hackathons', icon: 'trophy' },
   ],
-  [ROLES.ADMIN]: [
-    { to: '/admin', label: 'Overview', icon: 'chart', end: true },
-    { to: '/admin/submissions', label: 'Submissions', icon: 'video' },
-    { to: '/hackathons', label: 'Hackathons', icon: 'trophy' },
-    { to: '/admin/themes', label: 'Themes', icon: 'sparkles' },
-    { to: '/admin/evaluation-requirements', label: 'Requirements', icon: 'clipboard' },
-    { to: '/admin/ai-prompts', label: 'Video Analysis', icon: 'sparkles' },
-    {
-      label: 'General Management',
-      icon: 'users',
-      children: [
-        { to: '/admin/users', label: 'Student Management', icon: 'user' },
-        { to: '/admin/evaluators', label: 'Evaluator Management', icon: 'shield' },
-        // Campuses students pick from at registration — kept beside the people
-        // pages because an unlisted campus blocks their sign-up.
-        { to: '/admin/universities', label: 'University Management', icon: 'university' },
-      ],
-    },
-    { to: '/admin/settings', label: 'Application Settings', icon: 'settings' },
-  ],
+}
+
+/**
+ * The admin sidebar. Each item carries the permission key that opens it, so a
+ * custom role sees only its own screens; Admin and Super Admin see all of them.
+ */
+const ADMIN_NAV = [
+  { to: '/admin', label: 'Overview', icon: 'chart', end: true, permission: PERMISSIONS.OVERVIEW },
+  { to: '/admin/submissions', label: 'Submissions', icon: 'video', permission: PERMISSIONS.SUBMISSIONS },
+  { to: '/hackathons', label: 'Hackathons', icon: 'trophy', permission: PERMISSIONS.HACKATHONS },
+  { to: '/admin/themes', label: 'Themes', icon: 'sparkles', permission: PERMISSIONS.THEMES },
+  {
+    to: '/admin/evaluation-requirements',
+    label: 'Requirements',
+    icon: 'clipboard',
+    permission: PERMISSIONS.REQUIREMENTS,
+  },
+  {
+    to: '/admin/ai-prompts',
+    label: 'Video Analysis',
+    icon: 'sparkles',
+    permission: PERMISSIONS.VIDEO_ANALYSIS,
+  },
+  {
+    label: 'General Management',
+    icon: 'users',
+    children: [
+      {
+        to: '/admin/users',
+        label: 'Student Management',
+        icon: 'user',
+        permission: PERMISSIONS.STUDENT_MANAGEMENT,
+      },
+      {
+        to: '/admin/evaluators',
+        label: 'Evaluator Management',
+        icon: 'shield',
+        permission: PERMISSIONS.EVALUATOR_MANAGEMENT,
+      },
+      // Campuses students pick from at registration — kept beside the people
+      // pages because an unlisted campus blocks their sign-up.
+      {
+        to: '/admin/universities',
+        label: 'University Management',
+        icon: 'university',
+        permission: PERMISSIONS.UNIVERSITY_MANAGEMENT,
+      },
+      {
+        to: '/admin/batches',
+        label: 'Batch Management',
+        icon: 'calendar',
+        permission: PERMISSIONS.BATCH_MANAGEMENT,
+      },
+    ],
+  },
+  {
+    to: '/admin/settings',
+    label: 'Application Settings',
+    icon: 'settings',
+    permission: PERMISSIONS.APPLICATION_SETTINGS,
+  },
+  // Super Admin only: no custom role can be given role_management.
+  {
+    label: 'Application Access',
+    icon: 'shield',
+    children: [
+      {
+        to: '/admin/access/roles',
+        label: 'Application Managed Roles',
+        icon: 'shield',
+        permission: PERMISSIONS.ROLE_MANAGEMENT,
+      },
+      {
+        to: '/admin/access/users',
+        label: 'Application Managed Users',
+        icon: 'userPlus',
+        permission: PERMISSIONS.ROLE_MANAGEMENT,
+      },
+      {
+        to: '/admin/application-logs',
+        label: 'Application Logs',
+        icon: 'chart',
+        permission: PERMISSIONS.ROLE_MANAGEMENT,
+      },
+    ],
+  },
+]
+
+/**
+ * Sidebar items for this user, with groups that end up empty dropped. ADMIN_NAV
+ * is written with /admin; a Super Admin's links move to /super-admin.
+ * /hackathons is outside the admin shell and stays as it is.
+ */
+function navFor(user) {
+  if (!isAdminRole(user.role)) return NAV_BY_ROLE[user.role] || []
+  const allowed = userPermissions(user)
+  const rehome = (item) => ({ ...item, to: adminPath(item.to, user) })
+  return ADMIN_NAV.flatMap((item) => {
+    if (!item.children) return allowed.includes(item.permission) ? [rehome(item)] : []
+    const children = item.children
+      .filter((child) => allowed.includes(child.permission))
+      .map(rehome)
+    return children.length ? [{ ...item, children }] : []
+  })
 }
 
 export default function Navbar() {
@@ -47,7 +133,8 @@ export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [open, setOpen] = useState(false)
-  const links = user ? NAV_BY_ROLE[user.role] || [] : []
+  const [profileOpen, setProfileOpen] = useState(false)
+  const links = user ? navFor(user) : []
 
   const handleLogout = async () => {
     setOpen(false)
@@ -60,7 +147,7 @@ export default function Navbar() {
   return (
     <>
       <div className="mobile-sidebar-bar">
-        <Link to={`/${user.role}`} className="brand">
+        <Link to={homePath(user)} className="brand">
           <BrandMark variant="c" size={32} title="Challazo" />
           <span className="brand__name czm-wordmark">Challazo</span>
         </Link>
@@ -86,7 +173,7 @@ export default function Navbar() {
 
       <aside className={`sidebar ${open ? 'is-open' : ''}`}>
         <div className="sidebar__header">
-          <Link to={`/${user.role}`} className="brand" onClick={() => setOpen(false)}>
+          <Link to={homePath(user)} className="brand" onClick={() => setOpen(false)}>
             <BrandMark variant="c" size={34} title="Challazo" />
             <span className="brand__name czm-wordmark">Challazo</span>
           </Link>
@@ -101,8 +188,8 @@ export default function Navbar() {
         </div>
 
         <div className="sidebar__workspace">
-          <span>{user.role === ROLES.ADMIN ? 'Administration' : 'Workspace'}</span>
-          <small>{user.role === ROLES.ADMIN ? 'Manage Challazo' : 'Challazo portal'}</small>
+          <span>{isAdminRole(user.role) ? 'Administration' : 'Workspace'}</span>
+          <small>{isAdminRole(user.role) ? 'Manage Challazo' : 'Challazo portal'}</small>
         </div>
 
         <nav className="sidebar__nav" aria-label="Primary navigation">
@@ -170,7 +257,7 @@ export default function Navbar() {
               <Avatar name={user.name} size="sm" />
               <div>
                 <strong>{user.name}</strong>
-                <RoleBadge role={user.role} />
+                <RoleBadge account={user} />
               </div>
               <Icon name="chevronDown" size={16} className="sidebar-profile__chevron" />
             </summary>
@@ -179,6 +266,18 @@ export default function Navbar() {
                 <small>Signed in as</small>
                 <strong>{user.name}</strong>
               </div>
+              <button
+                type="button"
+                className="sidebar-utility"
+                onClick={(event) => {
+                  event.currentTarget.closest('details')?.removeAttribute('open')
+                  setOpen(false)
+                  setProfileOpen(true)
+                }}
+              >
+                <Icon name="user" size={17} />
+                Profile
+              </button>
               <Link
                 className="sidebar-utility"
                 to="/settings/change-password"
@@ -198,6 +297,9 @@ export default function Navbar() {
           </details>
         </div>
       </aside>
+
+      {/* Mounted only while open, so it fetches /auth/me fresh each time. */}
+      {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
     </>
   )
 }

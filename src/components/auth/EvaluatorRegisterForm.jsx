@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
 import Alert from '../ui/Alert'
+import { LoadingBlock } from '../ui/Spinner'
 import Icon from '../ui/Icon'
 import { MONO } from '../drop/theme'
 import MobileField from './MobileField'
@@ -10,10 +11,12 @@ import OtpRow from './OtpRow'
 import PasswordFields from './PasswordFields'
 import { authApi } from '../../api/auth'
 import { AUTH_ERROR, authErrorCode, authErrorField, authErrorMessage } from '../../api/authErrors'
+import { useRegistrationConfig } from '../../hooks/useRegistrationConfig'
 import { VERIFY, useRegistrationVerification } from '../../hooks/useRegistrationVerification'
 import { RECAPTCHA_CONTAINER_ID } from '../../lib/firebasePhone'
 import { ROLES } from '../../utils/constants'
 import { isEmployeeId, isNxtwaveEmail, validateEvaluatorForm } from '../../utils/validators'
+import { trackEvent } from '../../lib/logrocket'
 
 /** An employee ID is exactly this long, so the field stops accepting more. */
 const EMPLOYEE_ID_LENGTH = 9
@@ -40,7 +43,27 @@ const PENDING_MESSAGE = 'Evaluator registration submitted.'
  * dashboard. Email and mobile verify independently against one registration
  * session, each binding only its own field.
  */
+/** What the disabled Create button asks for, given which channels are on. */
+function verifyPrompt(emailRequired, phoneRequired) {
+  if (emailRequired && phoneRequired) return 'Verify both email and mobile number to create your account.'
+  if (emailRequired) return 'Verify your email to create your account.'
+  if (phoneRequired) return 'Verify your mobile number to create your account.'
+  return 'Fill every required field and match the password rules.'
+}
+
+/**
+ * Waits for the public registration config, then renders the form with it: a
+ * channel switched off keeps its field but loses its Verify step.
+ */
 export default function EvaluatorRegisterForm({ onSuccess }) {
+  const { ready, emailRequired, phoneRequired } = useRegistrationConfig()
+  if (!ready) return <LoadingBlock label="Loading registration…" />
+  return (
+    <EvaluatorRegisterFormBody onSuccess={onSuccess} emailRequired={emailRequired} phoneRequired={phoneRequired} />
+  )
+}
+
+function EvaluatorRegisterFormBody({ onSuccess, emailRequired, phoneRequired }) {
   const navigate = useNavigate()
   const [form, setForm] = useState(INITIAL)
   const [errors, setErrors] = useState({})
@@ -49,6 +72,8 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
   const [result, setResult] = useState(null)
 
   const verification = useRegistrationVerification({
+    emailRequired,
+    phoneRequired,
     role: ROLES.EVALUATOR,
     email: form.email,
     countryCode: form.country_code,
@@ -102,11 +127,16 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
     setLoading(true)
     setSubmitError('')
     try {
-      // The session already holds both verified identifiers, so complete posts
-      // its id as-is. Re-binding here would be a needless round trip that could
-      // only desynchronise a session that is currently correct.
+      // With both channels verified the session already holds both
+      // identifiers, so its id is posted as-is — re-binding would only risk
+      // desynchronising it. A channel switched off was never bound by a Verify
+      // step, so the session is (re)opened with both identifiers first.
+      const sessionId =
+        emailRequired && phoneRequired
+          ? verification.getSessionId()
+          : await verification.ensureFullSession()
       const data = await authApi.registerEvaluatorComplete({
-        session_id: verification.getSessionId(),
+        session_id: sessionId,
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
         employee_id: form.employee_id.trim(),
@@ -120,6 +150,7 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
       // PublicOnlyRoute would bounce an authenticated user straight off this
       // page to that 403 — throwing away the message they need to read.
       setResult(data || {})
+      trackEvent('Evaluator Registered')
       onSuccess?.(data)
     } catch (err) {
       const code = authErrorCode(err)
@@ -157,9 +188,34 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
 
   const disabledReason = !canSubmit
     ? !verification.bothVerified
-      ? 'Verify both email and mobile number to create your account.'
+      ? verifyPrompt(emailRequired, phoneRequired)
       : 'Fill every required field and match the password rules.'
     : ''
+
+  const mobileField = (
+    <MobileField
+      countryCode={form.country_code}
+      mobileNational={form.mobile_national}
+      onChange={update}
+      error={errors.mobile_national}
+      locked={verification.phoneState === VERIFY.VERIFIED}
+    />
+  )
+
+  const emailField = (
+    <Input
+      label="Nxtwave email"
+      type="email"
+      required
+      autoComplete="email"
+      placeholder="you@nxtwave.co.in"
+      value={form.email}
+      onChange={update('email')}
+      error={errors.email}
+      disabled={verification.emailState === VERIFY.VERIFIED}
+      readOnly={verification.emailState === VERIFY.VERIFIED}
+    />
+  )
 
   return (
     <form className="stack-md" onSubmit={handleSubmit} noValidate>
@@ -226,57 +282,45 @@ export default function EvaluatorRegisterForm({ onSuccess }) {
         </p>
       </div>
 
-      {/* Email and mobile verify independently; both required before submit. */}
-      <OtpRow
-        label="Email"
-        state={verification.emailState}
-        code={verification.emailCode}
-        error={verification.emailError}
-        cooldown={verification.emailCooldown}
-        canStart={verification.emailReady}
-        onCodeChange={verification.setEmailCode}
-        sentTo={verification.email}
-        onVerify={verification.sendEmailOtp}
-        onConfirm={verification.confirmEmailOtp}
-        onResend={verification.sendEmailOtp}
-        extra={
-          <Input
-            label="Nxtwave email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@nxtwave.co.in"
-            value={form.email}
-            onChange={update('email')}
-            error={errors.email}
-            disabled={verification.emailState === VERIFY.VERIFIED}
-            readOnly={verification.emailState === VERIFY.VERIFIED}
-          />
-        }
-      />
+      {/* Each channel switched on verifies independently and must be green
+          before submit; a channel switched off is collected, never verified. */}
+      {emailRequired ? (
+        <OtpRow
+          label="Email"
+          state={verification.emailState}
+          code={verification.emailCode}
+          error={verification.emailError}
+          cooldown={verification.emailCooldown}
+          canStart={verification.emailReady}
+          onCodeChange={verification.setEmailCode}
+          sentTo={verification.email}
+          onVerify={verification.sendEmailOtp}
+          onConfirm={verification.confirmEmailOtp}
+          onResend={verification.sendEmailOtp}
+          extra={emailField}
+        />
+      ) : (
+        emailField
+      )}
 
-      <OtpRow
-        label="Mobile"
-        state={verification.phoneState}
-        code={verification.phoneCode}
-        error={verification.phoneError}
-        cooldown={verification.phoneCooldown}
-        canStart={verification.phoneReady}
-        onCodeChange={verification.setPhoneCode}
-        sentTo={verification.phoneE164}
-        onVerify={verification.sendPhoneOtp}
-        onConfirm={verification.confirmPhoneOtp}
-        onResend={verification.sendPhoneOtp}
-        extra={
-          <MobileField
-            countryCode={form.country_code}
-            mobileNational={form.mobile_national}
-            onChange={update}
-            error={errors.mobile_national}
-            locked={verification.phoneState === VERIFY.VERIFIED}
-          />
-        }
-      />
+      {phoneRequired ? (
+        <OtpRow
+          label="Mobile"
+          state={verification.phoneState}
+          code={verification.phoneCode}
+          error={verification.phoneError}
+          cooldown={verification.phoneCooldown}
+          canStart={verification.phoneReady}
+          onCodeChange={verification.setPhoneCode}
+          sentTo={verification.phoneE164}
+          onVerify={verification.sendPhoneOtp}
+          onConfirm={verification.confirmPhoneOtp}
+          onResend={verification.sendPhoneOtp}
+          extra={mobileField}
+        />
+      ) : (
+        mobileField
+      )}
       <div id={RECAPTCHA_CONTAINER_ID} />
 
       <PasswordFields

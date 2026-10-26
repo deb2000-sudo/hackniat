@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { LoadingBlock } from '../ui/Spinner'
-import { ROLE_HOME } from '../../utils/constants'
+import { homePath } from '../../utils/access'
 
 /** Redirects already-authenticated users away from auth pages. */
 export default function PublicOnlyRoute() {
@@ -14,7 +14,7 @@ export default function PublicOnlyRoute() {
       </div>
     )
   }
-  if (isAuthenticated) return <Navigate to={ROLE_HOME[user.role] || '/'} replace />
+  if (isAuthenticated) return <Navigate to={homePath(user)} replace />
 
   return <Outlet />
 }

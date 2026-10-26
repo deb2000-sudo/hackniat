@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { adminApi } from '../../api/admin'
+import { authErrorCode } from '../../api/authErrors'
 import { useAsync } from '../../hooks/useAsync'
+import { useAuth } from '../../hooks/useAuth'
 import { queryKeys } from '../../lib/queryKeys'
 import { invalidateQueries } from '../../lib/queryCache'
-import { APPROVAL_STATUS } from '../../utils/constants'
+import { APPROVAL_STATUS, ROLES } from '../../utils/constants'
 import { WRAP_APP } from '../../components/drop/theme'
 import PageHeader from '../../components/layout/PageHeader'
 import Card, { CardBody, CardHeader } from '../../components/ui/Card'
@@ -14,10 +16,54 @@ import Avatar from '../../components/ui/Avatar'
 import Badge, { ApprovalBadge } from '../../components/ui/Badge'
 import { LoadingBlock } from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
+import DeleteUserModal from '../../components/admin/DeleteUserModal'
+import UserDetailsModal from '../../components/admin/UserDetailsModal'
 import { formatDate } from '../../utils/format'
 
+/** What deleting an evaluator does, shown in the confirmation. */
+const EVALUATOR_DELETE_CONSEQUENCES = [
+  'Their profile and login are removed — this email can no longer sign in to this account.',
+  'Submissions assigned to them stay on the hackathon and become unassigned. No submission is deleted.',
+  'They are taken off every hackathon’s evaluator list.',
+]
+
+function deleteErrorMessage(err) {
+  switch (authErrorCode(err)) {
+    case 'EVALUATOR_NOT_FOUND':
+    case 'USER_NOT_FOUND':
+      return 'This evaluator no longer exists. The list has been refreshed.'
+    case 'NOT_AN_EVALUATOR':
+      return 'Only evaluator accounts can be deleted here.'
+    default:
+      return err?.status === 403
+        ? 'Only a Super Admin can delete evaluators.'
+        : err?.message || 'Unable to delete this evaluator.'
+  }
+}
+
+/** Drop one evaluator from both lists on the page. */
+const withoutEvaluator = (data, id) =>
+  data
+    ? {
+        ...data,
+        evaluators: (data.evaluators || []).filter((u) => u.id !== id),
+        pending: (data.pending || []).filter((u) => u.id !== id),
+      }
+    : data
+
+/**
+ * Hackathon and submission views that may name this evaluator: their
+ * assignments are cleared and they leave each hackathon's evaluator list.
+ */
+const touchesEvaluator = (key) =>
+  /^(hackathon|hackathons|submission|submissions)[:]/.test(key) || key === 'admin:evaluators'
+
 export default function EvaluatorsPage() {
-  const { data, loading, error, reload } = useAsync(
+  const { user: me } = useAuth()
+  // Deleting an evaluator is Super Admin only; the API refuses anyone else (403).
+  const canDelete = me?.role === ROLES.SUPER_ADMIN
+
+  const { data, loading, error, reload, setData } = useAsync(
     async () => {
       const [evaluators, pending] = await Promise.all([
         adminApi.getEvaluators(),
@@ -33,6 +79,45 @@ export default function EvaluatorsPage() {
 
   const evaluators = data?.evaluators || []
   const pending = data?.pending || []
+
+  // The evaluator whose details are open, and the one awaiting delete confirmation.
+  const [viewing, setViewing] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  const [deleteError, setDeleteError] = useState('')
+  const [removing, setRemoving] = useState(false)
+
+  const askDelete = (user) => {
+    setDeleting(user)
+    setDeleteError('')
+  }
+
+  const confirmDelete = async () => {
+    if (!deleting) return
+    setRemoving(true)
+    setDeleteError('')
+
+    const result = await adminApi.deleteEvaluator(deleting.id).then(
+      () => 'deleted',
+      (err) => {
+        setDeleteError(deleteErrorMessage(err))
+        const code = authErrorCode(err)
+        // Already gone: drop the stale row the same way a delete would.
+        return code === 'EVALUATOR_NOT_FOUND' || code === 'USER_NOT_FOUND' ? 'missing' : null
+      },
+    )
+
+    setRemoving(false)
+    if (!result) return
+    if (result === 'deleted') setDeleting(null)
+
+    // Overview counts and any cached hackathon / submission view that named
+    // this evaluator are now stale.
+    invalidateQueries(queryKeys.adminOverview)
+    invalidateQueries(touchesEvaluator)
+
+    if (result === 'missing') reload({ force: true })
+    else setData((current) => withoutEvaluator(current, deleting.id))
+  }
 
   const approve = async (userId) => {
     setApprovingId(userId)
@@ -133,6 +218,7 @@ export default function EvaluatorsPage() {
                       <th>Employee ID</th>
                       <th>Status</th>
                       <th>Joined</th>
+                      <th aria-label="Actions" />
                     </tr>
                   </thead>
                   <tbody>
@@ -152,6 +238,29 @@ export default function EvaluatorsPage() {
                           <ApprovalBadge status={u.approval_status || APPROVAL_STATUS.APPROVED} />
                         </td>
                         <td className="text-sm text-muted">{formatDate(u.created_at)}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="row" style={{ justifyContent: 'flex-end', gap: 6 }}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setViewing(u)}
+                              leftIcon={<Icon name="eye" size={16} />}
+                            >
+                              View details
+                            </Button>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                className="icon-btn icon-btn--danger"
+                                onClick={() => askDelete(u)}
+                                aria-label={`Delete ${u.name || u.email}`}
+                                title="Delete evaluator"
+                              >
+                                <Icon name="trash" size={17} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -167,6 +276,33 @@ export default function EvaluatorsPage() {
           </div>
         </div>
       )}
+
+      {viewing && (
+        <UserDetailsModal
+          key={viewing.id}
+          variant="evaluator"
+          user={viewing}
+          onClose={() => setViewing(null)}
+          onDelete={
+            canDelete
+              ? (user) => {
+                  setViewing(null)
+                  askDelete(user)
+                }
+              : undefined
+          }
+        />
+      )}
+
+      <DeleteUserModal
+        account={deleting}
+        title="Delete evaluator"
+        consequences={EVALUATOR_DELETE_CONSEQUENCES}
+        error={deleteError}
+        deleting={removing}
+        onCancel={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

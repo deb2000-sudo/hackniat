@@ -77,7 +77,7 @@ export const REVIEW_STEP = 'review'
  * on different sections cannot clobber each other's work.
  */
 const FIELDS_BY_STEP = {
-  basics: ['name', 'description', 'start_date', 'end_date', 'hackathon_url'],
+  basics: ['name', 'description', 'start_date', 'start_time', 'end_date', 'end_time', 'hackathon_url'],
   guidelines: ['guidelines', 'evaluator_guidelines'],
   themes: ['theme_ids'],
   timeline: ['timeline'],

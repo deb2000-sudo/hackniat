@@ -236,8 +236,8 @@ export function submissionLinkForGroup(submission, groupName) {
   return null
 }
 
-/** Pick the requirement’s real field key for a group (fallback if it has none). */
-export function resolveRequirementFieldKey(requirementFields, groupName) {
+/** The requirement's own field for a group, or null. Never a fallback key. */
+function findRequirementField(requirementFields, groupName) {
   const group = FIELD_GROUPS[groupName]
   const list = Array.isArray(requirementFields) ? requirementFields : []
   const find = (predicate) => list.find((field) => predicate(normalizeFieldKey(field?.key)))
@@ -248,6 +248,25 @@ export function resolveRequirementFieldKey(requirementFields, groupName) {
     if (match) break
   }
   if (!match && group?.pattern) match = find((key) => group.pattern.test(key))
+  return match?.key ? match : null
+}
+
+/** Groups the fixed standard preset scores (video is always available). */
+export const STANDARD_PRESET_GROUPS = ['problem_statement', 'solution_description', 'github', 'mvp']
+
+/**
+ * Can the fixed 15 / 15 / 20 / 20 / 30 preset be used as-is? Only when the
+ * requirement really has each of those fields — not by falling back to
+ * github_link or mvp_link, which this requirement may not have.
+ */
+export function requirementSupportsStandardPreset(requirementFields) {
+  return STANDARD_PRESET_GROUPS.every((group) => findRequirementField(requirementFields, group))
+}
+
+/** Pick the requirement’s real field key for a group (fallback if it has none). */
+export function resolveRequirementFieldKey(requirementFields, groupName) {
+  const group = FIELD_GROUPS[groupName]
+  const match = findRequirementField(requirementFields, groupName)
 
   if (match?.key) {
     return {

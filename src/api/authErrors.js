@@ -22,6 +22,20 @@ export const AUTH_ERROR = {
   SESSION_EXPIRED: 'SESSION_EXPIRED',
   // The campus was deleted between loading the register form and submitting it.
   UNKNOWN_UNIVERSITY: 'UNKNOWN_UNIVERSITY',
+  // The id the selected university's college type asks for.
+  NIAT_ID_REQUIRED: 'NIAT_ID_REQUIRED',
+  NIAT_ID_TAKEN: 'NIAT_ID_TAKEN',
+  COLLEGE_ID_REQUIRED: 'COLLEGE_ID_REQUIRED',
+  COLLEGE_ID_TAKEN: 'COLLEGE_ID_TAKEN',
+  // The batch was deleted, or never existed.
+  UNKNOWN_BATCH: 'UNKNOWN_BATCH',
+  // The batch exists but belongs to another university. No account is created.
+  BATCH_UNIVERSITY_MISMATCH: 'BATCH_UNIVERSITY_MISMATCH',
+  // Signed in, but the first-login profile is not finished yet.
+  PROFILE_INCOMPLETE: 'PROFILE_INCOMPLETE',
+  // Post-login verification popup.
+  VERIFICATION_NOT_REQUIRED: 'VERIFICATION_NOT_REQUIRED',
+  ALREADY_VERIFIED: 'ALREADY_VERIFIED',
   // Password reset only.
   ACCOUNT_NOT_FOUND: 'ACCOUNT_NOT_FOUND',
   PHONE_NOT_ON_FILE: 'PHONE_NOT_ON_FILE',
@@ -63,6 +77,13 @@ const MESSAGES = {
   [AUTH_ERROR.SESSION_EXPIRED]: 'That session has expired. Start again.',
   [AUTH_ERROR.UNKNOWN_UNIVERSITY]:
     'That campus is no longer available. Choose your university again.',
+  [AUTH_ERROR.PROFILE_INCOMPLETE]: 'Finish setting up your profile to continue.',
+  [AUTH_ERROR.NIAT_ID_REQUIRED]: 'Enter your NIAT ID.',
+  [AUTH_ERROR.NIAT_ID_TAKEN]: 'That NIAT ID is already registered.',
+  [AUTH_ERROR.COLLEGE_ID_REQUIRED]: 'Enter your College ID.',
+  [AUTH_ERROR.COLLEGE_ID_TAKEN]: 'That College ID is already registered at this university.',
+  [AUTH_ERROR.UNKNOWN_BATCH]: 'That batch is no longer available. Choose your batch again.',
+  [AUTH_ERROR.BATCH_UNIVERSITY_MISMATCH]: 'Select a batch for this university.',
 }
 
 /** Human-readable text for a registration failure. */
@@ -81,6 +102,12 @@ const FIELD_BY_CODE = {
   [AUTH_ERROR.EMAIL_MISMATCH]: 'email',
   [AUTH_ERROR.PHONE_MISMATCH]: 'mobile_national',
   [AUTH_ERROR.UNKNOWN_UNIVERSITY]: 'university_id',
+  [AUTH_ERROR.UNKNOWN_BATCH]: 'batch_id',
+  [AUTH_ERROR.NIAT_ID_REQUIRED]: 'niat_id',
+  [AUTH_ERROR.NIAT_ID_TAKEN]: 'niat_id',
+  [AUTH_ERROR.COLLEGE_ID_REQUIRED]: 'college_id',
+  [AUTH_ERROR.COLLEGE_ID_TAKEN]: 'college_id',
+  [AUTH_ERROR.BATCH_UNIVERSITY_MISMATCH]: 'batch_id',
 }
 
 /** Form field a failure should be reported against, or '' for form-level. */

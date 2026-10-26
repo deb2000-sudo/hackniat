@@ -51,7 +51,17 @@ const RESEND_WINDOW = 60
  *   against it without ever calling register/start — which would be rejected
  *   with PURPOSE_MISMATCH anyway, reset sessions being a different purpose.
  *
+ * - First-login profile completion passes `startSession`. /auth/profile/start
+ *   binds email AND mobile together and opens a new session every call, so
+ *   nothing can be sent until both are filled in, a session is reused only
+ *   while both still match it, and opening a new one drops both checks — the
+ *   old session's verifications do not carry over.
+ *
  * @param {object}   options
+ * @param {boolean}  [options.emailRequired=true]   False when email verification is switched off: the
+ *   email is still collected and bound to the session, it just never needs a code.
+ * @param {boolean}  [options.phoneRequired=true]   The same for the mobile number.
+ * @param {Function} [options.startSession]          ({ email, mobile }) => Promise<session_id>; binds both identifiers at once.
  * @param {string}   [options.sessionId]             Session opened by the caller; when set the hook never opens one.
  * @param {string}   [options.phoneNumber]           E.164 supplied by the caller; overrides countryCode + mobileNational.
  * @param {string}   [options.role]                  Role bound on the session (omitted for students).
@@ -63,6 +73,9 @@ const RESEND_WINDOW = 60
  * @param {string}   [options.invalidEmailMessage]   Shown when `isEmailValid` rejects the value.
  */
 export function useRegistrationVerification({
+  emailRequired = true,
+  phoneRequired = true,
+  startSession,
   sessionId: externalSessionId = '',
   phoneNumber: externalPhone = '',
   role,
@@ -92,6 +105,8 @@ export function useRegistrationVerification({
   const [phoneCooldown, setPhoneCooldown] = useState(0)
   const confirmationRef = useRef(null)
   const recaptchaRef = useRef(null)
+  /** True while an SMS send is under way — a second click must not start another. */
+  const phoneSendingRef = useRef(false)
 
   // Held in a ref so callers need not memoise the callback.
   const fieldErrorRef = useRef(onFieldError)
@@ -108,7 +123,14 @@ export function useRegistrationVerification({
     : toE164(countryCode, mobileNational)
   const emailReady = isEmailValid(email)
   const phoneReady = isE164(phoneE164)
-  const bothVerified = emailState === VERIFIED && phoneState === VERIFIED
+  // Profile completion: a check only counts while the session still carries
+  // the number on screen. Editing it after verifying voids both.
+  // "Every required channel is verified". A channel switched off counts as
+  // done; the name is kept because every caller reads it as "ready to submit".
+  const bothVerified =
+    (!emailRequired || emailState === VERIFIED) &&
+    (!phoneRequired || phoneState === VERIFIED) &&
+    (!startSession || (sessionEmail === email && sessionPhone === phoneE164))
 
   useEffect(() => {
     if (emailCooldown <= 0) return undefined
@@ -186,6 +208,33 @@ export function useRegistrationVerification({
     return nextId
   }
 
+  /**
+   * Open a session carrying both identifiers (profile completion). A new id is
+   * a new session, so whatever either channel verified before is void.
+   */
+  const bindBothSession = async () => {
+    if (!phoneReady) {
+      fieldErrorRef.current?.('mobile_national', 'Enter a valid mobile number')
+      throw new Error('Enter your mobile number first.')
+    }
+    const nextId = await startSession({ email, mobile: phoneE164 })
+    if (!nextId) throw new Error('Could not start verification. Try again.')
+    if (nextId !== sessionIdRef.current) {
+      resetEmailVerification()
+      confirmationRef.current = null
+      resetPhoneVerification()
+    }
+    sessionIdRef.current = nextId
+    setSessionId(nextId)
+    setSessionEmail(email)
+    setSessionPhone(phoneE164)
+    return nextId
+  }
+
+  /** Does the open session still carry exactly what is on screen? */
+  const sessionMatches = () =>
+    !!getSessionId() && sessionEmail === email && sessionPhone === phoneE164
+
   const ensureEmailSession = async () => {
     if (!emailReady) {
       fieldErrorRef.current?.('email', invalidEmailMessage)
@@ -194,6 +243,7 @@ export function useRegistrationVerification({
     // The caller's session already carries both identifiers; re-binding is
     // neither needed nor allowed.
     if (externalSessionId) return externalSessionId
+    if (startSession) return sessionMatches() ? getSessionId() : bindBothSession()
     if (sessionId && sessionEmail === email) {
       return sessionId
     }
@@ -210,6 +260,7 @@ export function useRegistrationVerification({
       throw new Error('Enter a valid mobile number to receive an SMS code.')
     }
     if (externalSessionId) return externalSessionId
+    if (startSession) return sessionMatches() ? getSessionId() : bindBothSession()
     if (sessionId && sessionPhone === phoneE164) {
       return sessionId
     }
@@ -226,6 +277,11 @@ export function useRegistrationVerification({
       throw new Error('Enter a valid email and mobile number before creating your account.')
     }
     if (externalSessionId) return externalSessionId
+    if (startSession) {
+      // Re-opening would start a new session and void both checks.
+      if (sessionMatches()) return getSessionId()
+      throw new Error('Your mobile number changed. Verify your email and mobile again.')
+    }
     return bindSession({ email, mobile: phoneE164 })
   }
 
@@ -303,6 +359,10 @@ export function useRegistrationVerification({
   }
 
   const sendPhoneOtp = async () => {
+    // A double click, or Resend while the first send is still running, would
+    // build two reCAPTCHA widgets at once and one of them fails.
+    if (phoneSendingRef.current) return
+    phoneSendingRef.current = true
     setPhoneError('')
     setPhoneState(SENDING)
     try {
@@ -342,6 +402,8 @@ export function useRegistrationVerification({
       setPhoneState(ERROR)
       // Backend failures carry a code; anything else came from Firebase.
       setPhoneError(code ? authErrorMessage(err) : firebasePhoneMessage(err))
+    } finally {
+      phoneSendingRef.current = false
     }
   }
 

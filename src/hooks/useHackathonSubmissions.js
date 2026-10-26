@@ -6,9 +6,11 @@ export function submissionRoundIndex(submission) {
   return Number(submission?.round_index) || 0
 }
 
-function matchesFilters(submission, { roundIndex, status, search }) {
+function matchesFilters(submission, { roundIndex, status, reviewStatus, search }) {
   if (roundIndex !== null && submissionRoundIndex(submission) !== roundIndex) return false
   if (status !== 'all' && submission.status !== status) return false
+  // A submission nobody has reviewed yet carries no review_status: that is "none".
+  if (reviewStatus !== 'all' && (submission.review_status || 'none') !== reviewStatus) return false
   if (!search) return true
   const needle = search.toLowerCase()
   return [submission.team_name, submission.theme_name || submission.theme_chosen, submission.id].some(
@@ -41,8 +43,8 @@ function summaryFromServer(rows) {
 /**
  * One page of the admin submissions queue for a hackathon.
  *
- * Asks the backend for just the page on screen, filtered by round, status and
- * search. A backend that does not page yet answers with every submission
+ * Asks the backend for just the page on screen, filtered by round, AI status,
+ * review status and search. A backend that does not page yet answers with every submission
  * instead; that list is then kept and paged here, and changing the page or the
  * filters stops refetching. Either way the caller gets the same shape: the
  * rows to draw, how many match, and per-round counts that ignore the filters.
@@ -50,7 +52,10 @@ function summaryFromServer(rows) {
  * The previous page stays on screen while the next one loads, so the table
  * does not collapse to a spinner on every click.
  */
-export function useHackathonSubmissions(hackathonId, { roundIndex, status, search, page, pageSize }) {
+export function useHackathonSubmissions(
+  hackathonId,
+  { roundIndex, status, reviewStatus = 'all', search, page, pageSize },
+) {
   const [feed, setFeed] = useState(null)
   const [nonce, setNonce] = useState(0)
   const loadedKeyRef = useRef('')
@@ -62,9 +67,10 @@ export function useHackathonSubmissions(hackathonId, { roundIndex, status, searc
       page_size: pageSize,
       round_index: roundIndex ?? undefined,
       status: status === 'all' ? undefined : status,
+      review_status: reviewStatus === 'all' ? undefined : reviewStatus,
       q: search || undefined,
     }),
-    [page, pageSize, roundIndex, status, search],
+    [page, pageSize, roundIndex, status, reviewStatus, search],
   )
   const baseKey = `${hackathonId}|${nonce}`
   // A full list answers every page and filter, so only a reload refetches it.
@@ -139,7 +145,7 @@ export function useHackathonSubmissions(hackathonId, { roundIndex, status, searc
       return { rows: items, total: feed?.total || 0, roundSummary: feed?.roundSummary || new Map() }
     }
     const filtered = items
-      .filter((submission) => matchesFilters(submission, { roundIndex, status, search }))
+      .filter((submission) => matchesFilters(submission, { roundIndex, status, reviewStatus, search }))
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     const start = (page - 1) * pageSize
     return {
@@ -147,7 +153,7 @@ export function useHackathonSubmissions(hackathonId, { roundIndex, status, searc
       total: filtered.length,
       roundSummary: summariseLocally(items),
     }
-  }, [feed, roundIndex, status, search, page, pageSize])
+  }, [feed, roundIndex, status, reviewStatus, search, page, pageSize])
 
   return {
     ...view,

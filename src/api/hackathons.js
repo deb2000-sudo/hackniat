@@ -85,6 +85,16 @@ export const hackathonsApi = {
   /** Open a blank draft and return its id. */
   createDraft: (options) => api.post('/hackathons/drafts', undefined, options),
 
+  /**
+   * Copy a hackathon into a new draft (not a live hackathon): "{name} (copy)"
+   * with its content, rounds (all unpublished) and banner, plus settings that
+   * land on the new hackathon at publish. Students, teams, submissions and
+   * scores stay on the original. Carries source_hackathon_id / _name.
+   * 404 HACKATHON_NOT_FOUND.
+   */
+  duplicate: (hackathonId, options) =>
+    api.post(`/hackathons/${encodeURIComponent(hackathonId)}/duplicate`, undefined, options),
+
   getDraft: (draftId, options) =>
     api.get(`/hackathons/drafts/${encodeURIComponent(draftId)}`, options),
 
@@ -118,7 +128,11 @@ export const hackathonsApi = {
   participation: (hackathonId, roundIndex, options) =>
     api.get(`${roundPath(hackathonId, roundIndex)}/participation`, options),
 
-  /** Enroll solo. Solo rounds only (max_team_size === 1). */
+  /**
+   * Enroll on your own. Valid for a single-person round and for a no-fixed-size
+   * (`open`) round; a sized team round (`multi`) answers 400 TEAM_REQUIRED.
+   * createTeam and joinTeam are for multi and open rounds.
+   */
   enrollSolo: (hackathonId, roundIndex, options) =>
     api.post(`${roundPath(hackathonId, roundIndex)}/enroll/solo`, undefined, options),
 
@@ -153,16 +167,32 @@ export const hackathonsApi = {
     api.get(`${roundPath(hackathonId, roundIndex)}/leaderboard`, options),
 
   /**
-   * Publish or hide a round's leaderboard.
-   *
-   * `notify` controls the ranked-candidate emails: the backend defaults it to
-   * true on a first publish and false on re-publish, so it is only sent when
-   * the caller explicitly wants to mail again. Unpublishing never notifies.
+   * Publish or hide a round's leaderboard. Publishing shows the ranked board
+   * to signed-in students on the hackathon page; it sends no email (winners
+   * are emailed through announceWinners).
    */
-  publishRoundLeaderboard: (hackathonId, roundIndex, { publish = true, notify } = {}, options) =>
+  publishRoundLeaderboard: (hackathonId, roundIndex, { publish = true } = {}, options) =>
+    api.post(`${roundPath(hackathonId, roundIndex)}/leaderboard/publish`, { publish }, options),
+
+  /* ----------------------- Winner announcement (Super Admin) ------------------ */
+  // The first top_n places (1–100) of a published board; a tie on the last
+  // place pulls in every team on that rank. Both answer with entries
+  // (rank, rank_label, place_label, team_name, score), announced_count,
+  // emails_sent and last_announcement. 400 LEADERBOARD_NOT_PUBLISHED or
+  // NO_APPROVED_SUBMISSIONS; 403 for anyone but Super Admin.
+
+  /** Who would be emailed. Sends nothing (emails_sent 0). */
+  previewWinners: (hackathonId, roundIndex, topN, options) =>
+    api.get(
+      `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${roundIndex}/winners?top_n=${topN}`,
+      options,
+    ),
+
+  /** Emails every member of those teams. Calling it again sends again. */
+  announceWinners: (hackathonId, roundIndex, topN, options) =>
     api.post(
-      `${roundPath(hackathonId, roundIndex)}/leaderboard/publish`,
-      notify === undefined ? { publish } : { publish, notify },
+      `/hackathons/${encodeURIComponent(hackathonId)}/rounds/${roundIndex}/winners/announce`,
+      { top_n: topN },
       options,
     ),
 
@@ -190,6 +220,22 @@ export const hackathonsApi = {
   updateEvaluators: (hackathonId, evaluatorIds, options) =>
     api.put(evaluatorsPath(hackathonId), { evaluator_ids: evaluatorIds }, options),
 
+  /* ------------------------- Visibility (admin) ------------------------- */
+  // Which students see this hackathon: university AND batch must both match.
+  // The response carries the rule plus the full university and batch
+  // catalogues, so the form needs no other calls.
+
+  visibility: (hackathonId, options) =>
+    api.get(`/hackathons/${encodeURIComponent(hackathonId)}/visibility`, options),
+
+  /**
+   * Body: `{ all_universities, all_batches, university_ids, batch_ids }`. An
+   * "all" flag stays open to rows added later, so send it as true with an
+   * empty id list — never every current id with the flag false.
+   */
+  updateVisibility: (hackathonId, payload, options) =>
+    api.put(`/hackathons/${encodeURIComponent(hackathonId)}/visibility`, payload, options),
+
   /* ----------------------- Report publishing (admin) ---------------------- */
   // Approval and publishing are separate: approving records the decision,
   // publishing is what students can actually see. With auto-publish on, an
@@ -208,6 +254,26 @@ export const hackathonsApi = {
     api.put(
       reportPublishingPath(hackathonId),
       { auto_publish_reports: autoPublishReports },
+      options,
+    ),
+
+  /* -------------------- Bulk approval (Super Admin only) ------------------ */
+  // Counts for the "Approve evaluations" section: pending_review_count,
+  // approved_count (already on the leaderboard) and skipped_count (still with
+  // the evaluator).
+
+  evaluationApprovals: (hackathonId, options) =>
+    api.get(`/hackathons/${encodeURIComponent(hackathonId)}/evaluation-approvals`, options),
+
+  /**
+   * Approves every evaluation the evaluators have submitted for this
+   * hackathon. Answers with approved_now, leaderboard_eligible, skipped and
+   * failed: [{ submission_id, reason }].
+   */
+  approveAllEvaluations: (hackathonId, options) =>
+    api.post(
+      `/hackathons/${encodeURIComponent(hackathonId)}/evaluation-approvals/approve-all`,
+      undefined,
       options,
     ),
 
